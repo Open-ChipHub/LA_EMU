@@ -438,6 +438,7 @@ typedef struct CPUArchState {
     uint32_t cpucfg[21];
 
     uint64_t scr[4];
+    uint8_t x86_top; // x87 top register
     uint64_t lladdr; /* LL virtual address compared against SC */
     uint64_t llval;
     // sc_q

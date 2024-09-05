@@ -5353,6 +5353,43 @@ static bool trans_jiscr1(DisasContext *ctx, arg_jiscr1 *a) {
     return true;
 }
 
+// lbt x86 x87 fp
+static bool trans_x86clrtm(DisasContext *env, arg_x86clrtm *a) {
+    CHECK_BTE;
+    env->fcsr0 &=~(1<<21);
+    env->pc += 4;
+    return true;
+}
+static bool trans_x86settm(DisasContext *env, arg_x86settm *a) {
+    CHECK_BTE;
+    env->fcsr0 |=  1<<21;
+    env->pc += 4;
+    return true;
+}
+static bool trans_x86dectop(DisasContext *env, arg_x86dectop *a) {
+    CHECK_BTE;
+    env->x86_top = (env->x86_top + 8 - 1) % 8;
+    env->pc += 4;
+    return true;
+}
+static bool trans_x86inctop(DisasContext *env, arg_x86inctop *a) {
+    CHECK_BTE;
+    env->x86_top = (env->x86_top + 1) % 8;
+    env->pc += 4;
+    return true;
+}
+static bool trans_x86mftop(DisasContext *env, arg_x86mftop *a) {
+    CHECK_BTE;
+    env->gpr[a->rd] = env->x86_top;
+    env->pc += 4;
+    return true;
+}
+static bool trans_x86mttop(DisasContext *env, arg_x86mttop *a) {
+    CHECK_BTE;
+    env->x86_top = a->ptr;
+    env->pc += 4;
+    return true;
+}
 
 static bool trans_addu12i_d(DisasContext *env, arg_addu12i_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_addu12i_w(DisasContext *env, arg_addu12i_w *a) {__NOT_IMPLEMENTED__}
@@ -5403,13 +5440,7 @@ static bool trans_vfrintirp_d(DisasContext *env, arg_vfrintirp_d *a) {__NOT_IMPL
 static bool trans_vfrintirp_s(DisasContext *env, arg_vfrintirp_s *a) {__NOT_IMPLEMENTED__}
 static bool trans_vfrintirz_d(DisasContext *env, arg_vfrintirz_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_vfrintirz_s(DisasContext *env, arg_vfrintirz_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86clrtm(DisasContext *env, arg_x86clrtm *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86dectop(DisasContext *env, arg_x86dectop *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86inctop(DisasContext *env, arg_x86inctop *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86mftop(DisasContext *env, arg_x86mftop *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86mttop(DisasContext *env, arg_x86mttop *a) {__NOT_IMPLEMENTED__}
 static bool trans_x86settag(DisasContext *env, arg_x86settag *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86settm(DisasContext *env, arg_x86settm *a) {__NOT_IMPLEMENTED__}
 static bool trans_xnor(DisasContext *env, arg_xnor *a) {__NOT_IMPLEMENTED__}
 static bool trans_xvfmaxn_d(DisasContext *env, arg_xvfmaxn_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_xvfmaxn_s(DisasContext *env, arg_xvfmaxn_s *a) {__NOT_IMPLEMENTED__}
