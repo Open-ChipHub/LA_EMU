@@ -389,6 +389,32 @@ union fpr_t {
     VReg  vreg;
 };
 
+/* LBT Context */
+typedef struct {
+    bool cf;
+    bool pf;
+    bool af;
+    bool zf;
+    bool sf;
+    bool of;
+} eflags_t;
+
+static inline eflags_t int2eflags (uint32_t i) {
+    return (eflags_t) {
+        .cf = i & 0x1,
+        .pf = i & 0x2,
+        .af = i & 0x4,
+        .zf = i & 0x8,
+        .sf = i & 0x10,
+        .of = i & 0x20
+    };
+}
+
+static inline uint32_t eflags2int (eflags_t e)
+{
+    return e.cf | e.pf << 1 | e.af << 2 | e.zf << 3 | e.sf << 4 | e.of << 5;
+}
+
 struct LoongArchTLB {
     uint64_t tlb_misc;
     /* Fields corresponding to CSR_TLBELO0/1 */
@@ -400,6 +426,7 @@ typedef struct LoongArchTLB LoongArchTLB;
 typedef struct CPUArchState {
     uint64_t gpr[32];
     uint64_t pc;
+    eflags_t x86_flags;
 
     fpr_t fpr[32];
     float_status fp_status;
@@ -410,6 +437,7 @@ typedef struct CPUArchState {
 
     uint32_t cpucfg[21];
 
+    uint64_t scr[4];
     uint64_t lladdr; /* LL virtual address compared against SC */
     uint64_t llval;
     // sc_q
