@@ -123,6 +123,7 @@ void perf_report_plv(CPULoongArchState *env, FILE* f, int plv, char* plv_name) {
     fprintf(f, "%s, COUNTER_INST_FP:               %20lu\n", plv_name, env->perf_counter[plv][COUNTER_INST_FP]);
     fprintf(f, "%s, COUNTER_INST_LSX:              %20lu\n", plv_name, env->perf_counter[plv][COUNTER_INST_LSX]);
     fprintf(f, "%s, COUNTER_INST_LASX:             %20lu\n", plv_name, env->perf_counter[plv][COUNTER_INST_LASX]);
+    fprintf(f, "%s, COUNTER_INST_LBT:              %20lu\n", plv_name, env->perf_counter[plv][COUNTER_INST_LBT]);
     fprintf(f, "%s, COUNTER_INST_CROSS_PAGE_LOAD:  %20lu\n", plv_name, env->perf_counter[plv][COUNTER_INST_CROSS_PAGE_LOAD]);
     fprintf(f, "%s, COUNTER_INST_CROSS_PAGE_STORE: %20lu\n", plv_name, env->perf_counter[plv][COUNTER_INST_CROSS_PAGE_STORE]);
 

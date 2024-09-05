@@ -44,6 +44,7 @@ static inline long long la_get_tval(CPULoongArchState *env){
 #define CHECK_BTE                                                                                                     \
     do {                                                                                                              \
         if (!FIELD_EX64(env->CSR_EUEN, CSR_EUEN, BTE)) {do_raise_exception(env, EXCCODE_BTD, 0); return true;}        \
+        PERF_INC(COUNTER_INST_LBT);                                                                                   \
     } while (0)
 
 #define CHECK_PLV(plv)                                                                                               \
@@ -63,7 +64,7 @@ static inline long long la_get_tval(CPULoongArchState *env){
         } else {lsassert(0);};                                                                                        \
     } while (0)
 
-#define CHECK_BTE
+#define CHECK_BTE do {PERF_INC(COUNTER_INST_LBT);} while (0)
 #endif
 #define CHECK_LBT_X86     do {   if (!FIELD_EX32(env->cpucfg[2], CPUCFG2, LBT_X86))     {return false;};} while (0)
 #define CHECK_LBT_ARM     do {   if (!FIELD_EX32(env->cpucfg[2], CPUCFG2, LBT_ARM))     {return false;};} while (0)
