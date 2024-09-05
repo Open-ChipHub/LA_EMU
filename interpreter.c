@@ -41,6 +41,11 @@ static inline long long la_get_tval(CPULoongArchState *env){
         } else {lsassert(0);};                                                                                        \
     } while (0)
 
+#define CHECK_BTE                                                                                                     \
+    do {                                                                                                              \
+        if (!FIELD_EX64(env->CSR_EUEN, CSR_EUEN, BTE)) {do_raise_exception(env, EXCCODE_BTD, 0); return true;}        \
+    } while (0)
+
 #define CHECK_PLV(plv)                                                                                               \
     do {                                                                                                             \
         if (FIELD_EX64(env->CSR_CRMD, CSR_CRMD, PLV) != plv) {do_raise_exception(env, EXCCODE_IPE, 0); return true;} \
@@ -57,6 +62,8 @@ static inline long long la_get_tval(CPULoongArchState *env){
             PERF_INC(COUNTER_INST_LASX);                                                                              \
         } else {lsassert(0);};                                                                                        \
     } while (0)
+
+#define CHECK_BTE
 #endif
 #define CHECK_LBT_X86     do {   if (!FIELD_EX32(env->cpucfg[2], CPUCFG2, LBT_X86))     {return false;};} while (0)
 #define CHECK_LBT_ARM     do {   if (!FIELD_EX32(env->cpucfg[2], CPUCFG2, LBT_ARM))     {return false;};} while (0)
@@ -5094,10 +5101,259 @@ static bool trans_sc_q(DisasContext *env , arg_sc_q *a) {
     return true;
 }
 
-static bool trans_adc_b(DisasContext *env, arg_adc_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_adc_d(DisasContext *env, arg_adc_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_adc_h(DisasContext *env, arg_adc_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_adc_w(DisasContext *env, arg_adc_w *a) {__NOT_IMPLEMENTED__}
+// lbt
+#define TRANS_X86(name) \
+static bool trans_x86##name(DisasContext *env, arg_x86##name *a)\
+{\
+    CHECK_BTE;\
+    helper_lbt_x86##name(env, env->gpr[a->rj], env->gpr[a->rk]);\
+    env->pc += 4;\
+    return true;\
+}
+#define TRANS_X86I(name,field) \
+static bool trans_x86##name(DisasContext *env, arg_x86##name *a)\
+{\
+    CHECK_BTE;\
+    helper_lbt_x86##name(env, env->gpr[a->rj], a->imm);\
+    env->pc += 4;\
+    return true;\
+}
+#define TRANS_X86MJ(name) \
+static bool trans_x86##name(DisasContext *env, arg_x86##name *a)\
+{\
+    CHECK_BTE;\
+    helper_lbt_x86##name(env, env->gpr[a->rj]);\
+    env->pc += 4;\
+    return true;\
+}
+#define TRANS_X86E(name) \
+static bool trans_x86##name(DisasContext *env, arg_x86##name *a)\
+{\
+    CHECK_BTE;\
+    helper_lbt_x86##name(env);\
+    env->pc += 4;\
+    return true;\
+}
+
+TRANS_X86(add_wu)
+TRANS_X86(add_du)
+TRANS_X86(sub_wu)
+TRANS_X86(sub_du)
+TRANS_X86(add_b )
+TRANS_X86(add_h )
+TRANS_X86(add_w )
+TRANS_X86(add_d )
+TRANS_X86(sub_b )
+TRANS_X86(sub_h )
+TRANS_X86(sub_w )
+TRANS_X86(sub_d )
+TRANS_X86(adc_b )
+TRANS_X86(adc_h )
+TRANS_X86(adc_w )
+TRANS_X86(adc_d )
+TRANS_X86(sbc_b )
+TRANS_X86(sbc_h )
+TRANS_X86(sbc_w )
+TRANS_X86(sbc_d )
+TRANS_X86(sll_b )
+TRANS_X86(sll_h )
+TRANS_X86(sll_w )
+TRANS_X86(sll_d )
+TRANS_X86(srl_b )
+TRANS_X86(srl_h )
+TRANS_X86(srl_w )
+TRANS_X86(srl_d )
+TRANS_X86(sra_b )
+TRANS_X86(sra_h )
+TRANS_X86(sra_w )
+TRANS_X86(sra_d )
+TRANS_X86(rotr_b)
+TRANS_X86(rotr_h)
+TRANS_X86(rotr_w)
+TRANS_X86(rotr_d)
+TRANS_X86(rotl_b)
+TRANS_X86(rotl_h)
+TRANS_X86(rotl_w)
+TRANS_X86(rotl_d)
+TRANS_X86(rcr_b )
+TRANS_X86(rcr_h )
+TRANS_X86(rcr_w )
+TRANS_X86(rcr_d )
+TRANS_X86(rcl_b )
+TRANS_X86(rcl_h )
+TRANS_X86(rcl_w )
+TRANS_X86(rcl_d )
+TRANS_X86(and_b )
+TRANS_X86(and_h )
+TRANS_X86(and_w )
+TRANS_X86(and_d )
+TRANS_X86(or_b  )
+TRANS_X86(or_h  )
+TRANS_X86(or_w  )
+TRANS_X86(or_d  )
+TRANS_X86(xor_b )
+TRANS_X86(xor_h )
+TRANS_X86(xor_w )
+TRANS_X86(xor_d )
+TRANS_X86(mul_w )
+TRANS_X86(mul_wu)
+TRANS_X86(mul_d )
+TRANS_X86(mul_du)
+TRANS_X86(mul_b )
+TRANS_X86(mul_bu)
+TRANS_X86(mul_h )
+TRANS_X86(mul_hu)
+
+TRANS_X86MJ(inc_b )
+TRANS_X86MJ(inc_h )
+TRANS_X86MJ(inc_w )
+TRANS_X86MJ(inc_d )
+TRANS_X86MJ(dec_b )
+TRANS_X86MJ(dec_h )
+TRANS_X86MJ(dec_w )
+TRANS_X86MJ(dec_d )
+TRANS_X86I(slli_b,a->imm)
+TRANS_X86I(slli_h,a->imm)
+TRANS_X86I(slli_w,a->imm)
+TRANS_X86I(slli_d,a->imm)
+TRANS_X86I(srli_b,a->imm)
+TRANS_X86I(srli_h,a->imm)
+TRANS_X86I(srli_w,a->imm)
+TRANS_X86I(srli_d,a->imm)
+TRANS_X86I(srai_b,a->imm)
+TRANS_X86I(srai_h,a->imm)
+TRANS_X86I(srai_w,a->imm)
+TRANS_X86I(srai_d,a->imm)
+TRANS_X86I(rotri_b,a->imm)
+TRANS_X86I(rotri_h,a->imm)
+TRANS_X86I(rotri_w,a->imm)
+TRANS_X86I(rotri_d,a->imm)
+TRANS_X86I(rcri_b,a->imm)
+TRANS_X86I(rcri_h,a->imm)
+TRANS_X86I(rcri_w,a->imm)
+TRANS_X86I(rcri_d,a->imm)
+TRANS_X86I(rotli_b,a->imm)
+TRANS_X86I(rotli_h,a->imm)
+TRANS_X86I(rotli_w,a->imm)
+TRANS_X86I(rotli_d,a->imm)
+TRANS_X86I(rcli_b,a->imm)
+TRANS_X86I(rcli_h,a->imm)
+TRANS_X86I(rcli_w,a->imm)
+TRANS_X86I(rcli_d,a->imm)
+#undef TRANS_X86MJ
+#undef TRANS_X86I
+#undef TRANS_X86
+
+#define TRANS_ADC(name) \
+static bool trans_ ## name (DisasContext *env, arg_ ## name *a) \
+{\
+    CHECK_BTE;\
+    env->gpr[a->rd] = helper_lbt_## name (env, env->gpr[a->rj], env->gpr[a->rk]);  \
+    env->pc += 4;\
+    return true;    \
+}
+TRANS_ADC(adc_b)    // trans_adc_b
+TRANS_ADC(adc_h)    // trans_adc_h
+TRANS_ADC(adc_w)    // trans_adc_w
+TRANS_ADC(adc_d)    // trans_adc_d
+TRANS_ADC(sbc_b)    // trans_sbc_b
+TRANS_ADC(sbc_h)    // trans_sbc_h
+TRANS_ADC(sbc_w)    // trans_sbc_w
+TRANS_ADC(sbc_d)    // trans_sbc_d
+TRANS_ADC(rcr_b)    // trans_rcr_b
+TRANS_ADC(rcr_h)    // trans_rcr_h
+TRANS_ADC(rcr_w)    // trans_rcr_w
+TRANS_ADC(rcr_d)    // trans_rcr_d
+#undef TRANS_ADC
+
+#define TRANS_ADCI(name) \
+static bool trans_ ## name (DisasContext *env, arg_ ## name *a) \
+{\
+    CHECK_BTE;\
+    env->gpr[a->rd] = helper_lbt_## name (env, env->gpr[a->rj], a->imm);  \
+    env->pc += 4;\
+    return true;    \
+}
+TRANS_ADCI(rcri_b)    // trans_rcri_b
+TRANS_ADCI(rcri_h)    // trans_rcri_h
+TRANS_ADCI(rcri_w)    // trans_rcri_w
+TRANS_ADCI(rcri_d)    // trans_rcri_d
+#undef TRANS_ADCI
+
+static bool trans_setx86j(DisasContext *env, arg_setx86j *a) {
+    CHECK_BTE;
+    env->gpr[a->rd] = helper_lbt_setx86j(env, a->imm);
+    env->pc += 4;
+    return true;
+}
+
+static bool trans_x86mfflag(DisasContext *env, arg_x86mfflag *a) {
+    CHECK_BTE;
+    env->gpr[a->rd] = helper_lbt_x86mfflag(env, a->imm);
+    env->pc += 4;
+    return true;
+}
+
+static bool trans_x86mtflag(DisasContext *env, arg_x86mtflag *a) {
+    CHECK_BTE;
+    helper_lbt_x86mtflag(env, env->gpr[a->rd], a->imm);
+    env->pc += 4;
+    return true;
+}
+
+static bool trans_x86loope(DisasContext *env, arg_x86loope *a) {
+    CHECK_BTE;
+    env->gpr[a->rd] = helper_lbt_x86loop(env, env->gpr[a->rj], 0);
+    env->gpr[a->rj] += -1;
+    env->pc += 4;
+    return true;
+}
+
+static bool trans_x86loopne(DisasContext *env, arg_x86loopne *a) {
+    CHECK_BTE;
+    env->gpr[a->rd] = helper_lbt_x86loop(env, env->gpr[a->rj], 1);
+    env->gpr[a->rj] += -1;
+    env->pc += 4;
+    return true;
+}
+
+static bool trans_gr2scr(DisasContext *ctx, arg_gr2scr *a) {
+    CHECK_BTE;
+    helper_lbt_gr2scr(env, a->sd, a->rj);
+    env->pc += 4;
+    return true;
+}
+
+static bool trans_scr2gr(DisasContext *ctx, arg_scr2gr *a) {
+    CHECK_BTE;
+    helper_lbt_scr2gr(env, a->rd, a->sj);
+    env->pc += 4;
+    return true;
+}
+
+static bool trans_grsel(DisasContext *ctx, arg_grsel *a) {
+    CHECK_BTE;
+    helper_lbt_grsel(env, a->rd, a->rj, a->imm);
+    env->pc += 4;
+    return true;
+}
+
+static bool trans_jiscr0(DisasContext *ctx, arg_jiscr0 *a) {
+    CHECK_BTE;
+    PERF_INC(COUNTER_INST_BRANCH);
+    env->pc = env->scr[0] + a->offs;
+    return true;
+}
+
+static bool trans_jiscr1(DisasContext *ctx, arg_jiscr1 *a) {
+    CHECK_BTE;
+    PERF_INC(COUNTER_INST_BRANCH);
+    env->scr[0] = env->pc;
+    env->pc = env->scr[1] + a->offs;
+    return true;
+}
+
+
 static bool trans_addu12i_d(DisasContext *env, arg_addu12i_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_addu12i_w(DisasContext *env, arg_addu12i_w *a) {__NOT_IMPLEMENTED__}
 static bool trans_add_wu(DisasContext *env, arg_add_wu *a) {__NOT_IMPLEMENTED__}
@@ -5121,10 +5377,6 @@ static bool trans_frintirp_d(DisasContext *env, arg_frintirp_d *a) {__NOT_IMPLEM
 static bool trans_frintirp_s(DisasContext *env, arg_frintirp_s *a) {__NOT_IMPLEMENTED__}
 static bool trans_frintirz_d(DisasContext *env, arg_frintirz_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_frintirz_s(DisasContext *env, arg_frintirz_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_gr2scr(DisasContext *env, arg_gr2scr *a) {__NOT_IMPLEMENTED__}
-static bool trans_grsel(DisasContext *env, arg_grsel *a) {__NOT_IMPLEMENTED__}
-static bool trans_jiscr0(DisasContext *env, arg_jiscr0 *a) {__NOT_IMPLEMENTED__}
-static bool trans_jiscr1(DisasContext *env, arg_jiscr1 *a) {__NOT_IMPLEMENTED__}
 static bool trans_max(DisasContext *env, arg_max *a) {__NOT_IMPLEMENTED__}
 static bool trans_maxu(DisasContext *env, arg_maxu *a) {__NOT_IMPLEMENTED__}
 static bool trans_maxwu(DisasContext *env, arg_maxwu *a) {__NOT_IMPLEMENTED__}
@@ -5134,24 +5386,10 @@ static bool trans_minwu(DisasContext *env, arg_minwu *a) {__NOT_IMPLEMENTED__}
 static bool trans_orc_b(DisasContext *env, arg_orc_b *a) {__NOT_IMPLEMENTED__}
 static bool trans_pcnt_d(DisasContext *env, arg_pcnt_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_pcnt_w(DisasContext *env, arg_pcnt_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_rcr_b(DisasContext *env, arg_rcr_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_rcr_d(DisasContext *env, arg_rcr_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_rcr_h(DisasContext *env, arg_rcr_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_rcri_b(DisasContext *env, arg_rcri_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_rcri_d(DisasContext *env, arg_rcri_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_rcri_h(DisasContext *env, arg_rcri_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_rcri_w(DisasContext *env, arg_rcri_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_rcr_w(DisasContext *env, arg_rcr_w *a) {__NOT_IMPLEMENTED__}
 static bool trans_rotr_b(DisasContext *env, arg_rotr_b *a) {__NOT_IMPLEMENTED__}
 static bool trans_rotr_h(DisasContext *env, arg_rotr_h *a) {__NOT_IMPLEMENTED__}
 static bool trans_rotri_b(DisasContext *env, arg_rotri_b *a) {__NOT_IMPLEMENTED__}
 static bool trans_rotri_h(DisasContext *env, arg_rotri_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_sbc_b(DisasContext *env, arg_sbc_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_sbc_d(DisasContext *env, arg_sbc_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_sbc_h(DisasContext *env, arg_sbc_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_sbc_w(DisasContext *env, arg_sbc_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_scr2gr(DisasContext *env, arg_scr2gr *a) {__NOT_IMPLEMENTED__}
-static bool trans_setx86j(DisasContext *env, arg_setx86j *a) {__NOT_IMPLEMENTED__}
 static bool trans_slli_wu(DisasContext *env, arg_slli_wu *a) {__NOT_IMPLEMENTED__}
 static bool trans_vfmaxn_d(DisasContext *env, arg_vfmaxn_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_vfmaxn_s(DisasContext *env, arg_vfmaxn_s *a) {__NOT_IMPLEMENTED__}
@@ -5165,121 +5403,13 @@ static bool trans_vfrintirp_d(DisasContext *env, arg_vfrintirp_d *a) {__NOT_IMPL
 static bool trans_vfrintirp_s(DisasContext *env, arg_vfrintirp_s *a) {__NOT_IMPLEMENTED__}
 static bool trans_vfrintirz_d(DisasContext *env, arg_vfrintirz_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_vfrintirz_s(DisasContext *env, arg_vfrintirz_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86adc_b(DisasContext *env, arg_x86adc_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86adc_d(DisasContext *env, arg_x86adc_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86adc_h(DisasContext *env, arg_x86adc_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86adc_w(DisasContext *env, arg_x86adc_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86add_b(DisasContext *env, arg_x86add_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86add_d(DisasContext *env, arg_x86add_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86add_du(DisasContext *env, arg_x86add_du *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86add_h(DisasContext *env, arg_x86add_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86add_w(DisasContext *env, arg_x86add_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86add_wu(DisasContext *env, arg_x86add_wu *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86and_b(DisasContext *env, arg_x86and_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86and_d(DisasContext *env, arg_x86and_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86and_h(DisasContext *env, arg_x86and_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86and_w(DisasContext *env, arg_x86and_w *a) {__NOT_IMPLEMENTED__}
 static bool trans_x86clrtm(DisasContext *env, arg_x86clrtm *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86dec_b(DisasContext *env, arg_x86dec_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86dec_d(DisasContext *env, arg_x86dec_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86dec_h(DisasContext *env, arg_x86dec_h *a) {__NOT_IMPLEMENTED__}
 static bool trans_x86dectop(DisasContext *env, arg_x86dectop *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86dec_w(DisasContext *env, arg_x86dec_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86inc_b(DisasContext *env, arg_x86inc_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86inc_d(DisasContext *env, arg_x86inc_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86inc_h(DisasContext *env, arg_x86inc_h *a) {__NOT_IMPLEMENTED__}
 static bool trans_x86inctop(DisasContext *env, arg_x86inctop *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86inc_w(DisasContext *env, arg_x86inc_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86loope(DisasContext *env, arg_x86loope *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86loopne(DisasContext *env, arg_x86loopne *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86mfflag(DisasContext *env, arg_x86mfflag *a) {__NOT_IMPLEMENTED__}
 static bool trans_x86mftop(DisasContext *env, arg_x86mftop *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86mtflag(DisasContext *env, arg_x86mtflag *a) {__NOT_IMPLEMENTED__}
 static bool trans_x86mttop(DisasContext *env, arg_x86mttop *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86mul_b(DisasContext *env, arg_x86mul_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86mul_bu(DisasContext *env, arg_x86mul_bu *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86mul_d(DisasContext *env, arg_x86mul_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86mul_du(DisasContext *env, arg_x86mul_du *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86mul_h(DisasContext *env, arg_x86mul_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86mul_hu(DisasContext *env, arg_x86mul_hu *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86mul_w(DisasContext *env, arg_x86mul_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86mul_wu(DisasContext *env, arg_x86mul_wu *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86or_b(DisasContext *env, arg_x86or_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86or_d(DisasContext *env, arg_x86or_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86or_h(DisasContext *env, arg_x86or_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86or_w(DisasContext *env, arg_x86or_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rcl_b(DisasContext *env, arg_x86rcl_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rcl_d(DisasContext *env, arg_x86rcl_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rcl_h(DisasContext *env, arg_x86rcl_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rcli_b(DisasContext *env, arg_x86rcli_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rcli_d(DisasContext *env, arg_x86rcli_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rcli_h(DisasContext *env, arg_x86rcli_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rcli_w(DisasContext *env, arg_x86rcli_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rcl_w(DisasContext *env, arg_x86rcl_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rcr_b(DisasContext *env, arg_x86rcr_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rcr_d(DisasContext *env, arg_x86rcr_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rcr_h(DisasContext *env, arg_x86rcr_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rcri_b(DisasContext *env, arg_x86rcri_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rcri_d(DisasContext *env, arg_x86rcri_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rcri_h(DisasContext *env, arg_x86rcri_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rcri_w(DisasContext *env, arg_x86rcri_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rcr_w(DisasContext *env, arg_x86rcr_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rotl_b(DisasContext *env, arg_x86rotl_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rotl_d(DisasContext *env, arg_x86rotl_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rotl_h(DisasContext *env, arg_x86rotl_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rotli_b(DisasContext *env, arg_x86rotli_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rotli_d(DisasContext *env, arg_x86rotli_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rotli_h(DisasContext *env, arg_x86rotli_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rotli_w(DisasContext *env, arg_x86rotli_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rotl_w(DisasContext *env, arg_x86rotl_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rotr_b(DisasContext *env, arg_x86rotr_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rotr_d(DisasContext *env, arg_x86rotr_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rotr_h(DisasContext *env, arg_x86rotr_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rotri_b(DisasContext *env, arg_x86rotri_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rotri_d(DisasContext *env, arg_x86rotri_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rotri_h(DisasContext *env, arg_x86rotri_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rotri_w(DisasContext *env, arg_x86rotri_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86rotr_w(DisasContext *env, arg_x86rotr_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sbc_b(DisasContext *env, arg_x86sbc_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sbc_d(DisasContext *env, arg_x86sbc_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sbc_h(DisasContext *env, arg_x86sbc_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sbc_w(DisasContext *env, arg_x86sbc_w *a) {__NOT_IMPLEMENTED__}
 static bool trans_x86settag(DisasContext *env, arg_x86settag *a) {__NOT_IMPLEMENTED__}
 static bool trans_x86settm(DisasContext *env, arg_x86settm *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sll_b(DisasContext *env, arg_x86sll_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sll_d(DisasContext *env, arg_x86sll_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sll_h(DisasContext *env, arg_x86sll_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86slli_b(DisasContext *env, arg_x86slli_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86slli_d(DisasContext *env, arg_x86slli_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86slli_h(DisasContext *env, arg_x86slli_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86slli_w(DisasContext *env, arg_x86slli_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sll_w(DisasContext *env, arg_x86sll_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sra_b(DisasContext *env, arg_x86sra_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sra_d(DisasContext *env, arg_x86sra_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sra_h(DisasContext *env, arg_x86sra_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86srai_b(DisasContext *env, arg_x86srai_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86srai_d(DisasContext *env, arg_x86srai_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86srai_h(DisasContext *env, arg_x86srai_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86srai_w(DisasContext *env, arg_x86srai_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sra_w(DisasContext *env, arg_x86sra_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86srl_b(DisasContext *env, arg_x86srl_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86srl_d(DisasContext *env, arg_x86srl_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86srl_h(DisasContext *env, arg_x86srl_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86srli_b(DisasContext *env, arg_x86srli_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86srli_d(DisasContext *env, arg_x86srli_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86srli_h(DisasContext *env, arg_x86srli_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86srli_w(DisasContext *env, arg_x86srli_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86srl_w(DisasContext *env, arg_x86srl_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sub_b(DisasContext *env, arg_x86sub_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sub_d(DisasContext *env, arg_x86sub_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sub_du(DisasContext *env, arg_x86sub_du *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sub_h(DisasContext *env, arg_x86sub_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sub_w(DisasContext *env, arg_x86sub_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86sub_wu(DisasContext *env, arg_x86sub_wu *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86xor_b(DisasContext *env, arg_x86xor_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86xor_d(DisasContext *env, arg_x86xor_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86xor_h(DisasContext *env, arg_x86xor_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_x86xor_w(DisasContext *env, arg_x86xor_w *a) {__NOT_IMPLEMENTED__}
 static bool trans_xnor(DisasContext *env, arg_xnor *a) {__NOT_IMPLEMENTED__}
 static bool trans_xvfmaxn_d(DisasContext *env, arg_xvfmaxn_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_xvfmaxn_s(DisasContext *env, arg_xvfmaxn_s *a) {__NOT_IMPLEMENTED__}

@@ -37,6 +37,7 @@ static inline bool X86ConditionPassed(CPULoongArchState *env, int cond)
     return r;
 }
 
+/*
 static inline void SLL_C(uint32_t x, uint32_t shift, int cin, uint32_t *result, int *cout)
 {
     if (shift == 0) {
@@ -86,6 +87,7 @@ static inline void ROTR_C(uint32_t x, uint32_t shift, int cin, uint32_t *result,
         *cout = (*result >> 31) & 0x1;
     }
 }
+*/
 
 #define BEXT(val, pos) ((val >> pos) & 0x1)
 
