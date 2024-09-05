@@ -154,9 +154,15 @@ static inline void gen_set_gpr(CPULoongArchState *env, int reg_num, int64_t t, D
     }
 }
 static inline int64_t get_fpr(CPULoongArchState *env, int reg_num) {
+    if ((reg_num< 8) && ((env->fcsr0 >> 21) & 0x1)) {
+        reg_num = (reg_num + env->x86_top) % 8;
+    }
     return env->fpr[reg_num].vreg.D[0];
 }
 static inline void set_fpr(CPULoongArchState *env, int reg_num, int64_t val) {
+    if ((reg_num< 8) && ((env->fcsr0 >> 21) & 0x1)) {
+        reg_num = (reg_num + env->x86_top) % 8;
+    }
     env->fpr[reg_num].vreg.D[0] = val;
 }
 
@@ -1793,13 +1799,13 @@ static bool trans_fcmp_cond_d(CPULoongArchState *env, arg_fcmp_cond_d *restrict 
 }
 static bool trans_fmov_s(CPULoongArchState *env, arg_fmov_s *restrict a) {
     CHECK_FPE(8);
-    env->fpr[a->fd].vreg.W[0] = env->fpr[a->fj].vreg.W[0];
+    set_fpr(env, a->fd, (int32_t)get_fpr(env, a->fj));
     env->pc += 4;
     return true;
 }
 static bool trans_fmov_d(CPULoongArchState *env, arg_fmov_d *restrict a) {
     CHECK_FPE(8);
-    env->fpr[a->fd].vreg.D[0] = env->fpr[a->fj].vreg.D[0];
+    set_fpr(env, a->fd, get_fpr(env, a->fj));
     env->pc += 4;
     return true;
 }
@@ -1814,25 +1820,25 @@ static bool trans_fsel(CPULoongArchState *env, arg_fsel *restrict a) {
 }
 static bool trans_movgr2fr_w(CPULoongArchState *env, arg_movgr2fr_w *restrict a) {
     CHECK_FPE(8);
-    env->fpr[a->fd].vreg.W[0] = env->gpr[a->rj];
+    set_fpr(env, a->fd, env->gpr[a->rj]);
     env->pc += 4;
     return true;
 }
 static bool trans_movgr2fr_d(CPULoongArchState *env, arg_movgr2fr_d *restrict a) {
     CHECK_FPE(8);
-    env->fpr[a->fd].vreg.D[0] = env->gpr[a->rj];
+    set_fpr(env, a->fd, env->gpr[a->rj]);
     env->pc += 4;
     return true;
 }
 static bool trans_movgr2frh_w(CPULoongArchState *env, arg_movgr2frh_w *restrict a) {
     CHECK_FPE(8);
-    env->fpr[a->fd].vreg.W[1] = env->gpr[a->rj];
+    set_fpr(env, a->fd, (env->gpr[a->rj] << 32) | (get_fpr(env, a->fd) & 0x00000000ffffffff));
     env->pc += 4;
     return true;
 }
 static bool trans_movfr2gr_s(CPULoongArchState *env, arg_movfr2gr_s *restrict a) {
     CHECK_FPE(8);
-    env->gpr[a->rd] = (int64_t)env->fpr[a->fj].vreg.W[0];
+    env->gpr[a->rd] = (int64_t)(int32_t)get_fpr(env, a->fj);
     env->pc += 4;
     return true;
 }
@@ -1881,13 +1887,13 @@ static bool trans_movfcsr2gr(CPULoongArchState *env, arg_movfcsr2gr *restrict a)
 }
 static bool trans_movfr2cf(CPULoongArchState *env, arg_movfr2cf *restrict a) {
     CHECK_FPE(8);
-    env->cf[a->cd] = env->fpr[a->fj].vreg.D[0] & 1;
+    env->cf[a->cd] = get_fpr(env, a->fj) & 1;
     env->pc += 4;
     return true;
 }
 static bool trans_movcf2fr(CPULoongArchState *env, arg_movcf2fr *restrict a) {
     CHECK_FPE(8);
-    env->fpr[a->fd].vreg.D[0] = env->cf[a->cj] & 1;
+    set_fpr(env, a->fd, env->cf[a->cj] & 1);
     env->pc += 4;
     return true;
 }
@@ -1911,7 +1917,7 @@ static bool trans_fld_s(CPULoongArchState *env, arg_fld_s *restrict a) {
 }
 static bool trans_fst_s(CPULoongArchState *env, arg_fst_s *restrict a) {
     CHECK_FPE(8);
-    st_w(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->fd].vreg.W[0]);
+    st_w(env, add_addr(env->gpr[a->rj], a->imm), get_fpr(env, a->fd));
     env->pc += 4;
     return true;
 }
@@ -1923,7 +1929,7 @@ static bool trans_fld_d(CPULoongArchState *env, arg_fld_d *restrict a) {
 }
 static bool trans_fst_d(CPULoongArchState *env, arg_fst_d *restrict a) {
     CHECK_FPE(8);
-    st_d(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->fd].vreg.D[0]);
+    st_d(env, add_addr(env->gpr[a->rj], a->imm), get_fpr(env, a->fd));
     env->pc += 4;
     return true;
 }
@@ -1941,13 +1947,13 @@ static bool trans_fldx_d(CPULoongArchState *env, arg_fldx_d *restrict a) {
 }
 static bool trans_fstx_s(CPULoongArchState *env, arg_fstx_s *restrict a) {
     CHECK_FPE(8);
-    st_w(env, add_addr(env->gpr[a->rj], env->gpr[a->rk]), env->fpr[a->fd].vreg.W[0]);
+    st_w(env, add_addr(env->gpr[a->rj], env->gpr[a->rk]), get_fpr(env, a->fd));
     env->pc += 4;
     return true;
 }
 static bool trans_fstx_d(CPULoongArchState *env, arg_fstx_d *restrict a) {
     CHECK_FPE(8);
-    st_d(env, add_addr(env->gpr[a->rj], env->gpr[a->rk]), env->fpr[a->fd].vreg.D[0]);
+    st_d(env, add_addr(env->gpr[a->rj], env->gpr[a->rk]), get_fpr(env, a->fd));
     env->pc += 4;
     return true;
 }
