@@ -3572,3 +3572,31 @@ VEXTRINS(vextrins_b, 8, B, 0xf)
 VEXTRINS(vextrins_h, 16, H, 0x7)
 VEXTRINS(vextrins_w, 32, W, 0x3)
 VEXTRINS(vextrins_d, 64, D, 0x1)
+
+#define FCVT_2OP_INEXACT(NAME, BIT, E, MODE)                                \
+void HELPER(NAME)(void *vd, void *vj,                                       \
+                  CPULoongArchState *env, uint32_t desc)                    \
+{                                                                           \
+    int i;                                                                  \
+    VReg *Vd = (VReg *)vd;                                                  \
+    VReg *Vj = (VReg *)vj;                                                  \
+    int oprsz = simd_oprsz(desc);                                           \
+                                                                            \
+    vec_clear_cause(env);                                                   \
+    for (i = 0; i < oprsz / (BIT / 8); i++) {                               \
+        FloatRoundMode old_mode = get_float_rounding_mode(&env->fp_status); \
+        set_float_rounding_mode(MODE, &env->fp_status);                     \
+        Vd->E(i) = float## BIT ## _round_to_int(Vj->E(i), &env->fp_status); \
+        set_float_rounding_mode(old_mode, &env->fp_status);                 \
+        vec_update_fcsr0_mask(env, GETPC(), float_flag_inexact);            \
+    }                                                                       \
+}
+
+FCVT_2OP_INEXACT(vfrintirne_s, 32, UW, float_round_nearest_even)
+FCVT_2OP_INEXACT(vfrintirne_d, 64, UD, float_round_nearest_even)
+FCVT_2OP_INEXACT(vfrintirz_s, 32, UW, float_round_to_zero)
+FCVT_2OP_INEXACT(vfrintirz_d, 64, UD, float_round_to_zero)
+FCVT_2OP_INEXACT(vfrintirp_s, 32, UW, float_round_up)
+FCVT_2OP_INEXACT(vfrintirp_d, 64, UD, float_round_up)
+FCVT_2OP_INEXACT(vfrintirm_s, 32, UW, float_round_down)
+FCVT_2OP_INEXACT(vfrintirm_d, 64, UD, float_round_down)

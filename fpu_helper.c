@@ -877,3 +877,24 @@ void helper_set_rounding_mode(CPULoongArchState *env)
     set_float_rounding_mode(ieee_rm[(env->fcsr0 >> FCSR0_RM) & 0x3],
                             &env->fp_status);
 }
+
+#define FRINT_2OP(NAME, BIT, MODE)                               \
+uint64_t HELPER(NAME)(CPULoongArchState *env, uint64_t fj)                    \
+{                                                                           \
+    uint64_t fd;                                                            \
+    FloatRoundMode old_mode = get_float_rounding_mode(&env->fp_status); \
+    set_float_rounding_mode(MODE, &env->fp_status);                     \
+    fd = float## BIT ## _round_to_int((uint## BIT ##_t)fj, &env->fp_status);       \
+    set_float_rounding_mode(old_mode, &env->fp_status);                 \
+    update_fcsr0_mask(env, GETPC(),float_flag_inexact);                 \
+    return fd;                                                          \
+}
+
+FRINT_2OP(frintirne_s, 32, float_round_nearest_even)
+FRINT_2OP(frintirne_d, 64, float_round_nearest_even)
+FRINT_2OP(frintirz_s, 32, float_round_to_zero)
+FRINT_2OP(frintirz_d, 64, float_round_to_zero)
+FRINT_2OP(frintirp_s, 32, float_round_up)
+FRINT_2OP(frintirp_d, 64, float_round_up)
+FRINT_2OP(frintirm_s, 32, float_round_down)
+FRINT_2OP(frintirm_d, 64, float_round_down)
