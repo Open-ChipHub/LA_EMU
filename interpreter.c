@@ -167,6 +167,20 @@ static inline void set_fpr(CPULoongArchState *env, int reg_num, int64_t val) {
     env->fpr[reg_num].vreg.D[0] = val;
 }
 
+#define    RD  ( (int64_t)gpr_src(env, a->rd, EXT_NONE))
+#define    RJ  ( (int64_t)gpr_src(env, a->rj, EXT_NONE))
+#define    RK  ( (int64_t)gpr_src(env, a->rk, EXT_NONE))
+#define    RDS ( (int32_t)gpr_src(env, a->rd, EXT_SIGN))
+#define    RJS ( (int32_t)gpr_src(env, a->rj, EXT_SIGN))
+#define    RKS ( (int32_t)gpr_src(env, a->rk, EXT_SIGN))
+#define    RDU ((uint32_t)gpr_src(env, a->rd, EXT_ZERO))
+#define    RJU ((uint32_t)gpr_src(env, a->rj, EXT_ZERO))
+#define    RKU ((uint32_t)gpr_src(env, a->rk, EXT_ZERO))
+
+#define    SET_RD(x)  gen_set_gpr(env, a->rd, x , EXT_NONE);
+#define    SET_RDS(x) gen_set_gpr(env, a->rd, x , EXT_SIGN);
+#define    SET_RDU(x) gen_set_gpr(env, a->rd, x , EXT_ZERO);
+
 /* bit0(signaling/quiet) bit1(lt) bit2(eq) bit3(un) bit4(neq) */
 static uint32_t get_fcmp_flags(int cond)
 {
@@ -5398,12 +5412,30 @@ static bool trans_x86mttop(DisasContext *env, arg_x86mttop *a) {
     return true;
 }
 
+
+
 static bool trans_addu12i_d(DisasContext *env, arg_addu12i_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_addu12i_w(DisasContext *env, arg_addu12i_w *a) {__NOT_IMPLEMENTED__}
-static bool trans_add_wu(DisasContext *env, arg_add_wu *a) {__NOT_IMPLEMENTED__}
-static bool trans_alsl_uw(DisasContext *env, arg_alsl_uw *a) {__NOT_IMPLEMENTED__}
-static bool trans_bitinv(DisasContext *env, arg_bitinv *a) {__NOT_IMPLEMENTED__}
-static bool trans_bitinvi(DisasContext *env, arg_bitinvi *a) {__NOT_IMPLEMENTED__}
+static bool trans_add_wu(DisasContext *env, arg_add_wu *a) {
+    SET_RD(RJU + RK);
+    env->pc += 4;
+    return true;
+}
+static bool trans_alsl_uw(DisasContext *env, arg_alsl_uw *a) {
+    SET_RD((RJU << a->sa) + RK);
+    env->pc += 4;
+    return true;
+}
+static bool trans_bitinv(DisasContext *env, arg_bitinv *a) {
+    SET_RD(RJ ^ (1ull << (RK & 0x3f)));
+    env->pc += 4;
+    return true;
+}
+static bool trans_bitinvi(DisasContext *env, arg_bitinvi *a) {
+    SET_RD(RJ ^ (1ull << a->imm));
+    env->pc += 4;
+    return true;
+}
 static bool trans_fcvt_d_ld(DisasContext *env, arg_fcvt_d_ld *a) {__NOT_IMPLEMENTED__}
 static bool trans_fcvt_ld_d(DisasContext *env, arg_fcvt_ld_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_fcvt_ud_d(DisasContext *env, arg_fcvt_ud_d *a) {__NOT_IMPLEMENTED__}
@@ -5421,20 +5453,69 @@ static bool trans_frintirp_d(DisasContext *env, arg_frintirp_d *a) {__NOT_IMPLEM
 static bool trans_frintirp_s(DisasContext *env, arg_frintirp_s *a) {__NOT_IMPLEMENTED__}
 static bool trans_frintirz_d(DisasContext *env, arg_frintirz_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_frintirz_s(DisasContext *env, arg_frintirz_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_max(DisasContext *env, arg_max *a) {__NOT_IMPLEMENTED__}
-static bool trans_maxu(DisasContext *env, arg_maxu *a) {__NOT_IMPLEMENTED__}
-static bool trans_maxwu(DisasContext *env, arg_maxwu *a) {__NOT_IMPLEMENTED__}
-static bool trans_min(DisasContext *env, arg_min *a) {__NOT_IMPLEMENTED__}
-static bool trans_minu(DisasContext *env, arg_minu *a) {__NOT_IMPLEMENTED__}
-static bool trans_minwu(DisasContext *env, arg_minwu *a) {__NOT_IMPLEMENTED__}
-static bool trans_orc_b(DisasContext *env, arg_orc_b *a) {__NOT_IMPLEMENTED__}
-static bool trans_pcnt_d(DisasContext *env, arg_pcnt_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_pcnt_w(DisasContext *env, arg_pcnt_w *a) {__NOT_IMPLEMENTED__}
+static bool trans_max(DisasContext *env, arg_max *a) {
+    SET_RD(MAX(RJ, RK));
+    env->pc += 4;
+    return true;
+}
+static bool trans_maxu(DisasContext *env, arg_maxu *a) {
+    SET_RD(MAX((uint64_t)RJ, (uint64_t)RK));
+    env->pc += 4;
+    return true;
+}
+static bool trans_maxwu(DisasContext *env, arg_maxwu *a) {
+    SET_RD(MAX(RJU, RKU));
+    env->pc += 4;
+    return true;
+}
+static bool trans_min(DisasContext *env, arg_min *a) {
+    SET_RD(MIN(RJ, RK));
+    env->pc += 4;
+    return true;
+}
+static bool trans_minu(DisasContext *env, arg_minu *a) {
+    SET_RD(MIN((uint64_t)RJ, (uint64_t)RK));
+    env->pc += 4;
+    return true;
+}
+static bool trans_minwu(DisasContext *env, arg_minwu *a) {
+    SET_RD(MIN(RJU, RKU));
+    env->pc += 4;
+    return true;
+}
+static bool trans_orc_b(DisasContext *env, arg_orc_b *a) {
+    uint64_t rj = RJ;
+    uint64_t mask = 0xff;
+    uint64_t rd = 0;
+    for (int i=0; i<64; i+=8) {
+        uint64_t t = mask << i;
+        if (rj & t) {
+            rd |= t;
+        }
+    }
+    SET_RD(rd);
+    env->pc += 4;
+    return true;
+}
+static bool trans_pcnt_w(DisasContext *env, arg_pcnt_w *a) {
+    SET_RD(ctpop32(RJU));
+    env->pc += 4;
+    return true;
+}
+static bool trans_pcnt_d(DisasContext *env, arg_pcnt_d *a) {
+    SET_RD(ctpop64(RJ));
+    env->pc += 4;
+    return true;
+}
 static bool trans_rotr_b(DisasContext *env, arg_rotr_b *a) {__NOT_IMPLEMENTED__}
 static bool trans_rotr_h(DisasContext *env, arg_rotr_h *a) {__NOT_IMPLEMENTED__}
 static bool trans_rotri_b(DisasContext *env, arg_rotri_b *a) {__NOT_IMPLEMENTED__}
 static bool trans_rotri_h(DisasContext *env, arg_rotri_h *a) {__NOT_IMPLEMENTED__}
-static bool trans_slli_wu(DisasContext *env, arg_slli_wu *a) {__NOT_IMPLEMENTED__}
+static bool trans_slli_wu(DisasContext *env, arg_slli_wu *a) {
+    SET_RD((uint64_t)RJU << a->imm);
+    env->pc += 4;
+    return true;
+}
 static bool trans_vfmaxn_d(DisasContext *env, arg_vfmaxn_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_vfmaxn_s(DisasContext *env, arg_vfmaxn_s *a) {__NOT_IMPLEMENTED__}
 static bool trans_vfminn_d(DisasContext *env, arg_vfminn_d *a) {__NOT_IMPLEMENTED__}
@@ -5448,7 +5529,11 @@ static bool trans_vfrintirp_s(DisasContext *env, arg_vfrintirp_s *a) {__NOT_IMPL
 static bool trans_vfrintirz_d(DisasContext *env, arg_vfrintirz_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_vfrintirz_s(DisasContext *env, arg_vfrintirz_s *a) {__NOT_IMPLEMENTED__}
 static bool trans_x86settag(DisasContext *env, arg_x86settag *a) {__NOT_IMPLEMENTED__}
-static bool trans_xnor(DisasContext *env, arg_xnor *a) {__NOT_IMPLEMENTED__}
+static bool trans_xnor(DisasContext *env, arg_xnor *a) {
+    SET_RD(~(RJ ^ RK));
+    env->pc += 4;
+    return true;
+}
 static bool trans_xvfmaxn_d(DisasContext *env, arg_xvfmaxn_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_xvfmaxn_s(DisasContext *env, arg_xvfmaxn_s *a) {__NOT_IMPLEMENTED__}
 static bool trans_xvfminn_d(DisasContext *env, arg_xvfminn_d *a) {__NOT_IMPLEMENTED__}
