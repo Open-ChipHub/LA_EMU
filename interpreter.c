@@ -5439,8 +5439,6 @@ static bool trans_bitinvi(DisasContext *env, arg_bitinvi *a) {
 static bool trans_fcvt_d_ld(DisasContext *env, arg_fcvt_d_ld *a) {__NOT_IMPLEMENTED__}
 static bool trans_fcvt_ld_d(DisasContext *env, arg_fcvt_ld_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_fcvt_ud_d(DisasContext *env, arg_fcvt_ud_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_fldi_d(DisasContext *env, arg_fldi_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_fldi_s(DisasContext *env, arg_fldi_s *a) {__NOT_IMPLEMENTED__}
 static bool trans_fmaxn_d(DisasContext *env, arg_fmaxn_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_fmaxn_s(DisasContext *env, arg_fmaxn_s *a) {__NOT_IMPLEMENTED__}
 static bool trans_fminn_d(DisasContext *env, arg_fminn_d *a) {__NOT_IMPLEMENTED__}
@@ -5469,6 +5467,30 @@ gen_trans_vved(xvfrintirz_s, 32, vfrintirz_s)
 gen_trans_vved(xvfrintirz_d, 32, vfrintirz_d)
 gen_trans_vved(xvfrintirne_s, 32, vfrintirne_s)
 gen_trans_vved(xvfrintirne_d, 32, vfrintirne_d)
+static bool trans_fldi_s(DisasContext *env, arg_fldi_s *a) {
+    CHECK_FPE(8);
+    int imm8 = a->imm;
+    uint64_t fd;
+    fd = (extract32(imm8, 7, 1) ? 0x8000 : 0) |
+    (extract32(imm8, 6, 1) ? 0x3e00 : 0x4000) |
+    (extract32(imm8, 0, 6) << 3);
+    fd <<= 16;
+    set_fpr(env, a->fd, fd);
+    env->pc += 4;
+    return true;
+}
+static bool trans_fldi_d(DisasContext *env, arg_fldi_d *a) {
+    CHECK_FPE(8);
+    int imm8 = a->imm;
+    uint64_t fd;
+    fd = (extract32(imm8, 7, 1) ? 0x8000 : 0) |
+    (extract32(imm8, 6, 1) ? 0x3fc0 : 0x4000) |
+    extract32(imm8, 0, 6);
+    fd <<= 48;
+    set_fpr(env, a->fd, fd);
+    env->pc += 4;
+    return true;
+}
 static bool trans_max(DisasContext *env, arg_max *a) {
     SET_RD(MAX(RJ, RK));
     env->pc += 4;
