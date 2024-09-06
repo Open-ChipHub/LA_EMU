@@ -3600,3 +3600,24 @@ FCVT_2OP_INEXACT(vfrintirp_s, 32, UW, float_round_up)
 FCVT_2OP_INEXACT(vfrintirp_d, 64, UD, float_round_up)
 FCVT_2OP_INEXACT(vfrintirm_s, 32, UW, float_round_down)
 FCVT_2OP_INEXACT(vfrintirm_d, 64, UD, float_round_down)
+
+#define DO_2OP_F2(NAME, BIT, E, FN)                       \
+void HELPER(NAME)(void *vd, void *vj,                    \
+                  CPULoongArchState *env, uint32_t desc) \
+{                                                        \
+    int i;                                               \
+    VReg *Vd = (VReg *)vd;                               \
+    VReg *Vj = (VReg *)vj;                               \
+    int oprsz = simd_oprsz(desc);                        \
+                                                         \
+    vec_clear_cause(env);                                \
+    for (i = 0; i < oprsz / (BIT / 8); i++) {            \
+        Vd->E(i) = FN(Vd->E(i), Vj->E(i), &env->fp_status); \
+        vec_update_fcsr0(env, GETPC());                  \
+    }                                                    \
+}
+
+DO_2OP_F2(vfmaxn_s, 32, UW, float32_max)
+DO_2OP_F2(vfmaxn_d, 64, UD, float64_max)
+DO_2OP_F2(vfminn_s, 32, UW, float32_min)
+DO_2OP_F2(vfminn_d, 64, UD, float64_min)

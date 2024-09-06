@@ -898,3 +898,39 @@ FRINT_2OP(frintirp_s, 32, float_round_up)
 FRINT_2OP(frintirp_d, 64, float_round_up)
 FRINT_2OP(frintirm_s, 32, float_round_down)
 FRINT_2OP(frintirm_d, 64, float_round_down)
+
+uint64_t helper_fmaxn_s(CPULoongArchState *env, uint64_t fj, uint64_t fk)
+{
+    uint64_t fd;
+
+    fd = nanbox_s(float32_max((uint32_t)fj, (uint32_t)fk, &env->fp_status));
+    update_fcsr0(env, GETPC());
+    return fd;
+}
+
+uint64_t helper_fmaxn_d(CPULoongArchState *env, uint64_t fj, uint64_t fk)
+{
+    uint64_t fd;
+
+    fd = float64_max(fj, fk, &env->fp_status);
+    update_fcsr0(env, GETPC());
+    return fd;
+}
+
+uint64_t helper_fminn_s(CPULoongArchState *env, uint64_t fj, uint64_t fk)
+{
+    uint64_t fd;
+
+    fd = nanbox_s(float32_min((uint32_t)fj, (uint32_t)fk, &env->fp_status));
+    update_fcsr0(env, GETPC());
+    return fd;
+}
+
+uint64_t helper_fminn_d(CPULoongArchState *env, uint64_t fj, uint64_t fk)
+{
+    uint64_t fd;
+
+    fd = float64_min(fj, fk, &env->fp_status);
+    update_fcsr0(env, GETPC());
+    return fd;
+}

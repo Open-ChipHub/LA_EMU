@@ -798,3 +798,13 @@ void helper_vfrintirp_s(void*, void*, CPULoongArchState*, uint32_t);
 void helper_vfrintirp_d(void*, void*, CPULoongArchState*, uint32_t);
 void helper_vfrintirm_s(void*, void*, CPULoongArchState*, uint32_t);
 void helper_vfrintirm_d(void*, void*, CPULoongArchState*, uint32_t);
+
+uint64_t helper_fmaxn_s(CPULoongArchState*, uint64_t, uint64_t);
+uint64_t helper_fmaxn_d(CPULoongArchState*, uint64_t, uint64_t);
+uint64_t helper_fminn_s(CPULoongArchState*, uint64_t, uint64_t);
+uint64_t helper_fminn_d(CPULoongArchState*, uint64_t, uint64_t);
+
+void helper_vfmaxn_s(void*, void* , CPULoongArchState*, uint32_t);
+void helper_vfmaxn_d(void*, void* , CPULoongArchState*, uint32_t);
+void helper_vfminn_s(void*, void* , CPULoongArchState*, uint32_t);
+void helper_vfminn_d(void*, void* , CPULoongArchState*, uint32_t);
