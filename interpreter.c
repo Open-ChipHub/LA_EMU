@@ -1736,6 +1736,14 @@ static bool gen_ff(CPULoongArchState *env, arg_ff *restrict a, uint64_t (*func)(
     env->pc += 4;
     return true;
 }
+static bool gen_ff2(CPULoongArchState *env, arg_ff *restrict a, uint64_t (*func)(CPULoongArchState *, uint64_t, uint64_t)) {
+    TCGv src1 = get_fpr(ctx, a->fj);
+    TCGv src2 = get_fpr(ctx, a->fd);
+    TCGv dest = func(env, src1, src2);
+    set_fpr(env, a->fd, dest);
+    env->pc += 4;
+    return true;
+}
 static bool trans_fsqrt_s(CPULoongArchState *env, arg_fsqrt_s *restrict a) {CHECK_FPE(8); return gen_ff(env, a, helper_fsqrt_s);}
 static bool trans_fsqrt_d(CPULoongArchState *env, arg_fsqrt_d *restrict a) {CHECK_FPE(8); return gen_ff(env, a, helper_fsqrt_d);}
 static bool trans_frecip_s(CPULoongArchState *env, arg_frecip_s *restrict a) {CHECK_FPE(8); return gen_ff(env, a, helper_frecip_s);}
@@ -5439,10 +5447,6 @@ static bool trans_bitinvi(DisasContext *env, arg_bitinvi *a) {
 static bool trans_fcvt_d_ld(DisasContext *env, arg_fcvt_d_ld *a) {__NOT_IMPLEMENTED__}
 static bool trans_fcvt_ld_d(DisasContext *env, arg_fcvt_ld_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_fcvt_ud_d(DisasContext *env, arg_fcvt_ud_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_fmaxn_d(DisasContext *env, arg_fmaxn_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_fmaxn_s(DisasContext *env, arg_fmaxn_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_fminn_d(DisasContext *env, arg_fminn_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_fminn_s(DisasContext *env, arg_fminn_s *a) {__NOT_IMPLEMENTED__}
 static bool trans_frintirm_d(DisasContext *env, arg_frintirm_d *a) {CHECK_FPE(8); return gen_ff(env, a, helper_frintirm_d);}
 static bool trans_frintirm_s(DisasContext *env, arg_frintirm_s *a) {CHECK_FPE(8); return gen_ff(env, a, helper_frintirm_s);}
 static bool trans_frintirne_d(DisasContext *env, arg_frintirne_d *a) {CHECK_FPE(8); return gen_ff(env, a, helper_frintirne_d);}
@@ -5491,6 +5495,18 @@ static bool trans_fldi_d(DisasContext *env, arg_fldi_d *a) {
     env->pc += 4;
     return true;
 }
+static bool trans_fmaxn_s(DisasContext *env, arg_fmaxn_s *a) {CHECK_FPE(8); return gen_ff2(env, a, helper_fmaxn_s);}
+static bool trans_fmaxn_d(DisasContext *env, arg_fmaxn_d *a) {CHECK_FPE(8); return gen_ff2(env, a, helper_fmaxn_d);}
+static bool trans_fminn_s(DisasContext *env, arg_fminn_s *a) {CHECK_FPE(8); return gen_ff2(env, a, helper_fminn_s);}
+static bool trans_fminn_d(DisasContext *env, arg_fminn_d *a) {CHECK_FPE(8); return gen_ff2(env, a, helper_fminn_d);}
+gen_trans_vved(vfmaxn_s, 16, vfmaxn_s)
+gen_trans_vved(vfmaxn_d, 16, vfmaxn_d)
+gen_trans_vved(vfminn_s, 16, vfminn_s)
+gen_trans_vved(vfminn_d, 16, vfminn_d)
+gen_trans_vved(xvfmaxn_s, 32, vfmaxn_s)
+gen_trans_vved(xvfmaxn_d, 32, vfmaxn_d)
+gen_trans_vved(xvfminn_s, 32, vfminn_s)
+gen_trans_vved(xvfminn_d, 32, vfminn_d)
 static bool trans_max(DisasContext *env, arg_max *a) {
     SET_RD(MAX(RJ, RK));
     env->pc += 4;
@@ -5554,20 +5570,12 @@ static bool trans_slli_wu(DisasContext *env, arg_slli_wu *a) {
     env->pc += 4;
     return true;
 }
-static bool trans_vfmaxn_d(DisasContext *env, arg_vfmaxn_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_vfmaxn_s(DisasContext *env, arg_vfmaxn_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_vfminn_d(DisasContext *env, arg_vfminn_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_vfminn_s(DisasContext *env, arg_vfminn_s *a) {__NOT_IMPLEMENTED__}
 static bool trans_x86settag(DisasContext *env, arg_x86settag *a) {__NOT_IMPLEMENTED__}
 static bool trans_xnor(DisasContext *env, arg_xnor *a) {
     SET_RD(~(RJ ^ RK));
     env->pc += 4;
     return true;
 }
-static bool trans_xvfmaxn_d(DisasContext *env, arg_xvfmaxn_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_xvfmaxn_s(DisasContext *env, arg_xvfmaxn_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_xvfminn_d(DisasContext *env, arg_xvfminn_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_xvfminn_s(DisasContext *env, arg_xvfminn_s *a) {__NOT_IMPLEMENTED__}
 
 bool interpreter(CPULoongArchState *env, uint32_t insn, INSCache* ic) {
     if (ic) {
