@@ -5445,14 +5445,30 @@ static bool trans_fmaxn_d(DisasContext *env, arg_fmaxn_d *a) {__NOT_IMPLEMENTED_
 static bool trans_fmaxn_s(DisasContext *env, arg_fmaxn_s *a) {__NOT_IMPLEMENTED__}
 static bool trans_fminn_d(DisasContext *env, arg_fminn_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_fminn_s(DisasContext *env, arg_fminn_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_frintirm_d(DisasContext *env, arg_frintirm_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_frintirm_s(DisasContext *env, arg_frintirm_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_frintirne_d(DisasContext *env, arg_frintirne_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_frintirne_s(DisasContext *env, arg_frintirne_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_frintirp_d(DisasContext *env, arg_frintirp_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_frintirp_s(DisasContext *env, arg_frintirp_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_frintirz_d(DisasContext *env, arg_frintirz_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_frintirz_s(DisasContext *env, arg_frintirz_s *a) {__NOT_IMPLEMENTED__}
+static bool trans_frintirm_d(DisasContext *env, arg_frintirm_d *a) {CHECK_FPE(8); return gen_ff(env, a, helper_frintirm_d);}
+static bool trans_frintirm_s(DisasContext *env, arg_frintirm_s *a) {CHECK_FPE(8); return gen_ff(env, a, helper_frintirm_s);}
+static bool trans_frintirne_d(DisasContext *env, arg_frintirne_d *a) {CHECK_FPE(8); return gen_ff(env, a, helper_frintirne_d);}
+static bool trans_frintirne_s(DisasContext *env, arg_frintirne_s *a) {CHECK_FPE(8); return gen_ff(env, a, helper_frintirne_s);}
+static bool trans_frintirp_d(DisasContext *env, arg_frintirp_d *a) {CHECK_FPE(8); return gen_ff(env, a, helper_frintirp_d);}
+static bool trans_frintirp_s(DisasContext *env, arg_frintirp_s *a) {CHECK_FPE(8); return gen_ff(env, a, helper_frintirp_s);}
+static bool trans_frintirz_d(DisasContext *env, arg_frintirz_d *a) {CHECK_FPE(8); return gen_ff(env, a, helper_frintirz_d);}
+static bool trans_frintirz_s(DisasContext *env, arg_frintirz_s *a) {CHECK_FPE(8); return gen_ff(env, a, helper_frintirz_s);}
+gen_trans_vved(vfrintirm_s, 16, vfrintirm_s)
+gen_trans_vved(vfrintirm_d, 16, vfrintirm_d)
+gen_trans_vved(vfrintirp_s, 16, vfrintirp_s)
+gen_trans_vved(vfrintirp_d, 16, vfrintirp_d)
+gen_trans_vved(vfrintirz_s, 16, vfrintirz_s)
+gen_trans_vved(vfrintirz_d, 16, vfrintirz_d)
+gen_trans_vved(vfrintirne_s, 16, vfrintirne_s)
+gen_trans_vved(vfrintirne_d, 16, vfrintirne_d)
+gen_trans_vved(xvfrintirm_s, 32, vfrintirm_s)
+gen_trans_vved(xvfrintirm_d, 32, vfrintirm_d)
+gen_trans_vved(xvfrintirp_s, 32, vfrintirp_s)
+gen_trans_vved(xvfrintirp_d, 32, vfrintirp_d)
+gen_trans_vved(xvfrintirz_s, 32, vfrintirz_s)
+gen_trans_vved(xvfrintirz_d, 32, vfrintirz_d)
+gen_trans_vved(xvfrintirne_s, 32, vfrintirne_s)
+gen_trans_vved(xvfrintirne_d, 32, vfrintirne_d)
 static bool trans_max(DisasContext *env, arg_max *a) {
     SET_RD(MAX(RJ, RK));
     env->pc += 4;
@@ -5520,14 +5536,6 @@ static bool trans_vfmaxn_d(DisasContext *env, arg_vfmaxn_d *a) {__NOT_IMPLEMENTE
 static bool trans_vfmaxn_s(DisasContext *env, arg_vfmaxn_s *a) {__NOT_IMPLEMENTED__}
 static bool trans_vfminn_d(DisasContext *env, arg_vfminn_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_vfminn_s(DisasContext *env, arg_vfminn_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_vfrintirm_d(DisasContext *env, arg_vfrintirm_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_vfrintirm_s(DisasContext *env, arg_vfrintirm_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_vfrintirne_d(DisasContext *env, arg_vfrintirne_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_vfrintirne_s(DisasContext *env, arg_vfrintirne_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_vfrintirp_d(DisasContext *env, arg_vfrintirp_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_vfrintirp_s(DisasContext *env, arg_vfrintirp_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_vfrintirz_d(DisasContext *env, arg_vfrintirz_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_vfrintirz_s(DisasContext *env, arg_vfrintirz_s *a) {__NOT_IMPLEMENTED__}
 static bool trans_x86settag(DisasContext *env, arg_x86settag *a) {__NOT_IMPLEMENTED__}
 static bool trans_xnor(DisasContext *env, arg_xnor *a) {
     SET_RD(~(RJ ^ RK));
@@ -5538,14 +5546,6 @@ static bool trans_xvfmaxn_d(DisasContext *env, arg_xvfmaxn_d *a) {__NOT_IMPLEMEN
 static bool trans_xvfmaxn_s(DisasContext *env, arg_xvfmaxn_s *a) {__NOT_IMPLEMENTED__}
 static bool trans_xvfminn_d(DisasContext *env, arg_xvfminn_d *a) {__NOT_IMPLEMENTED__}
 static bool trans_xvfminn_s(DisasContext *env, arg_xvfminn_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_xvfrintirm_d(DisasContext *env, arg_xvfrintirm_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_xvfrintirm_s(DisasContext *env, arg_xvfrintirm_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_xvfrintirne_d(DisasContext *env, arg_xvfrintirne_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_xvfrintirne_s(DisasContext *env, arg_xvfrintirne_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_xvfrintirp_d(DisasContext *env, arg_xvfrintirp_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_xvfrintirp_s(DisasContext *env, arg_xvfrintirp_s *a) {__NOT_IMPLEMENTED__}
-static bool trans_xvfrintirz_d(DisasContext *env, arg_xvfrintirz_d *a) {__NOT_IMPLEMENTED__}
-static bool trans_xvfrintirz_s(DisasContext *env, arg_xvfrintirz_s *a) {__NOT_IMPLEMENTED__}
 
 bool interpreter(CPULoongArchState *env, uint32_t insn, INSCache* ic) {
     if (ic) {
