@@ -546,6 +546,7 @@ static inline bool usub64_overflow(uint64_t x, uint64_t y, uint64_t *ret)
     return __builtin_sub_overflow(x, y, ret);
 }
 
+#if __has_builtin(__builtin_mul_overflow)
 /**
  * smul32_overflow - multiplication with overflow indication
  * @x, @y: Input multipliers
@@ -632,6 +633,7 @@ static inline bool mulu128(uint64_t *plow, uint64_t *phigh, uint64_t factor)
     return uadd64_overflow(ahi, blo, phigh) || bhi != 0;
 #endif
 }
+#endif
 
 /**
  * uadd64_carry - addition with carry-in and carry-out
