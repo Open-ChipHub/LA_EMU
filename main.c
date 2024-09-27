@@ -33,8 +33,8 @@
 
 #if defined(CONFIG_PLUGIN)
 la_emu_plugin_ops* plugin_ops;
-char plugin_name[PATH_MAX];
-char plugin_arg[PATH_MAX];
+char plugin_name[PATH_MAX+1];
+char plugin_arg[PATH_MAX+1];
 #endif
 bool new_abi;
 bool determined;
