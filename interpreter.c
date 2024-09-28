@@ -79,7 +79,7 @@ static inline long long la_get_tval(CPULoongArchState *env){
 #ifdef CONFIG_DIFF
 #define __NOT_IMPLEMENTED__ __NOT_IMPLEMENTED_EXIT__
 #else
-#define __NOT_IMPLEMENTED__ do {fprintf(stderr, "LA_EMU NOT IMPLEMENTED %s, pc:%lx\n", __func__, env->pc); env->pc += 4; return false;} while(0);
+#define __NOT_IMPLEMENTED__ do {fprintf(stderr, "LA_EMU NOT IMPLEMENTED %s, pc:%lx\n", __func__, env->pc); cpu_set_pc(env, env->pc + 4); return false;} while(0);
 #endif
 #define __NOT_CORRECTED_IMPLEMENTED__ do {fprintf(stderr, "LA_EMU NOT CORRECTED IMPLEMENTED %s, pc:%lx\n", __func__, env->pc);} while(0);
 #define __NOT_IMPLEMENTED_EXIT__ do {fprintf(stderr, "LA_EMU NOT IMPLEMENTED %s, pc:%lx\n", __func__, env->pc); laemu_exit(1); return false;} while(0);
@@ -201,396 +201,400 @@ static uint32_t get_fcmp_flags(int cond)
     return flags;
 }
 
+static inline void cpu_set_pc(CPULoongArchState *env, const uint64_t target){
+    env->pc = target;
+}
+
 static bool trans_add_w(CPULoongArchState *env, arg_add_w *restrict a) {
     env->gpr[a->rd] = (int64_t)(int32_t)(env->gpr[a->rj] + env->gpr[a->rk]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_add_d(CPULoongArchState *env, arg_add_d *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] + env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_sub_w(CPULoongArchState *env, arg_sub_w *restrict a) {
     env->gpr[a->rd] = (int64_t)(int32_t)(env->gpr[a->rj] - env->gpr[a->rk]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_sub_d(CPULoongArchState *env, arg_sub_d *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] - env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_slt(CPULoongArchState *env, arg_slt *restrict a) {
     env->gpr[a->rd] = (int64_t)env->gpr[a->rj] < (int64_t)env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_sltu(CPULoongArchState *env, arg_sltu *restrict a) {
     env->gpr[a->rd] = (uint64_t)env->gpr[a->rj] < (uint64_t)env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_slti(CPULoongArchState *env, arg_slti *restrict a) {
     env->gpr[a->rd] = (int64_t)env->gpr[a->rj] < (int64_t)a->imm;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_sltui(CPULoongArchState *env, arg_sltui *restrict a) {
     env->gpr[a->rd] = (uint64_t)env->gpr[a->rj] < (uint64_t)(int64_t)a->imm;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_nor(CPULoongArchState *env, arg_nor *restrict a) {
     env->gpr[a->rd] = ~(env->gpr[a->rj] | env->gpr[a->rk]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_and(CPULoongArchState *env, arg_and *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] & env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_or(CPULoongArchState *env, arg_or *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] | env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xor(CPULoongArchState *env, arg_xor *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] ^ env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
 static bool trans_orn(CPULoongArchState *env, arg_orn *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] | (~ env->gpr[a->rk]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
 static bool trans_andn(CPULoongArchState *env, arg_andn *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] & (~ env->gpr[a->rk]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
 static bool trans_mul_w(CPULoongArchState *env, arg_mul_w *restrict a) {
     env->gpr[a->rd] = (int64_t)((int32_t)env->gpr[a->rj] * (int32_t)env->gpr[a->rk]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_mulh_w(CPULoongArchState *env, arg_mulh_w *restrict a) {
     int64_t data = ((int64_t)(int32_t)env->gpr[a->rj] * (int64_t)(int32_t)env->gpr[a->rk]) >> 32;
     env->gpr[a->rd] = data;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_mulh_wu(CPULoongArchState *env, arg_mulh_wu *restrict a) {
     int64_t data = ((int64_t)((uint64_t)(uint32_t)env->gpr[a->rj] * (uint64_t)(uint32_t)env->gpr[a->rk])) >> 32;
     env->gpr[a->rd] = data;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_mul_d(CPULoongArchState *env, arg_mul_d *restrict a) {
     env->gpr[a->rd] = (int64_t)env->gpr[a->rj] * (int64_t)env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_mulh_d(CPULoongArchState *env, arg_mulh_d *restrict a) {
     uint64_t high,low;
     muls64(&low, &high, env->gpr[a->rj], env->gpr[a->rk]);
     env->gpr[a->rd] = high;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_mulh_du(CPULoongArchState *env, arg_mulh_du *restrict a) {
     uint64_t high,low;
     mulu64(&low, &high, env->gpr[a->rj], env->gpr[a->rk]);
     env->gpr[a->rd] = high;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_mulw_d_w(CPULoongArchState *env, arg_mulw_d_w *restrict a) {
     env->gpr[a->rd] = (int64_t)(int32_t)env->gpr[a->rj] * (int64_t)(int32_t)env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_mulw_d_wu(CPULoongArchState *env, arg_mulw_d_wu *restrict a) {
     env->gpr[a->rd] = (uint64_t)(uint32_t)env->gpr[a->rj] * (uint64_t)(uint32_t)env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_div_w(CPULoongArchState *env, arg_div_w *restrict a) {
     env->gpr[a->rd] = (int32_t)env->gpr[a->rj] / (int32_t)env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_mod_w(CPULoongArchState *env, arg_mod_w *restrict a) {
     env->gpr[a->rd] = (int32_t)env->gpr[a->rj] % (int32_t)env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_div_wu(CPULoongArchState *env, arg_div_wu *restrict a) {
     env->gpr[a->rd] = (int32_t)((uint32_t)env->gpr[a->rj] / (uint32_t)env->gpr[a->rk]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_mod_wu(CPULoongArchState *env, arg_mod_wu *restrict a) {
     env->gpr[a->rd] = (uint32_t)env->gpr[a->rj] % (uint32_t)env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_div_d(CPULoongArchState *env, arg_div_d *restrict a) {
     env->gpr[a->rd] = (int64_t)env->gpr[a->rj] / (int64_t)env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_mod_d(CPULoongArchState *env, arg_mod_d *restrict a) {
     env->gpr[a->rd] = (int64_t)env->gpr[a->rj] % (int64_t)env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_div_du(CPULoongArchState *env, arg_div_du *restrict a) {
     env->gpr[a->rd] = (uint64_t)env->gpr[a->rj] / (uint64_t)env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_mod_du(CPULoongArchState *env, arg_mod_du *restrict a) {
     env->gpr[a->rd] = (uint64_t)env->gpr[a->rj] % (uint64_t)env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_alsl_w(CPULoongArchState *env, arg_alsl_w *restrict a) {
     env->gpr[a->rd] = (int64_t)(int32_t)((env->gpr[a->rj] << a->sa) + env->gpr[a->rk]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_alsl_wu(CPULoongArchState *env, arg_alsl_wu *restrict a) {
     env->gpr[a->rd] = (uint32_t)((env->gpr[a->rj] << a->sa) + env->gpr[a->rk]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_alsl_d(CPULoongArchState *env, arg_alsl_d *restrict a) {
     env->gpr[a->rd] = (env->gpr[a->rj] << a->sa) + env->gpr[a->rk];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_lu12i_w(CPULoongArchState *env, arg_lu12i_w *restrict a) {
     env->gpr[a->rd] = (int64_t)(a->imm << 12);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_lu32i_d(CPULoongArchState *env, arg_lu32i_d *restrict a) {
     env->gpr[a->rd] = (uint64_t)(uint32_t)env->gpr[a->rd] | ((int64_t)a->imm << 32);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_lu52i_d(CPULoongArchState *env, arg_lu52i_d *restrict a) {
     env->gpr[a->rd] = deposit64(env->gpr[a->rj], 52, 12, a->imm);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_pcaddi(CPULoongArchState *env, arg_pcaddi *restrict a) {
     env->gpr[a->rd] = env->pc + (a->imm << 2);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_pcalau12i(CPULoongArchState *env, arg_pcalau12i *restrict a) {
     env->gpr[a->rd] = env->pc + (a->imm << 12);
     env->gpr[a->rd] &= ~0xfffull;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_pcaddu12i(CPULoongArchState *env, arg_pcaddu12i *restrict a) {
     env->gpr[a->rd] = env->pc + (a->imm << 12);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_pcaddu18i(CPULoongArchState *env, arg_pcaddu18i *restrict a) {
     env->gpr[a->rd] = env->pc + (a->imm << 18);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_addi_w(CPULoongArchState *env, arg_addi_w *restrict a) {
     env->gpr[a->rd] = (int64_t)(int32_t)(env->gpr[a->rj] + a->imm);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_addi_d(CPULoongArchState *env, arg_addi_d *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] + a->imm;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_addu16i_d(CPULoongArchState *env, arg_addu16i_d *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] + (a->imm << 16);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_andi(CPULoongArchState *env, arg_andi *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] & a->imm;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ori(CPULoongArchState *env, arg_ori *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] | a->imm;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xori(CPULoongArchState *env, arg_xori *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] ^ a->imm;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_sll_w(CPULoongArchState *env, arg_sll_w *restrict a) {
     env->gpr[a->rd] = (int64_t)((int32_t)env->gpr[a->rj] << (env->gpr[a->rk] & 0x1f));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_srl_w(CPULoongArchState *env, arg_srl_w *restrict a) {
     env->gpr[a->rd] = (int64_t)(int32_t)((uint32_t)env->gpr[a->rj] >> (env->gpr[a->rk] & 0x1f));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_sra_w(CPULoongArchState *env, arg_sra_w *restrict a) {
     env->gpr[a->rd] = (int64_t)((int32_t)env->gpr[a->rj] >> (env->gpr[a->rk] & 0x1f));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_sll_d(CPULoongArchState *env, arg_sll_d *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] << (env->gpr[a->rk] & 0x3f);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_srl_d(CPULoongArchState *env, arg_srl_d *restrict a) {
     env->gpr[a->rd] = (uint64_t)env->gpr[a->rj] >> (env->gpr[a->rk] & 0x3f);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_sra_d(CPULoongArchState *env, arg_sra_d *restrict a) {
     env->gpr[a->rd] = (int64_t)env->gpr[a->rj] >> (env->gpr[a->rk] & 0x3f);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_rotr_w(CPULoongArchState *env, arg_rotr_w *restrict a) {
     uint32_t rj = env->gpr[a->rj];
     int imm = env->gpr[a->rk] & 0x1f;
     env->gpr[a->rd] = (int64_t)(int32_t)((rj >> imm) | (rj << (32 - imm)));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_rotr_d(CPULoongArchState *env, arg_rotr_d *restrict a) {
     uint64_t rj = env->gpr[a->rj];
     int imm = env->gpr[a->rk] & 0x3f;
     env->gpr[a->rd] = (rj >> imm) | (rj << (64 - imm));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_slli_w(CPULoongArchState *env, arg_slli_w *restrict a) {
     env->gpr[a->rd] = (int64_t)((int32_t)env->gpr[a->rj] << a->imm);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_slli_d(CPULoongArchState *env, arg_slli_d *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] << a->imm;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_srli_w(CPULoongArchState *env, arg_srli_w *restrict a) {
     env->gpr[a->rd] = (int64_t)((uint32_t)env->gpr[a->rj] >> a->imm);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_srli_d(CPULoongArchState *env, arg_srli_d *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] >> a->imm;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_srai_w(CPULoongArchState *env, arg_srai_w *restrict a) {
     env->gpr[a->rd] = (int64_t)((int32_t)env->gpr[a->rj] >> a->imm);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_srai_d(CPULoongArchState *env, arg_srai_d *restrict a) {
     env->gpr[a->rd] = (int64_t)env->gpr[a->rj] >> a->imm;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_rotri_w(CPULoongArchState *env, arg_rotri_w *restrict a) {
     uint32_t rj = env->gpr[a->rj];
     int imm = a->imm & 0x1f;
     env->gpr[a->rd] = (int64_t)(int32_t)((rj >> imm) | (rj << (32 - imm)));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_rotri_d(CPULoongArchState *env, arg_rotri_d *restrict a) {
     uint64_t rj = env->gpr[a->rj];
     int imm = a->imm & 0x3f;
     env->gpr[a->rd] = (rj >> imm) | (rj << (64 - imm));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ext_w_h(CPULoongArchState *env, arg_ext_w_h *restrict a) {
     env->gpr[a->rd] = (int64_t)(int16_t)env->gpr[a->rj];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ext_w_b(CPULoongArchState *env, arg_ext_w_b *restrict a) {
     env->gpr[a->rd] = (int64_t)(int8_t)env->gpr[a->rj];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_clo_w(CPULoongArchState *env, arg_clo_w *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] ? clo32(env->gpr[a->rj]) : 0;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_clz_w(CPULoongArchState *env, arg_clz_w *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] ? clz32(env->gpr[a->rj]) : 32;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_cto_w(CPULoongArchState *env, arg_cto_w *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] ? cto32(env->gpr[a->rj]) : 0;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ctz_w(CPULoongArchState *env, arg_ctz_w *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] ? ctz32(env->gpr[a->rj]) : 32;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_clo_d(CPULoongArchState *env, arg_clo_d *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] ? clo64(env->gpr[a->rj]) : 0;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_clz_d(CPULoongArchState *env, arg_clz_d *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] ? clz64(env->gpr[a->rj]) : 64;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_cto_d(CPULoongArchState *env, arg_cto_d *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] ? cto64(env->gpr[a->rj]) : 0;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ctz_d(CPULoongArchState *env, arg_ctz_d *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rj] ? ctz64(env->gpr[a->rj]) : 64;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_revb_2h(CPULoongArchState *env, arg_revb_2h *restrict a) {
     uint32_t mask = 0x00FF00FF;
     uint32_t rj = env->gpr[a->rj];
     env->gpr[a->rd] = (int64_t)(int32_t)(((rj >> 8) & mask) | ((rj & mask ) << 8));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_revb_4h(CPULoongArchState *env, arg_revb_4h *restrict a) {
     uint64_t mask = 0x00FF00FF00FF00FFULL;
     uint64_t rj = env->gpr[a->rj];
     env->gpr[a->rd] = ((rj >> 8) & mask) | ((rj & mask ) << 8);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_revb_2w(CPULoongArchState *env, arg_revb_2w *restrict a) {
@@ -604,7 +608,7 @@ static bool trans_revb_2w(CPULoongArchState *env, arg_revb_2w *restrict a) {
         ((rj & 0x0000000000FF0000u) >>  8u) |
         ((rj & 0x000000000000FF00u) <<  8u) |
         ((rj & 0x00000000000000FFu) << 24u);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_revb_d(CPULoongArchState *env, arg_revb_d *restrict a) {
@@ -618,7 +622,7 @@ static bool trans_revb_d(CPULoongArchState *env, arg_revb_d *restrict a) {
         ((rj & 0x0000000000FF0000u) << 24u) |
         ((rj & 0x000000000000FF00u) << 40u) |
         ((rj & 0x00000000000000FFu) << 56u);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_revh_2w(CPULoongArchState *env, arg_revh_2w *restrict a) {
@@ -628,7 +632,7 @@ static bool trans_revh_2w(CPULoongArchState *env, arg_revh_2w *restrict a) {
         ((rj & 0x0000FFFF00000000u) << 16u) |
         ((rj & 0x00000000FFFF0000u) >> 16u) |
         ((rj & 0x000000000000FFFFu) << 16u);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_revh_d(CPULoongArchState *env, arg_revh_d *restrict a) {
@@ -636,7 +640,7 @@ static bool trans_revh_d(CPULoongArchState *env, arg_revh_d *restrict a) {
     uint64_t rj = env->gpr[a->rj];
     uint64_t t = ((rj >> 16) & mask) | ((rj & mask ) << 16);
     env->gpr[a->rd] = (t >> 32) | (t << 32);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 target_ulong helper_bitswap(target_ulong v)
@@ -651,50 +655,50 @@ target_ulong helper_bitswap(target_ulong v)
 }
 static bool trans_bitrev_4b(CPULoongArchState *env, arg_bitrev_4b *restrict a) {
     gen_set_gpr(env, a->rd, helper_bitswap(env->gpr[a->rj]), EXT_SIGN);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_bitrev_8b(CPULoongArchState *env, arg_bitrev_8b *restrict a) {
     gen_set_gpr(env, a->rd, helper_bitswap(env->gpr[a->rj]), EXT_NONE);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_bitrev_w(CPULoongArchState *env, arg_bitrev_w *restrict a) {
     gen_set_gpr(env, a->rd, revbit32(env->gpr[a->rj]), EXT_SIGN);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_bitrev_d(CPULoongArchState *env, arg_bitrev_d *restrict a) {
     gen_set_gpr(env, a->rd, revbit64(env->gpr[a->rj]), EXT_NONE);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_bytepick_w(CPULoongArchState *env, arg_bytepick_w *restrict a) {
     uint64_t t = (env->gpr[a->rk] << 32) | (uint32_t)env->gpr[a->rj];
     env->gpr[a->rd] = (int64_t)(int32_t)(t >> (32 - a->sa * 8));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_bytepick_d(CPULoongArchState *env, arg_bytepick_d *restrict a) {
     uint64_t high = env->gpr[a->rk] << (a->sa * 8);
     uint64_t low  = env->gpr[a->rj] >> (64 - a->sa * 8);
     env->gpr[a->rd] = high | low;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_maskeqz(CPULoongArchState *env, arg_maskeqz *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rk] == 0 ? 0 : env->gpr[a->rj];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_masknez(CPULoongArchState *env, arg_masknez *restrict a) {
     env->gpr[a->rd] = env->gpr[a->rk] != 0 ? 0 : env->gpr[a->rj];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_bstrins_w(CPULoongArchState *env, arg_bstrins_w *restrict a)  {
     env->gpr[a->rd] = (int64_t)(int32_t)deposit32(env->gpr[a->rd], a->ls, a->ms - a->ls + 1, env->gpr[a->rj]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_bstrpick_w(CPULoongArchState *env, arg_bstrpick_w *restrict a) {
@@ -702,12 +706,12 @@ static bool trans_bstrpick_w(CPULoongArchState *env, arg_bstrpick_w *restrict a)
         return false;
     }
     env->gpr[a->rd] = (int64_t)extract32(env->gpr[a->rj], a->ls, a->ms - a->ls + 1);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_bstrins_d(CPULoongArchState *env, arg_bstrins_d *restrict a) {
     env->gpr[a->rd] = deposit64(env->gpr[a->rd], a->ls, a->ms - a->ls + 1, env->gpr[a->rj]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_bstrpick_d(CPULoongArchState *env, arg_bstrpick_d *restrict a) {
@@ -715,7 +719,7 @@ static bool trans_bstrpick_d(CPULoongArchState *env, arg_bstrpick_d *restrict a)
         return false;
     }
     env->gpr[a->rd] = extract64(env->gpr[a->rj], a->ls, a->ms - a->ls + 1);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
@@ -1009,126 +1013,126 @@ static void st_d(CPULoongArchState *env, uint64_t va, uint64_t data) {
 
 static bool trans_ld_b(CPULoongArchState *env, arg_ld_b *restrict a) {
     env->gpr[a->rd] = (int64_t)ld_b(env, add_addr(env->gpr[a->rj], a->imm));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ld_h(CPULoongArchState *env, arg_ld_h *restrict a) {
     env->gpr[a->rd] = (int64_t)ld_h(env, add_addr(env->gpr[a->rj], a->imm));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ld_w(CPULoongArchState *env, arg_ld_w *restrict a) {
     env->gpr[a->rd] = (int64_t)ld_w(env, add_addr(env->gpr[a->rj], a->imm));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ld_d(CPULoongArchState *env, arg_ld_d *restrict a) {
     env->gpr[a->rd] = (int64_t)ld_d(env, add_addr(env->gpr[a->rj], a->imm));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
 static bool trans_st_b(CPULoongArchState *env, arg_st_b *restrict a) {
     st_b(env, add_addr(env->gpr[a->rj], a->imm), env->gpr[a->rd]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_st_h(CPULoongArchState *env, arg_st_h *restrict a) {
     st_h(env, add_addr(env->gpr[a->rj], a->imm), env->gpr[a->rd]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
 static bool trans_st_w(CPULoongArchState *env, arg_st_w *restrict a) {
     st_w(env, add_addr(env->gpr[a->rj], a->imm), env->gpr[a->rd]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_st_d(CPULoongArchState *env, arg_st_d *restrict a) {
     st_d(env, add_addr(env->gpr[a->rj], a->imm), env->gpr[a->rd]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ld_bu(CPULoongArchState *env, arg_ld_bu *restrict a) {
     env->gpr[a->rd] = (uint8_t)ld_b(env, add_addr(env->gpr[a->rj], a->imm));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ld_hu(CPULoongArchState *env, arg_ld_hu *restrict a) {
     env->gpr[a->rd] = (uint16_t)ld_h(env, add_addr(env->gpr[a->rj], a->imm));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ld_wu(CPULoongArchState *env, arg_ld_wu *restrict a) {
     env->gpr[a->rd] = (uint32_t)ld_w(env, add_addr(env->gpr[a->rj], a->imm));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ldx_b(CPULoongArchState *env, arg_ldx_b *restrict a) {
     env->gpr[a->rd] = (int64_t)ld_b(env, add_addr(env->gpr[a->rj], env->gpr[a->rk]));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ldx_h(CPULoongArchState *env, arg_ldx_h *restrict a) {
     env->gpr[a->rd] = (int64_t)ld_h(env, add_addr(env->gpr[a->rj], env->gpr[a->rk]));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ldx_w(CPULoongArchState *env, arg_ldx_w *restrict a) {
     env->gpr[a->rd] = (int64_t)ld_w(env, add_addr(env->gpr[a->rj], env->gpr[a->rk]));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ldx_d(CPULoongArchState *env, arg_ldx_d *restrict a) {
     env->gpr[a->rd] = (int64_t)ld_d(env, add_addr(env->gpr[a->rj], env->gpr[a->rk]));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_stx_b(CPULoongArchState *env, arg_stx_b *restrict a) {
     st_b(env, add_addr(env->gpr[a->rj], env->gpr[a->rk]), env->gpr[a->rd]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_stx_h(CPULoongArchState *env, arg_stx_h *restrict a) {
     st_h(env, add_addr(env->gpr[a->rj], env->gpr[a->rk]), env->gpr[a->rd]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_stx_w(CPULoongArchState *env, arg_stx_w *restrict a) {
     st_w(env, add_addr(env->gpr[a->rj], env->gpr[a->rk]), env->gpr[a->rd]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_stx_d(CPULoongArchState *env, arg_stx_d *restrict a) {
     st_d(env, add_addr(env->gpr[a->rj], env->gpr[a->rk]), env->gpr[a->rd]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ldx_bu(CPULoongArchState *env, arg_ldx_bu *restrict a) {
     env->gpr[a->rd] = (uint8_t)ld_b(env, add_addr(env->gpr[a->rj], env->gpr[a->rk]));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ldx_hu(CPULoongArchState *env, arg_ldx_hu *restrict a) {
     env->gpr[a->rd] = (uint16_t)ld_h(env, add_addr(env->gpr[a->rj], env->gpr[a->rk]));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ldx_wu(CPULoongArchState *env, arg_ldx_wu *restrict a) {
     env->gpr[a->rd] = (uint32_t)ld_w(env, add_addr(env->gpr[a->rj], env->gpr[a->rk]));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_preld(CPULoongArchState *env, arg_preld *restrict a) {
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_preldx(CPULoongArchState *env, arg_preldx *restrict a) {
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_dbar(CPULoongArchState *env, arg_dbar *restrict a) {
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ibar(CPULoongArchState *env, arg_ibar *restrict a) {
@@ -1143,27 +1147,27 @@ static bool trans_ibar(CPULoongArchState *env, arg_ibar *restrict a) {
         laemu_exit(0);
     }
 #endif
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ldptr_w(CPULoongArchState *env, arg_ldptr_w *restrict a) {
     env->gpr[a->rd] = (int64_t)ld_w(env, add_addr(env->gpr[a->rj], a->imm));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_stptr_w(CPULoongArchState *env, arg_stptr_w *restrict a) {
     st_w(env, add_addr(env->gpr[a->rj], a->imm), env->gpr[a->rd]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ldptr_d(CPULoongArchState *env, arg_ldptr_d *restrict a) {
     env->gpr[a->rd] = (int64_t)ld_d(env, add_addr(env->gpr[a->rj], a->imm));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_stptr_d(CPULoongArchState *env, arg_stptr_d *restrict a) {
     st_d(env, add_addr(env->gpr[a->rj], a->imm), env->gpr[a->rd]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ldgt_b(CPULoongArchState *env, arg_ldgt_b *restrict a) {__NOT_IMPLEMENTED__}
@@ -1192,7 +1196,7 @@ static bool trans_ll_w(CPULoongArchState *env, arg_ll_w *restrict a) {
     env->lladdr = ha;
     env->llval = env->gpr[a->rd];
     env->CSR_LLBCTL = FIELD_DP64(env->CSR_LLBCTL, CSR_LLBCTL, ROLLB, 1);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_sc_w(CPULoongArchState *env, arg_sc_w *restrict a) {
@@ -1204,7 +1208,7 @@ static bool trans_sc_w(CPULoongArchState *env, arg_sc_w *restrict a) {
     } else {
         env->gpr[a->rd] = 0;
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ll_d(CPULoongArchState *env, arg_ll_d *restrict a) {
@@ -1217,7 +1221,7 @@ static bool trans_ll_d(CPULoongArchState *env, arg_ll_d *restrict a) {
     env->lladdr = ha;
     env->llval = env->gpr[a->rd];
     env->CSR_LLBCTL = FIELD_DP64(env->CSR_LLBCTL, CSR_LLBCTL, ROLLB, 1);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_sc_d(CPULoongArchState *env, arg_sc_d *restrict a) {
@@ -1229,7 +1233,7 @@ static bool trans_sc_d(CPULoongArchState *env, arg_sc_d *restrict a) {
     } else {
         env->gpr[a->rd] = 0;
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amswap_w(CPULoongArchState *env, arg_amswap_w *restrict a) {return trans_amswap_db_w(env, a);}
@@ -1255,7 +1259,7 @@ static bool trans_amswap_db_w(CPULoongArchState *env, arg_amswap_db_w *restrict 
     int32_t old_v = ram_ldw(ha);
     ram_stw(ha, env->gpr[a->rk]);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amswap_db_d(CPULoongArchState *env, arg_amswap_db_d *restrict a) {
@@ -1263,7 +1267,7 @@ static bool trans_amswap_db_d(CPULoongArchState *env, arg_amswap_db_d *restrict 
     int64_t old_v = ram_ldd(ha);
     ram_std(ha, env->gpr[a->rk]);
     env->gpr[a->rd] = old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amadd_db_w(CPULoongArchState *env, arg_amadd_db_w *restrict a) {
@@ -1272,7 +1276,7 @@ static bool trans_amadd_db_w(CPULoongArchState *env, arg_amadd_db_w *restrict a)
     int32_t new_v = env->gpr[a->rk] + old_v;
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amadd_db_d(CPULoongArchState *env, arg_amadd_db_d *restrict a) {
@@ -1281,7 +1285,7 @@ static bool trans_amadd_db_d(CPULoongArchState *env, arg_amadd_db_d *restrict a)
     int64_t new_v = env->gpr[a->rk] + old_v;
     ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amand_db_w(CPULoongArchState *env, arg_amand_db_w *restrict a) {
@@ -1290,7 +1294,7 @@ static bool trans_amand_db_w(CPULoongArchState *env, arg_amand_db_w *restrict a)
     int32_t new_v = env->gpr[a->rk] & old_v;
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amand_db_d(CPULoongArchState *env, arg_amand_db_d *restrict a) {
@@ -1299,7 +1303,7 @@ static bool trans_amand_db_d(CPULoongArchState *env, arg_amand_db_d *restrict a)
     int64_t new_v = env->gpr[a->rk] & old_v;
     ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amor_db_w(CPULoongArchState *env, arg_amor_db_w *restrict a) {
@@ -1308,7 +1312,7 @@ static bool trans_amor_db_w(CPULoongArchState *env, arg_amor_db_w *restrict a) {
     int32_t new_v = env->gpr[a->rk] | old_v;
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amor_db_d(CPULoongArchState *env, arg_amor_db_d *restrict a) {
@@ -1317,7 +1321,7 @@ static bool trans_amor_db_d(CPULoongArchState *env, arg_amor_db_d *restrict a) {
     int64_t new_v = env->gpr[a->rk] | old_v;
     ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amxor_db_w(CPULoongArchState *env, arg_amxor_db_w *restrict a) {
@@ -1326,7 +1330,7 @@ static bool trans_amxor_db_w(CPULoongArchState *env, arg_amxor_db_w *restrict a)
     int32_t new_v = env->gpr[a->rk] ^ old_v;
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amxor_db_d(CPULoongArchState *env, arg_amxor_db_d *restrict a) {
@@ -1335,7 +1339,7 @@ static bool trans_amxor_db_d(CPULoongArchState *env, arg_amxor_db_d *restrict a)
     int64_t new_v = env->gpr[a->rk] ^ old_v;
     ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ammax_db_w(CPULoongArchState *env, arg_ammax_db_w *restrict a) {
@@ -1344,7 +1348,7 @@ static bool trans_ammax_db_w(CPULoongArchState *env, arg_ammax_db_w *restrict a)
     int32_t new_v = MAX((int32_t)env->gpr[a->rk], old_v);
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ammax_db_d(CPULoongArchState *env, arg_ammax_db_d *restrict a) {
@@ -1353,7 +1357,7 @@ static bool trans_ammax_db_d(CPULoongArchState *env, arg_ammax_db_d *restrict a)
     int64_t new_v = MAX((int64_t)env->gpr[a->rk], old_v);
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ammin_db_w(CPULoongArchState *env, arg_ammin_db_w *restrict a) {
@@ -1362,7 +1366,7 @@ static bool trans_ammin_db_w(CPULoongArchState *env, arg_ammin_db_w *restrict a)
     int32_t new_v = MIN((int32_t)env->gpr[a->rk], old_v);
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ammin_db_d(CPULoongArchState *env, arg_ammin_db_d *restrict a) {
@@ -1371,7 +1375,7 @@ static bool trans_ammin_db_d(CPULoongArchState *env, arg_ammin_db_d *restrict a)
     int64_t new_v = MIN((int64_t)env->gpr[a->rk], old_v);
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ammax_db_wu(CPULoongArchState *env, arg_ammax_db_wu *restrict a) {
@@ -1380,7 +1384,7 @@ static bool trans_ammax_db_wu(CPULoongArchState *env, arg_ammax_db_wu *restrict 
     int32_t new_v = MAX((uint32_t)env->gpr[a->rk], (uint32_t)old_v);
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ammax_db_du(CPULoongArchState *env, arg_ammax_db_du *restrict a) {
@@ -1389,7 +1393,7 @@ static bool trans_ammax_db_du(CPULoongArchState *env, arg_ammax_db_du *restrict 
     int64_t new_v = MAX((uint64_t)env->gpr[a->rk], (uint64_t)old_v);
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ammin_db_wu(CPULoongArchState *env, arg_ammin_db_wu *restrict a) {
@@ -1398,7 +1402,7 @@ static bool trans_ammin_db_wu(CPULoongArchState *env, arg_ammin_db_wu *restrict 
     int32_t new_v = MIN((uint32_t)env->gpr[a->rk], (uint32_t)old_v);
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ammin_db_du(CPULoongArchState *env, arg_ammin_db_du *restrict a) {
@@ -1407,7 +1411,7 @@ static bool trans_ammin_db_du(CPULoongArchState *env, arg_ammin_db_du *restrict 
     int64_t new_v = MIN((uint64_t)env->gpr[a->rk], (uint64_t)old_v);
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static const unsigned long crc_table[256] =
@@ -1568,14 +1572,14 @@ target_ulong helper_crc32c(target_ulong val, target_ulong m, uint64_t sz)
     stq_le_p(buf, m);
     return (int32_t) (crc32c(val, buf, sz) ^ 0xffffffff);
 }
-static bool trans_crc_w_b_w(CPULoongArchState *env, arg_crc_w_b_w *restrict a) {env->gpr[a->rd] = helper_crc32(env->gpr[a->rk], env->gpr[a->rj], 1);env->pc += 4;return true;}
-static bool trans_crc_w_h_w(CPULoongArchState *env, arg_crc_w_h_w *restrict a) {env->gpr[a->rd] = helper_crc32(env->gpr[a->rk], env->gpr[a->rj], 2);env->pc += 4;return true;}
-static bool trans_crc_w_w_w(CPULoongArchState *env, arg_crc_w_w_w *restrict a) {env->gpr[a->rd] = helper_crc32(env->gpr[a->rk], env->gpr[a->rj], 4);env->pc += 4;return true;}
-static bool trans_crc_w_d_w(CPULoongArchState *env, arg_crc_w_d_w *restrict a) {env->gpr[a->rd] = helper_crc32(env->gpr[a->rk], env->gpr[a->rj], 8);env->pc += 4;return true;}
-static bool trans_crcc_w_b_w(CPULoongArchState *env, arg_crcc_w_b_w *restrict a) {env->gpr[a->rd] = helper_crc32c(env->gpr[a->rk], env->gpr[a->rj], 1);env->pc += 4;return true;}
-static bool trans_crcc_w_h_w(CPULoongArchState *env, arg_crcc_w_h_w *restrict a) {env->gpr[a->rd] = helper_crc32c(env->gpr[a->rk], env->gpr[a->rj], 2);env->pc += 4;return true;}
-static bool trans_crcc_w_w_w(CPULoongArchState *env, arg_crcc_w_w_w *restrict a) {env->gpr[a->rd] = helper_crc32c(env->gpr[a->rk], env->gpr[a->rj], 4);env->pc += 4;return true;}
-static bool trans_crcc_w_d_w(CPULoongArchState *env, arg_crcc_w_d_w *restrict a) {env->gpr[a->rd] = helper_crc32c(env->gpr[a->rk], env->gpr[a->rj], 8);env->pc += 4;return true;}
+static bool trans_crc_w_b_w(CPULoongArchState *env, arg_crc_w_b_w *restrict a) {env->gpr[a->rd] = helper_crc32(env->gpr[a->rk], env->gpr[a->rj], 1);cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_crc_w_h_w(CPULoongArchState *env, arg_crc_w_h_w *restrict a) {env->gpr[a->rd] = helper_crc32(env->gpr[a->rk], env->gpr[a->rj], 2);cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_crc_w_w_w(CPULoongArchState *env, arg_crc_w_w_w *restrict a) {env->gpr[a->rd] = helper_crc32(env->gpr[a->rk], env->gpr[a->rj], 4);cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_crc_w_d_w(CPULoongArchState *env, arg_crc_w_d_w *restrict a) {env->gpr[a->rd] = helper_crc32(env->gpr[a->rk], env->gpr[a->rj], 8);cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_crcc_w_b_w(CPULoongArchState *env, arg_crcc_w_b_w *restrict a) {env->gpr[a->rd] = helper_crc32c(env->gpr[a->rk], env->gpr[a->rj], 1);cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_crcc_w_h_w(CPULoongArchState *env, arg_crcc_w_h_w *restrict a) {env->gpr[a->rd] = helper_crc32c(env->gpr[a->rk], env->gpr[a->rj], 2);cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_crcc_w_w_w(CPULoongArchState *env, arg_crcc_w_w_w *restrict a) {env->gpr[a->rd] = helper_crc32c(env->gpr[a->rk], env->gpr[a->rj], 4);cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_crcc_w_d_w(CPULoongArchState *env, arg_crcc_w_d_w *restrict a) {env->gpr[a->rd] = helper_crc32c(env->gpr[a->rk], env->gpr[a->rj], 8);cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_break(CPULoongArchState *env, arg_break *restrict a) {
 
 #if defined(CONFIG_USER_ONLY)
@@ -1597,7 +1601,7 @@ static bool trans_syscall(CPULoongArchState *env, arg_syscall *restrict a) {
                         env->gpr[8], env->gpr[9],
                         -1, -1);
     env->gpr[4] = ret;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
 #else
     do_raise_exception(env, EXCCODE_SYS, 0);
 #endif
@@ -1608,7 +1612,7 @@ static bool trans_asrtle_d(CPULoongArchState *env, arg_asrtle_d *restrict a) {
         env->CSR_BADV = env->gpr[a->rj];
         do_raise_exception(env, EXCCODE_BCE, 0);
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_asrtgt_d(CPULoongArchState *env, arg_asrtgt_d *restrict a) {
@@ -1616,7 +1620,7 @@ static bool trans_asrtgt_d(CPULoongArchState *env, arg_asrtgt_d *restrict a) {
         env->CSR_BADV = env->gpr[a->rj];
         do_raise_exception(env, EXCCODE_BCE, 0);
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_rdtimel_w(CPULoongArchState *env, arg_rdtimel_w *restrict a) {
@@ -1625,7 +1629,7 @@ static bool trans_rdtimel_w(CPULoongArchState *env, arg_rdtimel_w *restrict a) {
     gen_set_gpr(env, a->rd, tval, EXT_SIGN);
     env->gpr[a->rj] = 0;
 #endif
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_rdtimeh_w(CPULoongArchState *env, arg_rdtimeh_w *restrict a) {
@@ -1634,7 +1638,7 @@ static bool trans_rdtimeh_w(CPULoongArchState *env, arg_rdtimeh_w *restrict a) {
     gen_set_gpr(env, a->rd, tval >> 32, EXT_SIGN);
     env->gpr[a->rj] = 0;
 #endif
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_rdtime_d(CPULoongArchState *env, arg_rdtime_d *restrict a) {
@@ -1642,13 +1646,13 @@ static bool trans_rdtime_d(CPULoongArchState *env, arg_rdtime_d *restrict a) {
     env->gpr[a->rd] = la_get_tval(env);
     env->gpr[a->rj] = 0;
 #endif
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_cpucfg(CPULoongArchState *env, arg_cpucfg *restrict a) {
     int index = env->gpr[a->rj];
     env->gpr[a->rd] = index >= ARRAY_SIZE(env->cpucfg) ? 0 : env->cpucfg[index];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
@@ -1657,7 +1661,7 @@ static bool gen_fff(CPULoongArchState *env, arg_fff *restrict a, uint64_t (*func
     TCGv src2 = get_fpr(ctx, a->fk);
     TCGv dest = func(env, src1, src2);
     set_fpr(env, a->fd, dest);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fadd_s(CPULoongArchState *env, arg_fadd_s *restrict a) {CHECK_FPE(8);return gen_fff(env, a, helper_fadd_s);}
@@ -1685,7 +1689,7 @@ static bool gen_ffff(CPULoongArchState *env, arg_ffff *restrict a, uint64_t (*fu
     TCGv src3 = get_fpr(ctx, a->fa);
     TCGv dest = func(env, src1, src2, src3, flag);
     set_fpr(env, a->fd, dest);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fmadd_s(CPULoongArchState *env, arg_fmadd_s *restrict a) {CHECK_FPE(8);return gen_ffff(env, a, helper_fmuladd_s, 0);}
@@ -1702,7 +1706,7 @@ static bool trans_fabs_s(CPULoongArchState *env, arg_fabs_s *restrict a) {
     TCGv src = get_fpr(ctx, a->fj);
     TCGv dest = src & MAKE_64BIT_MASK(0, 31);
     set_fpr(env, a->fd, dest);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fabs_d(CPULoongArchState *env, arg_fabs_d *restrict a) {
@@ -1710,7 +1714,7 @@ static bool trans_fabs_d(CPULoongArchState *env, arg_fabs_d *restrict a) {
     TCGv src = get_fpr(ctx, a->fj);
     TCGv dest = src & MAKE_64BIT_MASK(0, 63);
     set_fpr(env, a->fd, dest);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fneg_s(CPULoongArchState *env, arg_fneg_s *restrict a) {
@@ -1718,7 +1722,7 @@ static bool trans_fneg_s(CPULoongArchState *env, arg_fneg_s *restrict a) {
     TCGv src = get_fpr(ctx, a->fj);
     TCGv dest = src ^ 0x80000000ULL;
     set_fpr(env, a->fd, dest);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fneg_d(CPULoongArchState *env, arg_fneg_d *restrict a) {
@@ -1726,14 +1730,14 @@ static bool trans_fneg_d(CPULoongArchState *env, arg_fneg_d *restrict a) {
     TCGv src = get_fpr(ctx, a->fj);
     TCGv dest = src ^ 0x8000000000000000ULL;
     set_fpr(env, a->fd, dest);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool gen_ff(CPULoongArchState *env, arg_ff *restrict a, uint64_t (*func)(CPULoongArchState *, uint64_t)) {
     TCGv src1 = get_fpr(ctx, a->fj);
     TCGv dest = func(env, src1);
     set_fpr(env, a->fd, dest);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool gen_ff2(CPULoongArchState *env, arg_ff *restrict a, uint64_t (*func)(CPULoongArchState *, uint64_t, uint64_t)) {
@@ -1741,7 +1745,7 @@ static bool gen_ff2(CPULoongArchState *env, arg_ff *restrict a, uint64_t (*func)
     TCGv src2 = get_fpr(ctx, a->fd);
     TCGv dest = func(env, src1, src2);
     set_fpr(env, a->fd, dest);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fsqrt_s(CPULoongArchState *env, arg_fsqrt_s *restrict a) {CHECK_FPE(8); return gen_ff(env, a, helper_fsqrt_s);}
@@ -1788,7 +1792,7 @@ static bool trans_fcopysign_s(CPULoongArchState *env, arg_fcopysign_s *restrict 
     TCGv src2 = get_fpr(ctx, a->fk);
     TCGv dest = deposit64(src2, 0, 31, src1);
     set_fpr(env, a->fd, dest);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fcopysign_d(CPULoongArchState *env, arg_fcopysign_d *restrict a) {
@@ -1797,7 +1801,7 @@ static bool trans_fcopysign_d(CPULoongArchState *env, arg_fcopysign_d *restrict 
     TCGv src2 = get_fpr(ctx, a->fk);
     TCGv dest = deposit64(src2, 0, 63, src1);
     set_fpr(env, a->fd, dest);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fcmp_cond_s(CPULoongArchState *env, arg_fcmp_cond_s *restrict a) {
@@ -1807,7 +1811,7 @@ static bool trans_fcmp_cond_s(CPULoongArchState *env, arg_fcmp_cond_s *restrict 
     uint32_t flags = get_fcmp_flags(a->fcond >> 1);
     int r = (a->fcond & 1) ? helper_fcmp_s_s(env, src1, src2, flags) : helper_fcmp_c_s(env, src1, src2, flags);
     env->cf[a->cd] = r;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fcmp_cond_d(CPULoongArchState *env, arg_fcmp_cond_d *restrict a) {
@@ -1817,19 +1821,19 @@ static bool trans_fcmp_cond_d(CPULoongArchState *env, arg_fcmp_cond_d *restrict 
     uint32_t flags = get_fcmp_flags(a->fcond >> 1);
     int r = (a->fcond & 1) ? helper_fcmp_s_d(env, src1, src2, flags) : helper_fcmp_c_d(env, src1, src2, flags);
     env->cf[a->cd] = r;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fmov_s(CPULoongArchState *env, arg_fmov_s *restrict a) {
     CHECK_FPE(8);
     set_fpr(env, a->fd, (int32_t)get_fpr(env, a->fj));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fmov_d(CPULoongArchState *env, arg_fmov_d *restrict a) {
     CHECK_FPE(8);
     set_fpr(env, a->fd, get_fpr(env, a->fj));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fsel(CPULoongArchState *env, arg_fsel *restrict a) {
@@ -1838,31 +1842,31 @@ static bool trans_fsel(CPULoongArchState *env, arg_fsel *restrict a) {
     TCGv src2 = get_fpr(ctx, a->fk);
     TCGv dest = env->cf[a->ca] == 0 ? src1 : src2;
     set_fpr(env, a->fd, dest);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_movgr2fr_w(CPULoongArchState *env, arg_movgr2fr_w *restrict a) {
     CHECK_FPE(8);
     set_fpr(env, a->fd, env->gpr[a->rj]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_movgr2fr_d(CPULoongArchState *env, arg_movgr2fr_d *restrict a) {
     CHECK_FPE(8);
     set_fpr(env, a->fd, env->gpr[a->rj]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_movgr2frh_w(CPULoongArchState *env, arg_movgr2frh_w *restrict a) {
     CHECK_FPE(8);
     set_fpr(env, a->fd, (env->gpr[a->rj] << 32) | (get_fpr(env, a->fd) & 0x00000000ffffffff));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_movfr2gr_s(CPULoongArchState *env, arg_movfr2gr_s *restrict a) {
     CHECK_FPE(8);
     env->gpr[a->rd] = (int64_t)(int32_t)get_fpr(env, a->fj);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_movfr2gr_d(CPULoongArchState *env, arg_movfr2gr_d *restrict a) {
@@ -1870,7 +1874,7 @@ static bool trans_movfr2gr_d(CPULoongArchState *env, arg_movfr2gr_d *restrict a)
     TCGv src = get_fpr(ctx, a->fj);
     TCGv dest = src;
     gen_set_gpr(env, a->rd, dest, EXT_NONE);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_movfrh2gr_s(CPULoongArchState *env, arg_movfrh2gr_s *restrict a) {
@@ -1878,7 +1882,7 @@ static bool trans_movfrh2gr_s(CPULoongArchState *env, arg_movfrh2gr_s *restrict 
     TCGv src = get_fpr(ctx, a->fj);
     TCGv dest = src;
     gen_set_gpr(env, a->rd, dest, EXT_SIGN);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
@@ -1899,85 +1903,85 @@ static bool trans_movgr2fcsr(CPULoongArchState *env, arg_movgr2fcsr *restrict a)
     if (mask & FCSR0_M3) {
         helper_set_rounding_mode(env);
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_movfcsr2gr(CPULoongArchState *env, arg_movfcsr2gr *restrict a) {
     CHECK_FPE(8);
     env->gpr[a->rd] = env->fcsr0 & fcsr_mask[a->fcsrs];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_movfr2cf(CPULoongArchState *env, arg_movfr2cf *restrict a) {
     CHECK_FPE(8);
     env->cf[a->cd] = get_fpr(env, a->fj) & 1;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_movcf2fr(CPULoongArchState *env, arg_movcf2fr *restrict a) {
     CHECK_FPE(8);
     set_fpr(env, a->fd, env->cf[a->cj] & 1);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_movgr2cf(CPULoongArchState *env, arg_movgr2cf *restrict a) {
     CHECK_FPE(8);
     env->cf[a->cd] = env->gpr[a->rj] & 1;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_movcf2gr(CPULoongArchState *env, arg_movcf2gr *restrict a) {
     CHECK_FPE(8);
     env->gpr[a->rd] = env->cf[a->cj] & 1;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fld_s(CPULoongArchState *env, arg_fld_s *restrict a) {
     CHECK_FPE(8);
     set_fpr(env, a->fd, ld_w(env, add_addr(env->gpr[a->rj], a->imm)));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fst_s(CPULoongArchState *env, arg_fst_s *restrict a) {
     CHECK_FPE(8);
     st_w(env, add_addr(env->gpr[a->rj], a->imm), get_fpr(env, a->fd));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fld_d(CPULoongArchState *env, arg_fld_d *restrict a) {
     CHECK_FPE(8);
     set_fpr(env, a->fd, ld_d(env, add_addr(env->gpr[a->rj], a->imm)));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fst_d(CPULoongArchState *env, arg_fst_d *restrict a) {
     CHECK_FPE(8);
     st_d(env, add_addr(env->gpr[a->rj], a->imm), get_fpr(env, a->fd));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fldx_s(CPULoongArchState *env, arg_fldx_s *restrict a) {
     CHECK_FPE(8);
     set_fpr(env, a->fd, ld_w(env, add_addr(env->gpr[a->rj], env->gpr[a->rk])));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fldx_d(CPULoongArchState *env, arg_fldx_d *restrict a) {
     CHECK_FPE(8);
     set_fpr(env, a->fd, ld_d(env, add_addr(env->gpr[a->rj], env->gpr[a->rk])));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fstx_s(CPULoongArchState *env, arg_fstx_s *restrict a) {
     CHECK_FPE(8);
     st_w(env, add_addr(env->gpr[a->rj], env->gpr[a->rk]), get_fpr(env, a->fd));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fstx_d(CPULoongArchState *env, arg_fstx_d *restrict a) {
     CHECK_FPE(8);
     st_d(env, add_addr(env->gpr[a->rj], env->gpr[a->rk]), get_fpr(env, a->fd));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fldgt_s(CPULoongArchState *env, arg_fldgt_s *restrict a) {__NOT_IMPLEMENTED__}
@@ -1990,47 +1994,55 @@ static bool trans_fstle_s(CPULoongArchState *env, arg_fstle_s *restrict a) {__NO
 static bool trans_fstle_d(CPULoongArchState *env, arg_fstle_d *restrict a) {__NOT_IMPLEMENTED__}
 static bool trans_beqz(CPULoongArchState *env, arg_beqz *restrict a) {
     PERF_INC(COUNTER_INST_BRANCH);
-    if ((int64_t)env->gpr[a->rj] == 0) {
-        env->pc += a->offs;
-    } else {
-        env->pc += 4;
-    }
+    bool taken  = (int64_t)env->gpr[a->rj] == 0;
+    cpu_set_pc(env, taken ? env->pc + a->offs : env->pc + 4);
+#ifdef RECORD_BRANCH
+    env->taken = taken;
+    env->target = env->pc + a->offs;
+#endif
     return true;
 }
 static bool trans_bnez(CPULoongArchState *env, arg_bnez *restrict a) {
     PERF_INC(COUNTER_INST_BRANCH);
-    if ((int64_t)env->gpr[a->rj] != 0) {
-        env->pc += a->offs;
-    } else {
-        env->pc += 4;
-    }
+    bool taken = (int64_t)env->gpr[a->rj] != 0;
+    cpu_set_pc(env, taken ? env->pc + a->offs : env->pc + 4);
+#ifdef RECORD_BRANCH
+    env->taken = taken;
+    env->target = env->pc + a->offs;
+#endif
     return true;
 }
 static bool trans_bceqz(CPULoongArchState *env, arg_bceqz *restrict a) {
     PERF_INC(COUNTER_INST_BRANCH);
     CHECK_FPE(8);
-    if (env->cf[a->cj] == 0) {
-        env->pc += a->offs;
-    } else {
-        env->pc += 4;
-    }
+    bool taken = env->cf[a->cj] == 0;
+    cpu_set_pc(env, taken ? env->pc + a->offs : env->pc + 4);
+#ifdef RECORD_BRANCH
+    env->taken = taken;
+    env->target = env->pc + a->offs;
+#endif
     return true;
 }
 static bool trans_bcnez(CPULoongArchState *env, arg_bcnez *restrict a) {
     PERF_INC(COUNTER_INST_BRANCH);
     CHECK_FPE(8);
-    if (env->cf[a->cj] != 0) {
-        env->pc += a->offs;
-    } else {
-        env->pc += 4;
-    }
+    bool taken = env->cf[a->cj] != 0;
+    cpu_set_pc(env, taken ? env->pc + a->offs : env->pc + 4);
+#ifdef RECORD_BRANCH
+    env->taken = taken;
+    env->target = env->pc + a->offs;
+#endif
     return true;
 }
 static bool trans_jirl(CPULoongArchState *env, arg_jirl *restrict a) {
     PERF_INC(COUNTER_INST_BRANCH);
-    uint64_t old_pc = env->pc;
-    env->pc = env->gpr[a->rj] + a->imm;
-    env->gpr[a->rd] = old_pc + 4;
+    uint64_t target = env->gpr[a->rj] + a->imm;
+    env->gpr[a->rd] = env->pc + 4;
+    cpu_set_pc(env, target);
+#ifdef RECORD_BRANCH
+    env->taken = true;
+    env->target = target;
+#endif
     return true;
 }
 static bool trans_b(CPULoongArchState *env, arg_b *restrict a) {
@@ -2040,67 +2052,83 @@ static bool trans_b(CPULoongArchState *env, arg_b *restrict a) {
         laemu_exit(EXIT_SUCCESS);
     }
 #endif
-    env->pc += a->offs;
+    uint64_t target = env->pc + a->offs;
+    cpu_set_pc(env, target);
+#ifdef RECORD_BRANCH
+    env->taken = true;
+    env->target = env->pc + a->offs;
+#endif
     return true;
 }
 static bool trans_bl(CPULoongArchState *env, arg_bl *restrict a) {
     PERF_INC(COUNTER_INST_BRANCH);
     env->gpr[1] = env->pc + 4;
-    env->pc += a->offs;
+    uint64_t target = env->pc + a->offs;
+    cpu_set_pc(env, target);
+#ifdef RECORD_BRANCH
+    env->taken = true;
+    env->target = env->pc + a->offs;
+#endif
     return true;
 }
 static bool trans_beq(CPULoongArchState *env, arg_beq *restrict a) {
     PERF_INC(COUNTER_INST_BRANCH);
-    if ((int64_t)env->gpr[a->rj] == (int64_t)env->gpr[a->rd]) {
-        env->pc += a->offs;
-    } else {
-        env->pc += 4;
-    }
+    bool taken = (int64_t)env->gpr[a->rj] == (int64_t)env->gpr[a->rd];
+    cpu_set_pc(env, taken ? env->pc + a->offs : env->pc + 4);
+#ifdef RECORD_BRANCH
+    env->taken = taken;
+    env->target = env->pc + a->offs;
+#endif
     return true;
 }
 static bool trans_bne(CPULoongArchState *env, arg_bne *restrict a) {
     PERF_INC(COUNTER_INST_BRANCH);
-    if ((int64_t)env->gpr[a->rj] != (int64_t)env->gpr[a->rd]) {
-        env->pc += a->offs;
-    } else {
-        env->pc += 4;
-    }
+    bool taken = (int64_t)env->gpr[a->rj] != (int64_t)env->gpr[a->rd];
+    cpu_set_pc(env, taken ? env->pc + a->offs : env->pc + 4);
+#ifdef RECORD_BRANCH
+    env->taken = taken;
+    env->target = env->pc + a->offs;
+#endif
     return true;
 }
 static bool trans_blt(CPULoongArchState *env, arg_blt *restrict a) {
     PERF_INC(COUNTER_INST_BRANCH);
-    if ((int64_t)env->gpr[a->rj] < (int64_t)env->gpr[a->rd]) {
-        env->pc += a->offs;
-    } else {
-        env->pc += 4;
-    }
+    bool taken = (int64_t)env->gpr[a->rj] < (int64_t)env->gpr[a->rd];
+    cpu_set_pc(env, taken ? env->pc + a->offs : env->pc + 4);
+#ifdef RECORD_BRANCH
+    env->taken = taken;
+    env->target = env->pc + a->offs;
+#endif
     return true;
 }
 static bool trans_bge(CPULoongArchState *env, arg_bge *restrict a) {
     PERF_INC(COUNTER_INST_BRANCH);
-    if ((int64_t)env->gpr[a->rj] >= (int64_t)env->gpr[a->rd]) {
-        env->pc += a->offs;
-    } else {
-        env->pc += 4;
-    }
+    bool taken = (int64_t)env->gpr[a->rj] >= (int64_t)env->gpr[a->rd];
+    cpu_set_pc(env, taken ? env->pc + a->offs : env->pc + 4);
+#ifdef RECORD_BRANCH
+    env->taken = taken;
+    env->target = env->pc + a->offs;
+#endif
     return true;
 }
 static bool trans_bltu(CPULoongArchState *env, arg_bltu *restrict a) {
     PERF_INC(COUNTER_INST_BRANCH);
-    if ((uint64_t)env->gpr[a->rj] < (uint64_t)env->gpr[a->rd]) {
-        env->pc += a->offs;
-    } else {
-        env->pc += 4;
-    }
+    bool taken = (uint64_t)env->gpr[a->rj] < (uint64_t)env->gpr[a->rd];
+    cpu_set_pc(env, taken ? env->pc + a->offs : env->pc + 4);
+#ifdef RECORD_BRANCH
+    env->taken = taken;
+    env->target = env->pc + a->offs;
+#endif
     return true;
 }
 static bool trans_bgeu(CPULoongArchState *env, arg_bgeu *restrict a) {
     PERF_INC(COUNTER_INST_BRANCH);
-    if ((uint64_t)env->gpr[a->rj] >= (uint64_t)env->gpr[a->rd]) {
-        env->pc += a->offs;
-    } else {
-        env->pc += 4;
-    }
+    bool taken = (uint64_t)env->gpr[a->rj] >= (uint64_t)env->gpr[a->rd];
+    cpu_set_pc(env, taken ? env->pc + a->offs : env->pc + 4);
+#ifdef RECORD_BRANCH
+    env->taken = taken;
+    env->target = env->pc + a->offs;
+#endif
     return true;
 }
 
@@ -2218,7 +2246,7 @@ static bool trans_csrrd(CPULoongArchState *env, arg_csrrd *restrict a) {
     default:
         break;
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
@@ -2340,90 +2368,90 @@ uint64_t helper_write_csr(CPULoongArchState *env, int csr_index, uint64_t new_v,
 static bool trans_csrwr(CPULoongArchState *env, arg_csrwr *restrict a) {
     CHECK_PLV(0);
     env->gpr[a->rd] = helper_write_csr(env, a->csr, env->gpr[a->rd], -1);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_csrxchg(CPULoongArchState *env, arg_csrxchg *restrict a) {
     CHECK_PLV(0);
     env->gpr[a->rd] = helper_write_csr(env, a->csr, env->gpr[a->rd], env->gpr[a->rj]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_iocsrrd_b(CPULoongArchState *env, arg_iocsrrd_b *restrict a) {
     CHECK_PLV(0);
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_iocsrrd_h(CPULoongArchState *env, arg_iocsrrd_h *restrict a) {
     CHECK_PLV(0);
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
     a->rd = 0;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_iocsrrd_w(CPULoongArchState *env, arg_iocsrrd_w *restrict a) {
     CHECK_PLV(0);
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
     a->rd = 0;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_iocsrrd_d(CPULoongArchState *env, arg_iocsrrd_d *restrict a) {
     CHECK_PLV(0);
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
     a->rd = 0;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_iocsrwr_b(CPULoongArchState *env, arg_iocsrwr_b *restrict a) {
     CHECK_PLV(0);
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
     a->rd = 0;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_iocsrwr_h(CPULoongArchState *env, arg_iocsrwr_h *restrict a) {
     CHECK_PLV(0);
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_iocsrwr_w(CPULoongArchState *env, arg_iocsrwr_w *restrict a) {
     CHECK_PLV(0);
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_iocsrwr_d(CPULoongArchState *env, arg_iocsrwr_d *restrict a) {
     CHECK_PLV(0);
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_tlbsrch(CPULoongArchState *env, arg_tlbsrch *restrict a) {
     CHECK_PLV(0);
     helper_tlbsrch(env);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_tlbrd(CPULoongArchState *env, arg_tlbrd *restrict a) {
     CHECK_PLV(0);
     helper_tlbrd(env);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_tlbwr(CPULoongArchState *env, arg_tlbwr *restrict a) {
     CHECK_PLV(0);
     helper_tlbwr(env);
     cpu_clear_tc(env);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_tlbfill(CPULoongArchState *env, arg_tlbfill *restrict a) {
     CHECK_PLV(0);
     helper_tlbfill(env);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_tlbclr(CPULoongArchState *env, arg_tlbclr *restrict a) {
@@ -2438,26 +2466,26 @@ static bool trans_invtlb(CPULoongArchState *env, arg_invtlb *restrict a) {
     CHECK_PLV(0);
     helper_invtlb_all(env);
     cpu_clear_tc(env);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_cacop(CPULoongArchState *env, arg_cacop *restrict a) {
     CHECK_PLV(0);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_lddir(CPULoongArchState *env, arg_lddir *restrict a) {
     CHECK_PLV(0);
     uint64_t dir_phys_addr;
     env->gpr[a->rd] = helper_lddir(env, env->gpr[a->rj], a->imm, 0, &dir_phys_addr);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ldpte(CPULoongArchState *env, arg_ldpte *restrict a) {
     CHECK_PLV(0);
     uint64_t pte_phys_addr;
     helper_ldpte(env, env->gpr[a->rj], a->imm, 0, &pte_phys_addr);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_ertn(CPULoongArchState *env, arg_ertn *restrict a) {
@@ -2480,7 +2508,7 @@ static bool trans_idle(CPULoongArchState *env, arg_idle *restrict a) {
         }
     }
 #endif
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_dbcl(CPULoongArchState *env, arg_dbcl *restrict a) {
@@ -2495,7 +2523,7 @@ static bool glue(trans_, op)(CPULoongArchState *env, arg_vv_i *restrict a) {    
     int oprsz = size;                                                   \
     uint32_t desc = simd_desc(oprsz, oprsz, 0);                         \
     glue(helper_, helper_name)(&env->fpr[a->vd], &env->fpr[a->vj], a->imm, desc);   \
-    env->pc += 4;                                                       \
+    cpu_set_pc(env, env->pc + 4);                                                       \
     return true;                                                        \
 }
 #define gen_trans_vvvd(op, size, helper_name) \
@@ -2504,7 +2532,7 @@ static bool glue(trans_, op)(CPULoongArchState *env, arg_vvv *restrict a) {   \
     int oprsz = size;                                                   \
     uint32_t desc = simd_desc(oprsz, oprsz, 0);                         \
     glue(helper_, helper_name)(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc);          \
-    env->pc += 4;                                                       \
+    cpu_set_pc(env, env->pc + 4);                                                       \
     return true;                                                        \
 }
 #define gen_trans_vvvvd(op, size, helper_name) \
@@ -2513,13 +2541,13 @@ static bool glue(trans_, op)(CPULoongArchState *env, arg_vvvv *restrict a) {   \
     int oprsz = size;                                                   \
     uint32_t desc = simd_desc(oprsz, oprsz, 0);                         \
     glue(helper_, helper_name)(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], &env->fpr[a->va], desc);          \
-    env->pc += 4;                                                       \
+    cpu_set_pc(env, env->pc + 4);                                                       \
     return true;                                                        \
 }
-static inline bool vadd_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] + env->fpr[a->vk].vreg.B[i];}env->pc += 4;return true;}
-static inline bool vadd_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] + env->fpr[a->vk].vreg.H[i];}env->pc += 4;return true;}
-static inline bool vadd_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] + env->fpr[a->vk].vreg.W[i];}env->pc += 4;return true;}
-static inline bool vadd_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] + env->fpr[a->vk].vreg.D[i];}env->pc += 4;return true;}
+static inline bool vadd_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] + env->fpr[a->vk].vreg.B[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vadd_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] + env->fpr[a->vk].vreg.H[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vadd_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] + env->fpr[a->vk].vreg.W[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vadd_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] + env->fpr[a->vk].vreg.D[i];}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vadd_b(CPULoongArchState *env, arg_vadd_b *restrict a) {CHECK_FPE(16); return vadd_b(env, a, 16);}
 static bool trans_vadd_h(CPULoongArchState *env, arg_vadd_h *restrict a) {CHECK_FPE(16); return vadd_h(env, a, 16);}
 static bool trans_vadd_w(CPULoongArchState *env, arg_vadd_w *restrict a) {CHECK_FPE(16); return vadd_w(env, a, 16);}
@@ -2531,13 +2559,13 @@ static bool trans_xvadd_d(CPULoongArchState *env, arg_vadd_d *restrict a) {CHECK
 static bool trans_vadd_q(CPULoongArchState *env, arg_vadd_q *restrict a) {
     CHECK_FPE(16);
     env->fpr[a->vd].vreg.Q[0] = env->fpr[a->vj].vreg.Q[0] + env->fpr[a->vk].vreg.Q[0];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
-static inline bool vsub_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] - env->fpr[a->vk].vreg.B[i];}env->pc += 4;return true;}
-static inline bool vsub_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] - env->fpr[a->vk].vreg.H[i];}env->pc += 4;return true;}
-static inline bool vsub_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] - env->fpr[a->vk].vreg.W[i];}env->pc += 4;return true;}
-static inline bool vsub_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] - env->fpr[a->vk].vreg.D[i];}env->pc += 4;return true;}
+static inline bool vsub_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] - env->fpr[a->vk].vreg.B[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsub_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] - env->fpr[a->vk].vreg.H[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsub_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] - env->fpr[a->vk].vreg.W[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsub_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] - env->fpr[a->vk].vreg.D[i];}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vsub_b(CPULoongArchState *env, arg_vsub_b *restrict a) {CHECK_FPE(16); return vsub_b(env, a, 16);}
 static bool trans_vsub_h(CPULoongArchState *env, arg_vsub_h *restrict a) {CHECK_FPE(16); return vsub_h(env, a, 16);}
 static bool trans_vsub_w(CPULoongArchState *env, arg_vsub_w *restrict a) {CHECK_FPE(16); return vsub_w(env, a, 16);}
@@ -2549,13 +2577,13 @@ static bool trans_xvsub_d(CPULoongArchState *env, arg_vsub_d *restrict a) {CHECK
 static bool trans_vsub_q(CPULoongArchState *env, arg_vsub_q *restrict a) {
     CHECK_FPE(16);
     env->fpr[a->vd].vreg.Q[0] = env->fpr[a->vj].vreg.Q[0] - env->fpr[a->vk].vreg.Q[0];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
-static inline bool vaddi_bu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] + a->imm;}env->pc += 4;return true;}
-static inline bool vaddi_hu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] + a->imm;}env->pc += 4;return true;}
-static inline bool vaddi_wu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] + a->imm;}env->pc += 4;return true;}
-static inline bool vaddi_du(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] + a->imm;}env->pc += 4;return true;}
+static inline bool vaddi_bu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] + a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vaddi_hu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] + a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vaddi_wu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] + a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vaddi_du(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] + a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vaddi_bu(CPULoongArchState *env, arg_vaddi_bu *restrict a) {CHECK_FPE(16); return vaddi_bu(env, a, 16);}
 static bool trans_vaddi_hu(CPULoongArchState *env, arg_vaddi_hu *restrict a) {CHECK_FPE(16); return vaddi_hu(env, a, 16);}
 static bool trans_vaddi_wu(CPULoongArchState *env, arg_vaddi_wu *restrict a) {CHECK_FPE(16); return vaddi_wu(env, a, 16);}
@@ -2564,10 +2592,10 @@ static bool trans_xvaddi_bu(CPULoongArchState *env, arg_vaddi_bu *restrict a) {C
 static bool trans_xvaddi_hu(CPULoongArchState *env, arg_vaddi_hu *restrict a) {CHECK_FPE(32); return vaddi_hu(env, a, 32);}
 static bool trans_xvaddi_wu(CPULoongArchState *env, arg_vaddi_wu *restrict a) {CHECK_FPE(32); return vaddi_wu(env, a, 32);}
 static bool trans_xvaddi_du(CPULoongArchState *env, arg_vaddi_du *restrict a) {CHECK_FPE(32); return vaddi_du(env, a, 32);}
-static inline bool vsubi_bu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] - a->imm;}env->pc += 4;return true;}
-static inline bool vsubi_hu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] - a->imm;}env->pc += 4;return true;}
-static inline bool vsubi_wu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] - a->imm;}env->pc += 4;return true;}
-static inline bool vsubi_du(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] - a->imm;}env->pc += 4;return true;}
+static inline bool vsubi_bu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] - a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsubi_hu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] - a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsubi_wu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] - a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsubi_du(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] - a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vsubi_bu(CPULoongArchState *env, arg_vsubi_bu *restrict a) {CHECK_FPE(16); return vsubi_bu(env, a, 16);}
 static bool trans_vsubi_hu(CPULoongArchState *env, arg_vsubi_hu *restrict a) {CHECK_FPE(16); return vsubi_hu(env, a, 16);}
 static bool trans_vsubi_wu(CPULoongArchState *env, arg_vsubi_wu *restrict a) {CHECK_FPE(16); return vsubi_wu(env, a, 16);}
@@ -2576,10 +2604,10 @@ static bool trans_xvsubi_bu(CPULoongArchState *env, arg_vsubi_bu *restrict a) {C
 static bool trans_xvsubi_hu(CPULoongArchState *env, arg_vsubi_hu *restrict a) {CHECK_FPE(32); return vsubi_hu(env, a, 32);}
 static bool trans_xvsubi_wu(CPULoongArchState *env, arg_vsubi_wu *restrict a) {CHECK_FPE(32); return vsubi_wu(env, a, 32);}
 static bool trans_xvsubi_du(CPULoongArchState *env, arg_vsubi_du *restrict a) {CHECK_FPE(32); return vsubi_du(env, a, 32);}
-static inline bool vneg_b(CPULoongArchState *env, arg_vv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = - env->fpr[a->vj].vreg.B[i];}env->pc += 4;return true;}
-static inline bool vneg_h(CPULoongArchState *env, arg_vv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = - env->fpr[a->vj].vreg.H[i];}env->pc += 4;return true;}
-static inline bool vneg_w(CPULoongArchState *env, arg_vv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = - env->fpr[a->vj].vreg.W[i];}env->pc += 4;return true;}
-static inline bool vneg_d(CPULoongArchState *env, arg_vv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = - env->fpr[a->vj].vreg.D[i];}env->pc += 4;return true;}
+static inline bool vneg_b(CPULoongArchState *env, arg_vv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = - env->fpr[a->vj].vreg.B[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vneg_h(CPULoongArchState *env, arg_vv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = - env->fpr[a->vj].vreg.H[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vneg_w(CPULoongArchState *env, arg_vv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = - env->fpr[a->vj].vreg.W[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vneg_d(CPULoongArchState *env, arg_vv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = - env->fpr[a->vj].vreg.D[i];}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vneg_b(CPULoongArchState *env, arg_vneg_b *restrict a) {CHECK_FPE(16); return vneg_b(env, a, 16);}
 static bool trans_vneg_h(CPULoongArchState *env, arg_vneg_h *restrict a) {CHECK_FPE(16); return vneg_h(env, a, 16);}
 static bool trans_vneg_w(CPULoongArchState *env, arg_vneg_w *restrict a) {CHECK_FPE(16); return vneg_w(env, a, 16);}
@@ -2610,7 +2638,7 @@ static bool trans_vhaddw_h_b(CPULoongArchState *env, arg_vhaddw_h_b *restrict a)
     int oprsz = 16;
     uint32_t desc = simd_desc(oprsz, oprsz, 0);
     helper_vhaddw_h_b(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vhaddw_w_h(CPULoongArchState *env, arg_vhaddw_w_h *restrict a) {
@@ -2618,7 +2646,7 @@ static bool trans_vhaddw_w_h(CPULoongArchState *env, arg_vhaddw_w_h *restrict a)
     int oprsz = 16;
     uint32_t desc = simd_desc(oprsz, oprsz, 0);
     helper_vhaddw_w_h(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vhaddw_d_w(CPULoongArchState *env, arg_vhaddw_d_w *restrict a) {
@@ -2626,7 +2654,7 @@ static bool trans_vhaddw_d_w(CPULoongArchState *env, arg_vhaddw_d_w *restrict a)
     int oprsz = 16;
     uint32_t desc = simd_desc(oprsz, oprsz, 0);
     helper_vhaddw_d_w(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vhaddw_q_d(CPULoongArchState *env, arg_vhaddw_q_d *restrict a) {
@@ -2634,7 +2662,7 @@ static bool trans_vhaddw_q_d(CPULoongArchState *env, arg_vhaddw_q_d *restrict a)
     int oprsz = 16;
     uint32_t desc = simd_desc(oprsz, oprsz, 0);
     helper_vhaddw_q_d(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 gen_trans_vvvd(vhaddw_hu_bu, 16, vhaddw_hu_bu)
@@ -2691,10 +2719,10 @@ gen_trans_vvvd(vaddwod_d_wu_w, 16, vaddwod_d_wu_w)
 gen_trans_vvvd(vaddwod_q_du_d, 16, vaddwod_q_du_d)
 #define DO_VAVG(a, b)  ((a >> 1) + (b >> 1) + (a & b & 1))
 #define DO_VAVGR(a, b) ((a >> 1) + (b >> 1) + ((a | b) & 1))
-static inline bool vavg_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = DO_VAVG(env->fpr[a->vj].vreg.B[i], env->fpr[a->vk].vreg.B[i]) ;}env->pc += 4;return true;}
-static inline bool vavg_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = DO_VAVG(env->fpr[a->vj].vreg.H[i], env->fpr[a->vk].vreg.H[i]) ;}env->pc += 4;return true;}
-static inline bool vavg_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = DO_VAVG(env->fpr[a->vj].vreg.W[i], env->fpr[a->vk].vreg.W[i]) ;}env->pc += 4;return true;}
-static inline bool vavg_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = DO_VAVG(env->fpr[a->vj].vreg.D[i], env->fpr[a->vk].vreg.D[i]) ;}env->pc += 4;return true;}
+static inline bool vavg_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = DO_VAVG(env->fpr[a->vj].vreg.B[i], env->fpr[a->vk].vreg.B[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vavg_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = DO_VAVG(env->fpr[a->vj].vreg.H[i], env->fpr[a->vk].vreg.H[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vavg_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = DO_VAVG(env->fpr[a->vj].vreg.W[i], env->fpr[a->vk].vreg.W[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vavg_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = DO_VAVG(env->fpr[a->vj].vreg.D[i], env->fpr[a->vk].vreg.D[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vavg_b(CPULoongArchState *env, arg_vavg_b *restrict a) {CHECK_FPE(16); return vavg_b(env, a, 16);}
 static bool trans_vavg_h(CPULoongArchState *env, arg_vavg_h *restrict a) {CHECK_FPE(16); return vavg_h(env, a, 16);}
 static bool trans_vavg_w(CPULoongArchState *env, arg_vavg_w *restrict a) {CHECK_FPE(16); return vavg_w(env, a, 16);}
@@ -2703,10 +2731,10 @@ static bool trans_xvavg_b(CPULoongArchState *env, arg_vavg_b *restrict a) {CHECK
 static bool trans_xvavg_h(CPULoongArchState *env, arg_vavg_h *restrict a) {CHECK_FPE(32); return vavg_h(env, a, 32);}
 static bool trans_xvavg_w(CPULoongArchState *env, arg_vavg_w *restrict a) {CHECK_FPE(32); return vavg_w(env, a, 32);}
 static bool trans_xvavg_d(CPULoongArchState *env, arg_vavg_d *restrict a) {CHECK_FPE(32); return vavg_d(env, a, 32);}
-static inline bool vavg_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = DO_VAVG(env->fpr[a->vj].vreg.UB[i], env->fpr[a->vk].vreg.UB[i]) ;}env->pc += 4;return true;}
-static inline bool vavg_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = DO_VAVG(env->fpr[a->vj].vreg.UH[i], env->fpr[a->vk].vreg.UH[i]) ;}env->pc += 4;return true;}
-static inline bool vavg_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = DO_VAVG(env->fpr[a->vj].vreg.UW[i], env->fpr[a->vk].vreg.UW[i]) ;}env->pc += 4;return true;}
-static inline bool vavg_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = DO_VAVG(env->fpr[a->vj].vreg.UD[i], env->fpr[a->vk].vreg.UD[i]) ;}env->pc += 4;return true;}
+static inline bool vavg_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = DO_VAVG(env->fpr[a->vj].vreg.UB[i], env->fpr[a->vk].vreg.UB[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vavg_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = DO_VAVG(env->fpr[a->vj].vreg.UH[i], env->fpr[a->vk].vreg.UH[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vavg_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = DO_VAVG(env->fpr[a->vj].vreg.UW[i], env->fpr[a->vk].vreg.UW[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vavg_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = DO_VAVG(env->fpr[a->vj].vreg.UD[i], env->fpr[a->vk].vreg.UD[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vavg_bu(CPULoongArchState *env, arg_vavg_bu *restrict a) {CHECK_FPE(16); return vavg_bu(env, a, 16);}
 static bool trans_vavg_hu(CPULoongArchState *env, arg_vavg_hu *restrict a) {CHECK_FPE(16); return vavg_hu(env, a, 16);}
 static bool trans_vavg_wu(CPULoongArchState *env, arg_vavg_wu *restrict a) {CHECK_FPE(16); return vavg_wu(env, a, 16);}
@@ -2715,10 +2743,10 @@ static bool trans_xvavg_bu(CPULoongArchState *env, arg_vavg_bu *restrict a) {CHE
 static bool trans_xvavg_hu(CPULoongArchState *env, arg_vavg_hu *restrict a) {CHECK_FPE(32); return vavg_hu(env, a, 32);}
 static bool trans_xvavg_wu(CPULoongArchState *env, arg_vavg_wu *restrict a) {CHECK_FPE(32); return vavg_wu(env, a, 32);}
 static bool trans_xvavg_du(CPULoongArchState *env, arg_vavg_du *restrict a) {CHECK_FPE(32); return vavg_du(env, a, 32);}
-static inline bool vavgr_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = DO_VAVGR(env->fpr[a->vj].vreg.B[i], env->fpr[a->vk].vreg.B[i]) ;}env->pc += 4;return true;}
-static inline bool vavgr_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = DO_VAVGR(env->fpr[a->vj].vreg.H[i], env->fpr[a->vk].vreg.H[i]) ;}env->pc += 4;return true;}
-static inline bool vavgr_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = DO_VAVGR(env->fpr[a->vj].vreg.W[i], env->fpr[a->vk].vreg.W[i]) ;}env->pc += 4;return true;}
-static inline bool vavgr_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = DO_VAVGR(env->fpr[a->vj].vreg.D[i], env->fpr[a->vk].vreg.D[i]) ;}env->pc += 4;return true;}
+static inline bool vavgr_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = DO_VAVGR(env->fpr[a->vj].vreg.B[i], env->fpr[a->vk].vreg.B[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vavgr_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = DO_VAVGR(env->fpr[a->vj].vreg.H[i], env->fpr[a->vk].vreg.H[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vavgr_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = DO_VAVGR(env->fpr[a->vj].vreg.W[i], env->fpr[a->vk].vreg.W[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vavgr_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = DO_VAVGR(env->fpr[a->vj].vreg.D[i], env->fpr[a->vk].vreg.D[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vavgr_b(CPULoongArchState *env, arg_vavgr_b *restrict a) {CHECK_FPE(16); return vavgr_b(env, a, 16);}
 static bool trans_vavgr_h(CPULoongArchState *env, arg_vavgr_h *restrict a) {CHECK_FPE(16); return vavgr_h(env, a, 16);}
 static bool trans_vavgr_w(CPULoongArchState *env, arg_vavgr_w *restrict a) {CHECK_FPE(16); return vavgr_w(env, a, 16);}
@@ -2727,10 +2755,10 @@ static bool trans_xvavgr_b(CPULoongArchState *env, arg_vavgr_b *restrict a) {CHE
 static bool trans_xvavgr_h(CPULoongArchState *env, arg_vavgr_h *restrict a) {CHECK_FPE(32); return vavgr_h(env, a, 32);}
 static bool trans_xvavgr_w(CPULoongArchState *env, arg_vavgr_w *restrict a) {CHECK_FPE(32); return vavgr_w(env, a, 32);}
 static bool trans_xvavgr_d(CPULoongArchState *env, arg_vavgr_d *restrict a) {CHECK_FPE(32); return vavgr_d(env, a, 32);}
-static inline bool vavgr_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = DO_VAVGR(env->fpr[a->vj].vreg.UB[i], env->fpr[a->vk].vreg.UB[i]) ;}env->pc += 4;return true;}
-static inline bool vavgr_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = DO_VAVGR(env->fpr[a->vj].vreg.UH[i], env->fpr[a->vk].vreg.UH[i]) ;}env->pc += 4;return true;}
-static inline bool vavgr_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = DO_VAVGR(env->fpr[a->vj].vreg.UW[i], env->fpr[a->vk].vreg.UW[i]) ;}env->pc += 4;return true;}
-static inline bool vavgr_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = DO_VAVGR(env->fpr[a->vj].vreg.UD[i], env->fpr[a->vk].vreg.UD[i]) ;}env->pc += 4;return true;}
+static inline bool vavgr_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = DO_VAVGR(env->fpr[a->vj].vreg.UB[i], env->fpr[a->vk].vreg.UB[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vavgr_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = DO_VAVGR(env->fpr[a->vj].vreg.UH[i], env->fpr[a->vk].vreg.UH[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vavgr_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = DO_VAVGR(env->fpr[a->vj].vreg.UW[i], env->fpr[a->vk].vreg.UW[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vavgr_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = DO_VAVGR(env->fpr[a->vj].vreg.UD[i], env->fpr[a->vk].vreg.UD[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vavgr_bu(CPULoongArchState *env, arg_vavgr_bu *restrict a) {CHECK_FPE(16); return vavgr_bu(env, a, 16);}
 static bool trans_vavgr_hu(CPULoongArchState *env, arg_vavgr_hu *restrict a) {CHECK_FPE(16); return vavgr_hu(env, a, 16);}
 static bool trans_vavgr_wu(CPULoongArchState *env, arg_vavgr_wu *restrict a) {CHECK_FPE(16); return vavgr_wu(env, a, 16);}
@@ -2740,10 +2768,10 @@ static bool trans_xvavgr_hu(CPULoongArchState *env, arg_vavgr_hu *restrict a) {C
 static bool trans_xvavgr_wu(CPULoongArchState *env, arg_vavgr_wu *restrict a) {CHECK_FPE(32); return vavgr_wu(env, a, 32);}
 static bool trans_xvavgr_du(CPULoongArchState *env, arg_vavgr_du *restrict a) {CHECK_FPE(32); return vavgr_du(env, a, 32);}
 #define DO_VABSD(a, b)  ((a > b) ? (a -b) : (b-a))
-static inline bool vabsd_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = DO_VABSD(env->fpr[a->vj].vreg.B[i], env->fpr[a->vk].vreg.B[i]) ;}env->pc += 4;return true;}
-static inline bool vabsd_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = DO_VABSD(env->fpr[a->vj].vreg.H[i], env->fpr[a->vk].vreg.H[i]) ;}env->pc += 4;return true;}
-static inline bool vabsd_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = DO_VABSD(env->fpr[a->vj].vreg.W[i], env->fpr[a->vk].vreg.W[i]) ;}env->pc += 4;return true;}
-static inline bool vabsd_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = DO_VABSD(env->fpr[a->vj].vreg.D[i], env->fpr[a->vk].vreg.D[i]) ;}env->pc += 4;return true;}
+static inline bool vabsd_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = DO_VABSD(env->fpr[a->vj].vreg.B[i], env->fpr[a->vk].vreg.B[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vabsd_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = DO_VABSD(env->fpr[a->vj].vreg.H[i], env->fpr[a->vk].vreg.H[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vabsd_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = DO_VABSD(env->fpr[a->vj].vreg.W[i], env->fpr[a->vk].vreg.W[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vabsd_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = DO_VABSD(env->fpr[a->vj].vreg.D[i], env->fpr[a->vk].vreg.D[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vabsd_b(CPULoongArchState *env, arg_vabsd_b *restrict a) {CHECK_FPE(16); return vabsd_b(env, a, 16);}
 static bool trans_vabsd_h(CPULoongArchState *env, arg_vabsd_h *restrict a) {CHECK_FPE(16); return vabsd_h(env, a, 16);}
 static bool trans_vabsd_w(CPULoongArchState *env, arg_vabsd_w *restrict a) {CHECK_FPE(16); return vabsd_w(env, a, 16);}
@@ -2752,10 +2780,10 @@ static bool trans_xvabsd_b(CPULoongArchState *env, arg_vabsd_b *restrict a) {CHE
 static bool trans_xvabsd_h(CPULoongArchState *env, arg_vabsd_h *restrict a) {CHECK_FPE(32); return vabsd_h(env, a, 32);}
 static bool trans_xvabsd_w(CPULoongArchState *env, arg_vabsd_w *restrict a) {CHECK_FPE(32); return vabsd_w(env, a, 32);}
 static bool trans_xvabsd_d(CPULoongArchState *env, arg_vabsd_d *restrict a) {CHECK_FPE(32); return vabsd_d(env, a, 32);}
-static inline bool vabsd_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = DO_VABSD(env->fpr[a->vj].vreg.UB[i], env->fpr[a->vk].vreg.UB[i]) ;}env->pc += 4;return true;}
-static inline bool vabsd_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = DO_VABSD(env->fpr[a->vj].vreg.UH[i], env->fpr[a->vk].vreg.UH[i]) ;}env->pc += 4;return true;}
-static inline bool vabsd_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = DO_VABSD(env->fpr[a->vj].vreg.UW[i], env->fpr[a->vk].vreg.UW[i]) ;}env->pc += 4;return true;}
-static inline bool vabsd_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = DO_VABSD(env->fpr[a->vj].vreg.UD[i], env->fpr[a->vk].vreg.UD[i]) ;}env->pc += 4;return true;}
+static inline bool vabsd_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = DO_VABSD(env->fpr[a->vj].vreg.UB[i], env->fpr[a->vk].vreg.UB[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vabsd_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = DO_VABSD(env->fpr[a->vj].vreg.UH[i], env->fpr[a->vk].vreg.UH[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vabsd_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = DO_VABSD(env->fpr[a->vj].vreg.UW[i], env->fpr[a->vk].vreg.UW[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vabsd_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = DO_VABSD(env->fpr[a->vj].vreg.UD[i], env->fpr[a->vk].vreg.UD[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vabsd_bu(CPULoongArchState *env, arg_vabsd_bu *restrict a) {CHECK_FPE(16); return vabsd_bu(env, a, 16);}
 static bool trans_vabsd_hu(CPULoongArchState *env, arg_vabsd_hu *restrict a) {CHECK_FPE(16); return vabsd_hu(env, a, 16);}
 static bool trans_vabsd_wu(CPULoongArchState *env, arg_vabsd_wu *restrict a) {CHECK_FPE(16); return vabsd_wu(env, a, 16);}
@@ -2765,10 +2793,10 @@ static bool trans_xvabsd_hu(CPULoongArchState *env, arg_vabsd_hu *restrict a) {C
 static bool trans_xvabsd_wu(CPULoongArchState *env, arg_vabsd_wu *restrict a) {CHECK_FPE(32); return vabsd_wu(env, a, 32);}
 static bool trans_xvabsd_du(CPULoongArchState *env, arg_vabsd_du *restrict a) {CHECK_FPE(32); return vabsd_du(env, a, 32);}
 #define DO_VABS(a)  ((a < 0) ? (-a) : (a))
-static inline bool vadda_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = DO_VABS(env->fpr[a->vj].vreg.B[i]) + DO_VABS(env->fpr[a->vk].vreg.B[i]) ;}env->pc += 4;return true;}
-static inline bool vadda_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = DO_VABS(env->fpr[a->vj].vreg.H[i]) + DO_VABS(env->fpr[a->vk].vreg.H[i]) ;}env->pc += 4;return true;}
-static inline bool vadda_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = DO_VABS(env->fpr[a->vj].vreg.W[i]) + DO_VABS(env->fpr[a->vk].vreg.W[i]) ;}env->pc += 4;return true;}
-static inline bool vadda_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = DO_VABS(env->fpr[a->vj].vreg.D[i]) + DO_VABS(env->fpr[a->vk].vreg.D[i]) ;}env->pc += 4;return true;}
+static inline bool vadda_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = DO_VABS(env->fpr[a->vj].vreg.B[i]) + DO_VABS(env->fpr[a->vk].vreg.B[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vadda_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = DO_VABS(env->fpr[a->vj].vreg.H[i]) + DO_VABS(env->fpr[a->vk].vreg.H[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vadda_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = DO_VABS(env->fpr[a->vj].vreg.W[i]) + DO_VABS(env->fpr[a->vk].vreg.W[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vadda_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = DO_VABS(env->fpr[a->vj].vreg.D[i]) + DO_VABS(env->fpr[a->vk].vreg.D[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vadda_b(CPULoongArchState *env, arg_vadda_b *restrict a) {CHECK_FPE(16); return vadda_b(env, a, 16);}
 static bool trans_vadda_h(CPULoongArchState *env, arg_vadda_h *restrict a) {CHECK_FPE(16); return vadda_h(env, a, 16);}
 static bool trans_vadda_w(CPULoongArchState *env, arg_vadda_w *restrict a) {CHECK_FPE(16); return vadda_w(env, a, 16);}
@@ -2777,10 +2805,10 @@ static bool trans_xvadda_b(CPULoongArchState *env, arg_vadda_b *restrict a) {CHE
 static bool trans_xvadda_h(CPULoongArchState *env, arg_vadda_h *restrict a) {CHECK_FPE(32); return vadda_h(env, a, 32);}
 static bool trans_xvadda_w(CPULoongArchState *env, arg_vadda_w *restrict a) {CHECK_FPE(32); return vadda_w(env, a, 32);}
 static bool trans_xvadda_d(CPULoongArchState *env, arg_vadda_d *restrict a) {CHECK_FPE(32); return vadda_d(env, a, 32);}
-static inline bool vmax_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = MAX(env->fpr[a->vj].vreg.B[i], env->fpr[a->vk].vreg.B[i]) ;}env->pc += 4;return true;}
-static inline bool vmax_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = MAX(env->fpr[a->vj].vreg.H[i], env->fpr[a->vk].vreg.H[i]) ;}env->pc += 4;return true;}
-static inline bool vmax_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = MAX(env->fpr[a->vj].vreg.W[i], env->fpr[a->vk].vreg.W[i]) ;}env->pc += 4;return true;}
-static inline bool vmax_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = MAX(env->fpr[a->vj].vreg.D[i], env->fpr[a->vk].vreg.D[i]) ;}env->pc += 4;return true;}
+static inline bool vmax_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = MAX(env->fpr[a->vj].vreg.B[i], env->fpr[a->vk].vreg.B[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmax_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = MAX(env->fpr[a->vj].vreg.H[i], env->fpr[a->vk].vreg.H[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmax_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = MAX(env->fpr[a->vj].vreg.W[i], env->fpr[a->vk].vreg.W[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmax_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = MAX(env->fpr[a->vj].vreg.D[i], env->fpr[a->vk].vreg.D[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vmax_b(CPULoongArchState *env, arg_vmax_b *restrict a) {CHECK_FPE(16); return vmax_b(env, a, 16);}
 static bool trans_vmax_h(CPULoongArchState *env, arg_vmax_h *restrict a) {CHECK_FPE(16); return vmax_h(env, a, 16);}
 static bool trans_vmax_w(CPULoongArchState *env, arg_vmax_w *restrict a) {CHECK_FPE(16); return vmax_w(env, a, 16);}
@@ -2789,10 +2817,10 @@ static bool trans_xvmax_b(CPULoongArchState *env, arg_vmax_b *restrict a) {CHECK
 static bool trans_xvmax_h(CPULoongArchState *env, arg_vmax_h *restrict a) {CHECK_FPE(32); return vmax_h(env, a, 32);}
 static bool trans_xvmax_w(CPULoongArchState *env, arg_vmax_w *restrict a) {CHECK_FPE(32); return vmax_w(env, a, 32);}
 static bool trans_xvmax_d(CPULoongArchState *env, arg_vmax_d *restrict a) {CHECK_FPE(32); return vmax_d(env, a, 32);}
-static inline bool vmaxi_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = MAX(env->fpr[a->vj].vreg.B[i], a->imm) ;}env->pc += 4;return true;}
-static inline bool vmaxi_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = MAX(env->fpr[a->vj].vreg.H[i], a->imm) ;}env->pc += 4;return true;}
-static inline bool vmaxi_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = MAX(env->fpr[a->vj].vreg.W[i], a->imm) ;}env->pc += 4;return true;}
-static inline bool vmaxi_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = MAX(env->fpr[a->vj].vreg.D[i], a->imm) ;}env->pc += 4;return true;}
+static inline bool vmaxi_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = MAX(env->fpr[a->vj].vreg.B[i], a->imm) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmaxi_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = MAX(env->fpr[a->vj].vreg.H[i], a->imm) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmaxi_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = MAX(env->fpr[a->vj].vreg.W[i], a->imm) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmaxi_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = MAX(env->fpr[a->vj].vreg.D[i], a->imm) ;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vmaxi_b(CPULoongArchState *env, arg_vmaxi_b *restrict a) {CHECK_FPE(16); return vmaxi_b(env, a, 16);}
 static bool trans_vmaxi_h(CPULoongArchState *env, arg_vmaxi_h *restrict a) {CHECK_FPE(16); return vmaxi_h(env, a, 16);}
 static bool trans_vmaxi_w(CPULoongArchState *env, arg_vmaxi_w *restrict a) {CHECK_FPE(16); return vmaxi_w(env, a, 16);}
@@ -2801,10 +2829,10 @@ static bool trans_xvmaxi_b(CPULoongArchState *env, arg_vmaxi_b *restrict a) {CHE
 static bool trans_xvmaxi_h(CPULoongArchState *env, arg_vmaxi_h *restrict a) {CHECK_FPE(32); return vmaxi_h(env, a, 32);}
 static bool trans_xvmaxi_w(CPULoongArchState *env, arg_vmaxi_w *restrict a) {CHECK_FPE(32); return vmaxi_w(env, a, 32);}
 static bool trans_xvmaxi_d(CPULoongArchState *env, arg_vmaxi_d *restrict a) {CHECK_FPE(32); return vmaxi_d(env, a, 32);}
-static inline bool vmax_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = MAX(env->fpr[a->vj].vreg.UB[i], env->fpr[a->vk].vreg.UB[i]) ;}env->pc += 4;return true;}
-static inline bool vmax_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = MAX(env->fpr[a->vj].vreg.UH[i], env->fpr[a->vk].vreg.UH[i]) ;}env->pc += 4;return true;}
-static inline bool vmax_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = MAX(env->fpr[a->vj].vreg.UW[i], env->fpr[a->vk].vreg.UW[i]) ;}env->pc += 4;return true;}
-static inline bool vmax_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = MAX(env->fpr[a->vj].vreg.UD[i], env->fpr[a->vk].vreg.UD[i]) ;}env->pc += 4;return true;}
+static inline bool vmax_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = MAX(env->fpr[a->vj].vreg.UB[i], env->fpr[a->vk].vreg.UB[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmax_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = MAX(env->fpr[a->vj].vreg.UH[i], env->fpr[a->vk].vreg.UH[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmax_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = MAX(env->fpr[a->vj].vreg.UW[i], env->fpr[a->vk].vreg.UW[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmax_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = MAX(env->fpr[a->vj].vreg.UD[i], env->fpr[a->vk].vreg.UD[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vmax_bu(CPULoongArchState *env, arg_vmax_bu *restrict a) {CHECK_FPE(16); return vmax_bu(env, a, 16);}
 static bool trans_vmax_hu(CPULoongArchState *env, arg_vmax_hu *restrict a) {CHECK_FPE(16); return vmax_hu(env, a, 16);}
 static bool trans_vmax_wu(CPULoongArchState *env, arg_vmax_wu *restrict a) {CHECK_FPE(16); return vmax_wu(env, a, 16);}
@@ -2813,10 +2841,10 @@ static bool trans_xvmax_bu(CPULoongArchState *env, arg_vmax_bu *restrict a) {CHE
 static bool trans_xvmax_hu(CPULoongArchState *env, arg_vmax_hu *restrict a) {CHECK_FPE(32); return vmax_hu(env, a, 32);}
 static bool trans_xvmax_wu(CPULoongArchState *env, arg_vmax_wu *restrict a) {CHECK_FPE(32); return vmax_wu(env, a, 32);}
 static bool trans_xvmax_du(CPULoongArchState *env, arg_vmax_du *restrict a) {CHECK_FPE(32); return vmax_du(env, a, 32);}
-static inline bool vmaxi_bu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = MAX(env->fpr[a->vj].vreg.UB[i], (uint64_t)a->imm) ;}env->pc += 4;return true;}
-static inline bool vmaxi_hu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = MAX(env->fpr[a->vj].vreg.UH[i], (uint64_t)a->imm) ;}env->pc += 4;return true;}
-static inline bool vmaxi_wu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = MAX(env->fpr[a->vj].vreg.UW[i], (uint64_t)a->imm) ;}env->pc += 4;return true;}
-static inline bool vmaxi_du(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = MAX(env->fpr[a->vj].vreg.UD[i], (uint64_t)a->imm) ;}env->pc += 4;return true;}
+static inline bool vmaxi_bu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = MAX(env->fpr[a->vj].vreg.UB[i], (uint64_t)a->imm) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmaxi_hu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = MAX(env->fpr[a->vj].vreg.UH[i], (uint64_t)a->imm) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmaxi_wu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = MAX(env->fpr[a->vj].vreg.UW[i], (uint64_t)a->imm) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmaxi_du(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = MAX(env->fpr[a->vj].vreg.UD[i], (uint64_t)a->imm) ;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vmaxi_bu(CPULoongArchState *env, arg_vmaxi_bu *restrict a) {CHECK_FPE(16); return vmaxi_bu(env, a, 16);}
 static bool trans_vmaxi_hu(CPULoongArchState *env, arg_vmaxi_hu *restrict a) {CHECK_FPE(16); return vmaxi_hu(env, a, 16);}
 static bool trans_vmaxi_wu(CPULoongArchState *env, arg_vmaxi_wu *restrict a) {CHECK_FPE(16); return vmaxi_wu(env, a, 16);}
@@ -2825,10 +2853,10 @@ static bool trans_xvmaxi_bu(CPULoongArchState *env, arg_vmaxi_bu *restrict a) {C
 static bool trans_xvmaxi_hu(CPULoongArchState *env, arg_vmaxi_hu *restrict a) {CHECK_FPE(32); return vmaxi_hu(env, a, 32);}
 static bool trans_xvmaxi_wu(CPULoongArchState *env, arg_vmaxi_wu *restrict a) {CHECK_FPE(32); return vmaxi_wu(env, a, 32);}
 static bool trans_xvmaxi_du(CPULoongArchState *env, arg_vmaxi_du *restrict a) {CHECK_FPE(32); return vmaxi_du(env, a, 32);}
-static inline bool vmin_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = MIN(env->fpr[a->vj].vreg.B[i], env->fpr[a->vk].vreg.B[i]) ;}env->pc += 4;return true;}
-static inline bool vmin_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = MIN(env->fpr[a->vj].vreg.H[i], env->fpr[a->vk].vreg.H[i]) ;}env->pc += 4;return true;}
-static inline bool vmin_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = MIN(env->fpr[a->vj].vreg.W[i], env->fpr[a->vk].vreg.W[i]) ;}env->pc += 4;return true;}
-static inline bool vmin_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = MIN(env->fpr[a->vj].vreg.D[i], env->fpr[a->vk].vreg.D[i]) ;}env->pc += 4;return true;}
+static inline bool vmin_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = MIN(env->fpr[a->vj].vreg.B[i], env->fpr[a->vk].vreg.B[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmin_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = MIN(env->fpr[a->vj].vreg.H[i], env->fpr[a->vk].vreg.H[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmin_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = MIN(env->fpr[a->vj].vreg.W[i], env->fpr[a->vk].vreg.W[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmin_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = MIN(env->fpr[a->vj].vreg.D[i], env->fpr[a->vk].vreg.D[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vmin_b(CPULoongArchState *env, arg_vmin_b *restrict a) {CHECK_FPE(16); return vmin_b(env, a, 16);}
 static bool trans_vmin_h(CPULoongArchState *env, arg_vmin_h *restrict a) {CHECK_FPE(16); return vmin_h(env, a, 16);}
 static bool trans_vmin_w(CPULoongArchState *env, arg_vmin_w *restrict a) {CHECK_FPE(16); return vmin_w(env, a, 16);}
@@ -2837,10 +2865,10 @@ static bool trans_xvmin_b(CPULoongArchState *env, arg_vmin_b *restrict a) {CHECK
 static bool trans_xvmin_h(CPULoongArchState *env, arg_vmin_h *restrict a) {CHECK_FPE(32); return vmin_h(env, a, 32);}
 static bool trans_xvmin_w(CPULoongArchState *env, arg_vmin_w *restrict a) {CHECK_FPE(32); return vmin_w(env, a, 32);}
 static bool trans_xvmin_d(CPULoongArchState *env, arg_vmin_d *restrict a) {CHECK_FPE(32); return vmin_d(env, a, 32);}
-static inline bool vmini_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = MIN(env->fpr[a->vj].vreg.B[i], a->imm) ;}env->pc += 4;return true;}
-static inline bool vmini_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = MIN(env->fpr[a->vj].vreg.H[i], a->imm) ;}env->pc += 4;return true;}
-static inline bool vmini_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = MIN(env->fpr[a->vj].vreg.W[i], a->imm) ;}env->pc += 4;return true;}
-static inline bool vmini_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = MIN(env->fpr[a->vj].vreg.D[i], a->imm) ;}env->pc += 4;return true;}
+static inline bool vmini_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = MIN(env->fpr[a->vj].vreg.B[i], a->imm) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmini_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = MIN(env->fpr[a->vj].vreg.H[i], a->imm) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmini_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = MIN(env->fpr[a->vj].vreg.W[i], a->imm) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmini_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = MIN(env->fpr[a->vj].vreg.D[i], a->imm) ;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vmini_b(CPULoongArchState *env, arg_vmini_b *restrict a) {CHECK_FPE(16); return vmini_b(env, a, 16);}
 static bool trans_vmini_h(CPULoongArchState *env, arg_vmini_h *restrict a) {CHECK_FPE(16); return vmini_h(env, a, 16);}
 static bool trans_vmini_w(CPULoongArchState *env, arg_vmini_w *restrict a) {CHECK_FPE(16); return vmini_w(env, a, 16);}
@@ -2849,10 +2877,10 @@ static bool trans_xvmini_b(CPULoongArchState *env, arg_vmini_b *restrict a) {CHE
 static bool trans_xvmini_h(CPULoongArchState *env, arg_vmini_h *restrict a) {CHECK_FPE(32); return vmini_h(env, a, 32);}
 static bool trans_xvmini_w(CPULoongArchState *env, arg_vmini_w *restrict a) {CHECK_FPE(32); return vmini_w(env, a, 32);}
 static bool trans_xvmini_d(CPULoongArchState *env, arg_vmini_d *restrict a) {CHECK_FPE(32); return vmini_d(env, a, 32);}
-static inline bool vmin_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = MIN(env->fpr[a->vj].vreg.UB[i], env->fpr[a->vk].vreg.UB[i]) ;}env->pc += 4;return true;}
-static inline bool vmin_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = MIN(env->fpr[a->vj].vreg.UH[i], env->fpr[a->vk].vreg.UH[i]) ;}env->pc += 4;return true;}
-static inline bool vmin_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = MIN(env->fpr[a->vj].vreg.UW[i], env->fpr[a->vk].vreg.UW[i]) ;}env->pc += 4;return true;}
-static inline bool vmin_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = MIN(env->fpr[a->vj].vreg.UD[i], env->fpr[a->vk].vreg.UD[i]) ;}env->pc += 4;return true;}
+static inline bool vmin_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = MIN(env->fpr[a->vj].vreg.UB[i], env->fpr[a->vk].vreg.UB[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmin_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = MIN(env->fpr[a->vj].vreg.UH[i], env->fpr[a->vk].vreg.UH[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmin_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = MIN(env->fpr[a->vj].vreg.UW[i], env->fpr[a->vk].vreg.UW[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmin_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = MIN(env->fpr[a->vj].vreg.UD[i], env->fpr[a->vk].vreg.UD[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vmin_bu(CPULoongArchState *env, arg_vmin_bu *restrict a) {CHECK_FPE(16); return vmin_bu(env, a, 16);}
 static bool trans_vmin_hu(CPULoongArchState *env, arg_vmin_hu *restrict a) {CHECK_FPE(16); return vmin_hu(env, a, 16);}
 static bool trans_vmin_wu(CPULoongArchState *env, arg_vmin_wu *restrict a) {CHECK_FPE(16); return vmin_wu(env, a, 16);}
@@ -2861,10 +2889,10 @@ static bool trans_xvmin_bu(CPULoongArchState *env, arg_vmin_bu *restrict a) {CHE
 static bool trans_xvmin_hu(CPULoongArchState *env, arg_vmin_hu *restrict a) {CHECK_FPE(32); return vmin_hu(env, a, 32);}
 static bool trans_xvmin_wu(CPULoongArchState *env, arg_vmin_wu *restrict a) {CHECK_FPE(32); return vmin_wu(env, a, 32);}
 static bool trans_xvmin_du(CPULoongArchState *env, arg_vmin_du *restrict a) {CHECK_FPE(32); return vmin_du(env, a, 32);}
-static inline bool vmini_bu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = MIN(env->fpr[a->vj].vreg.UB[i], (uint64_t)a->imm) ;}env->pc += 4;return true;}
-static inline bool vmini_hu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = MIN(env->fpr[a->vj].vreg.UH[i], (uint64_t)a->imm) ;}env->pc += 4;return true;}
-static inline bool vmini_wu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = MIN(env->fpr[a->vj].vreg.UW[i], (uint64_t)a->imm) ;}env->pc += 4;return true;}
-static inline bool vmini_du(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = MIN(env->fpr[a->vj].vreg.UD[i], (uint64_t)a->imm) ;}env->pc += 4;return true;}
+static inline bool vmini_bu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = MIN(env->fpr[a->vj].vreg.UB[i], (uint64_t)a->imm) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmini_hu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = MIN(env->fpr[a->vj].vreg.UH[i], (uint64_t)a->imm) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmini_wu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = MIN(env->fpr[a->vj].vreg.UW[i], (uint64_t)a->imm) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmini_du(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = MIN(env->fpr[a->vj].vreg.UD[i], (uint64_t)a->imm) ;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vmini_bu(CPULoongArchState *env, arg_vmini_bu *restrict a) {CHECK_FPE(16); return vmini_bu(env, a, 16);}
 static bool trans_vmini_hu(CPULoongArchState *env, arg_vmini_hu *restrict a) {CHECK_FPE(16); return vmini_hu(env, a, 16);}
 static bool trans_vmini_wu(CPULoongArchState *env, arg_vmini_wu *restrict a) {CHECK_FPE(16); return vmini_wu(env, a, 16);}
@@ -2873,10 +2901,10 @@ static bool trans_xvmini_bu(CPULoongArchState *env, arg_vmini_bu *restrict a) {C
 static bool trans_xvmini_hu(CPULoongArchState *env, arg_vmini_hu *restrict a) {CHECK_FPE(32); return vmini_hu(env, a, 32);}
 static bool trans_xvmini_wu(CPULoongArchState *env, arg_vmini_wu *restrict a) {CHECK_FPE(32); return vmini_wu(env, a, 32);}
 static bool trans_xvmini_du(CPULoongArchState *env, arg_vmini_du *restrict a) {CHECK_FPE(32); return vmini_du(env, a, 32);}
-static inline bool vmul_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = (env->fpr[a->vj].vreg.B[i] * env->fpr[a->vk].vreg.B[i]);}env->pc += 4;return true;}
-static inline bool vmul_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = (env->fpr[a->vj].vreg.H[i] * env->fpr[a->vk].vreg.H[i]);}env->pc += 4;return true;}
-static inline bool vmul_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = (env->fpr[a->vj].vreg.W[i] * env->fpr[a->vk].vreg.W[i]);}env->pc += 4;return true;}
-static inline bool vmul_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = (env->fpr[a->vj].vreg.D[i] * env->fpr[a->vk].vreg.D[i]);}env->pc += 4;return true;}
+static inline bool vmul_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = (env->fpr[a->vj].vreg.B[i] * env->fpr[a->vk].vreg.B[i]);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmul_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = (env->fpr[a->vj].vreg.H[i] * env->fpr[a->vk].vreg.H[i]);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmul_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = (env->fpr[a->vj].vreg.W[i] * env->fpr[a->vk].vreg.W[i]);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmul_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = (env->fpr[a->vj].vreg.D[i] * env->fpr[a->vk].vreg.D[i]);}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vmul_b(CPULoongArchState *env, arg_vmul_b *restrict a) {CHECK_FPE(16); return vmul_b(env, a, 16);}
 static bool trans_vmul_h(CPULoongArchState *env, arg_vmul_h *restrict a) {CHECK_FPE(16); return vmul_h(env, a, 16);}
 static bool trans_vmul_w(CPULoongArchState *env, arg_vmul_w *restrict a) {CHECK_FPE(16); return vmul_w(env, a, 16);}
@@ -2918,7 +2946,7 @@ static bool trans_vmulwev_q_d(CPULoongArchState *env, arg_vmulwev_q_d *restrict 
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] = (__int128_t)env->fpr[a->vj].vreg.D[i * 2 + index] * (__int128_t)env->fpr[a->vk].vreg.D[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vmulwod_q_d(CPULoongArchState *env, arg_vmulwod_q_d *restrict a) {
@@ -2928,7 +2956,7 @@ static bool trans_vmulwod_q_d(CPULoongArchState *env, arg_vmulwod_q_d *restrict 
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] = (__int128_t)env->fpr[a->vj].vreg.D[i * 2 + index] * (__int128_t)env->fpr[a->vk].vreg.D[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vmulwev_q_du(CPULoongArchState *env, arg_vmulwev_q_du *restrict a) {
@@ -2938,7 +2966,7 @@ static bool trans_vmulwev_q_du(CPULoongArchState *env, arg_vmulwev_q_du *restric
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] = (__uint128_t)env->fpr[a->vj].vreg.UD[i * 2 + index] * (__uint128_t)env->fpr[a->vk].vreg.UD[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vmulwod_q_du(CPULoongArchState *env, arg_vmulwod_q_du *restrict a) {
@@ -2948,7 +2976,7 @@ static bool trans_vmulwod_q_du(CPULoongArchState *env, arg_vmulwod_q_du *restric
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] = (__uint128_t)env->fpr[a->vj].vreg.UD[i * 2 + index] * (__uint128_t)env->fpr[a->vk].vreg.UD[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vmulwev_q_du_d(CPULoongArchState *env, arg_vmulwev_q_du_d *restrict a) {
@@ -2958,7 +2986,7 @@ static bool trans_vmulwev_q_du_d(CPULoongArchState *env, arg_vmulwev_q_du_d *res
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] = (__uint128_t)env->fpr[a->vj].vreg.UD[i * 2 + index] * (__int128_t)env->fpr[a->vk].vreg.D[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vmulwod_q_du_d(CPULoongArchState *env, arg_vmulwod_q_du_d *restrict a) {
@@ -2968,13 +2996,13 @@ static bool trans_vmulwod_q_du_d(CPULoongArchState *env, arg_vmulwod_q_du_d *res
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] = (__uint128_t)env->fpr[a->vj].vreg.UD[i * 2 + index] * (__int128_t)env->fpr[a->vk].vreg.D[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
-static inline bool vmadd_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vd].vreg.B[i] + (env->fpr[a->vj].vreg.B[i] * env->fpr[a->vk].vreg.B[i]);}env->pc += 4;return true;}
-static inline bool vmadd_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vd].vreg.H[i] + (env->fpr[a->vj].vreg.H[i] * env->fpr[a->vk].vreg.H[i]);}env->pc += 4;return true;}
-static inline bool vmadd_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vd].vreg.W[i] + (env->fpr[a->vj].vreg.W[i] * env->fpr[a->vk].vreg.W[i]);}env->pc += 4;return true;}
-static inline bool vmadd_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vd].vreg.D[i] + (env->fpr[a->vj].vreg.D[i] * env->fpr[a->vk].vreg.D[i]);}env->pc += 4;return true;}
+static inline bool vmadd_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vd].vreg.B[i] + (env->fpr[a->vj].vreg.B[i] * env->fpr[a->vk].vreg.B[i]);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmadd_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vd].vreg.H[i] + (env->fpr[a->vj].vreg.H[i] * env->fpr[a->vk].vreg.H[i]);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmadd_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vd].vreg.W[i] + (env->fpr[a->vj].vreg.W[i] * env->fpr[a->vk].vreg.W[i]);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmadd_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vd].vreg.D[i] + (env->fpr[a->vj].vreg.D[i] * env->fpr[a->vk].vreg.D[i]);}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vmadd_b(CPULoongArchState *env, arg_vmadd_b *restrict a) {CHECK_FPE(16); return vmadd_b(env, a, 16);}
 static bool trans_vmadd_h(CPULoongArchState *env, arg_vmadd_h *restrict a) {CHECK_FPE(16); return vmadd_h(env, a, 16);}
 static bool trans_vmadd_w(CPULoongArchState *env, arg_vmadd_w *restrict a) {CHECK_FPE(16); return vmadd_w(env, a, 16);}
@@ -2983,10 +3011,10 @@ static bool trans_xvmadd_b(CPULoongArchState *env, arg_vmadd_b *restrict a) {CHE
 static bool trans_xvmadd_h(CPULoongArchState *env, arg_vmadd_h *restrict a) {CHECK_FPE(32); return vmadd_h(env, a, 32);}
 static bool trans_xvmadd_w(CPULoongArchState *env, arg_vmadd_w *restrict a) {CHECK_FPE(32); return vmadd_w(env, a, 32);}
 static bool trans_xvmadd_d(CPULoongArchState *env, arg_vmadd_d *restrict a) {CHECK_FPE(32); return vmadd_d(env, a, 32);}
-static inline bool vmsub_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vd].vreg.B[i] - (env->fpr[a->vj].vreg.B[i] * env->fpr[a->vk].vreg.B[i]);}env->pc += 4;return true;}
-static inline bool vmsub_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vd].vreg.H[i] - (env->fpr[a->vj].vreg.H[i] * env->fpr[a->vk].vreg.H[i]);}env->pc += 4;return true;}
-static inline bool vmsub_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vd].vreg.W[i] - (env->fpr[a->vj].vreg.W[i] * env->fpr[a->vk].vreg.W[i]);}env->pc += 4;return true;}
-static inline bool vmsub_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vd].vreg.D[i] - (env->fpr[a->vj].vreg.D[i] * env->fpr[a->vk].vreg.D[i]);}env->pc += 4;return true;}
+static inline bool vmsub_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vd].vreg.B[i] - (env->fpr[a->vj].vreg.B[i] * env->fpr[a->vk].vreg.B[i]);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmsub_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vd].vreg.H[i] - (env->fpr[a->vj].vreg.H[i] * env->fpr[a->vk].vreg.H[i]);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmsub_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vd].vreg.W[i] - (env->fpr[a->vj].vreg.W[i] * env->fpr[a->vk].vreg.W[i]);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmsub_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vd].vreg.D[i] - (env->fpr[a->vj].vreg.D[i] * env->fpr[a->vk].vreg.D[i]);}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vmsub_b(CPULoongArchState *env, arg_vmsub_b *restrict a) {CHECK_FPE(16); return vmsub_b(env, a, 16);}
 static bool trans_vmsub_h(CPULoongArchState *env, arg_vmsub_h *restrict a) {CHECK_FPE(16); return vmsub_h(env, a, 16);}
 static bool trans_vmsub_w(CPULoongArchState *env, arg_vmsub_w *restrict a) {CHECK_FPE(16); return vmsub_w(env, a, 16);}
@@ -3021,7 +3049,7 @@ static bool trans_vmaddwev_q_d(CPULoongArchState *env, arg_vmaddwev_q_d *restric
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] += (__int128_t)env->fpr[a->vj].vreg.D[i * 2 + index] * (__int128_t)env->fpr[a->vk].vreg.D[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vmaddwod_q_d(CPULoongArchState *env, arg_vmaddwod_q_d *restrict a) {
@@ -3031,7 +3059,7 @@ static bool trans_vmaddwod_q_d(CPULoongArchState *env, arg_vmaddwod_q_d *restric
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] += (__int128_t)env->fpr[a->vj].vreg.D[i * 2 + index] * (__int128_t)env->fpr[a->vk].vreg.D[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vmaddwev_q_du(CPULoongArchState *env, arg_vmaddwev_q_du *restrict a) {
@@ -3041,7 +3069,7 @@ static bool trans_vmaddwev_q_du(CPULoongArchState *env, arg_vmaddwev_q_du *restr
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] += (__uint128_t)env->fpr[a->vj].vreg.UD[i * 2 + index] * (__uint128_t)env->fpr[a->vk].vreg.UD[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vmaddwod_q_du(CPULoongArchState *env, arg_vmaddwod_q_du *restrict a) {
@@ -3051,7 +3079,7 @@ static bool trans_vmaddwod_q_du(CPULoongArchState *env, arg_vmaddwod_q_du *restr
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] += (__uint128_t)env->fpr[a->vj].vreg.UD[i * 2 + index] * (__uint128_t)env->fpr[a->vk].vreg.UD[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vmaddwev_q_du_d(CPULoongArchState *env, arg_vmaddwev_q_du_d *restrict a) {
@@ -3061,7 +3089,7 @@ static bool trans_vmaddwev_q_du_d(CPULoongArchState *env, arg_vmaddwev_q_du_d *r
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] += (__uint128_t)env->fpr[a->vj].vreg.UD[i * 2 + index] * (__int128_t)env->fpr[a->vk].vreg.D[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vmaddwod_q_du_d(CPULoongArchState *env, arg_vmaddwod_q_du_d *restrict a) {
@@ -3071,13 +3099,13 @@ static bool trans_vmaddwod_q_du_d(CPULoongArchState *env, arg_vmaddwod_q_du_d *r
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] += (__uint128_t)env->fpr[a->vj].vreg.UD[i * 2 + index] * (__int128_t)env->fpr[a->vk].vreg.D[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
-static inline bool vdiv_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] / env->fpr[a->vk].vreg.B[i];}env->pc += 4;return true;}
-static inline bool vdiv_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] / env->fpr[a->vk].vreg.H[i];}env->pc += 4;return true;}
-static inline bool vdiv_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] / env->fpr[a->vk].vreg.W[i];}env->pc += 4;return true;}
-static inline bool vdiv_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] / env->fpr[a->vk].vreg.D[i];}env->pc += 4;return true;}
+static inline bool vdiv_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] / env->fpr[a->vk].vreg.B[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vdiv_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] / env->fpr[a->vk].vreg.H[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vdiv_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] / env->fpr[a->vk].vreg.W[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vdiv_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] / env->fpr[a->vk].vreg.D[i];}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vdiv_b(CPULoongArchState *env, arg_vdiv_b *restrict a) {CHECK_FPE(16); return vdiv_b(env, a, 16);}
 static bool trans_vdiv_h(CPULoongArchState *env, arg_vdiv_h *restrict a) {CHECK_FPE(16); return vdiv_h(env, a, 16);}
 static bool trans_vdiv_w(CPULoongArchState *env, arg_vdiv_w *restrict a) {CHECK_FPE(16); return vdiv_w(env, a, 16);}
@@ -3086,10 +3114,10 @@ static bool trans_xvdiv_b(CPULoongArchState *env, arg_vdiv_b *restrict a) {CHECK
 static bool trans_xvdiv_h(CPULoongArchState *env, arg_vdiv_h *restrict a) {CHECK_FPE(32); return vdiv_h(env, a, 32);}
 static bool trans_xvdiv_w(CPULoongArchState *env, arg_vdiv_w *restrict a) {CHECK_FPE(32); return vdiv_w(env, a, 32);}
 static bool trans_xvdiv_d(CPULoongArchState *env, arg_vdiv_d *restrict a) {CHECK_FPE(32); return vdiv_d(env, a, 32);}
-static inline bool vdiv_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] / env->fpr[a->vk].vreg.UB[i];}env->pc += 4;return true;}
-static inline bool vdiv_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] / env->fpr[a->vk].vreg.UH[i];}env->pc += 4;return true;}
-static inline bool vdiv_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] / env->fpr[a->vk].vreg.UW[i];}env->pc += 4;return true;}
-static inline bool vdiv_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] / env->fpr[a->vk].vreg.UD[i];}env->pc += 4;return true;}
+static inline bool vdiv_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] / env->fpr[a->vk].vreg.UB[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vdiv_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] / env->fpr[a->vk].vreg.UH[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vdiv_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] / env->fpr[a->vk].vreg.UW[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vdiv_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] / env->fpr[a->vk].vreg.UD[i];}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vdiv_bu(CPULoongArchState *env, arg_vdiv_bu *restrict a) {CHECK_FPE(16); return vdiv_bu(env, a, 16);}
 static bool trans_vdiv_hu(CPULoongArchState *env, arg_vdiv_hu *restrict a) {CHECK_FPE(16); return vdiv_hu(env, a, 16);}
 static bool trans_vdiv_wu(CPULoongArchState *env, arg_vdiv_wu *restrict a) {CHECK_FPE(16); return vdiv_wu(env, a, 16);}
@@ -3098,10 +3126,10 @@ static bool trans_xvdiv_bu(CPULoongArchState *env, arg_vdiv_bu *restrict a) {CHE
 static bool trans_xvdiv_hu(CPULoongArchState *env, arg_vdiv_hu *restrict a) {CHECK_FPE(32); return vdiv_hu(env, a, 32);}
 static bool trans_xvdiv_wu(CPULoongArchState *env, arg_vdiv_wu *restrict a) {CHECK_FPE(32); return vdiv_wu(env, a, 32);}
 static bool trans_xvdiv_du(CPULoongArchState *env, arg_vdiv_du *restrict a) {CHECK_FPE(32); return vdiv_du(env, a, 32);}
-static inline bool vmod_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] % env->fpr[a->vk].vreg.B[i];}env->pc += 4;return true;}
-static inline bool vmod_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] % env->fpr[a->vk].vreg.H[i];}env->pc += 4;return true;}
-static inline bool vmod_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] % env->fpr[a->vk].vreg.W[i];}env->pc += 4;return true;}
-static inline bool vmod_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] % env->fpr[a->vk].vreg.D[i];}env->pc += 4;return true;}
+static inline bool vmod_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] % env->fpr[a->vk].vreg.B[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmod_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] % env->fpr[a->vk].vreg.H[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmod_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] % env->fpr[a->vk].vreg.W[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmod_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] % env->fpr[a->vk].vreg.D[i];}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vmod_b(CPULoongArchState *env, arg_vmod_b *restrict a) {CHECK_FPE(16); return vmod_b(env, a, 16);}
 static bool trans_vmod_h(CPULoongArchState *env, arg_vmod_h *restrict a) {CHECK_FPE(16); return vmod_h(env, a, 16);}
 static bool trans_vmod_w(CPULoongArchState *env, arg_vmod_w *restrict a) {CHECK_FPE(16); return vmod_w(env, a, 16);}
@@ -3110,10 +3138,10 @@ static bool trans_xvmod_b(CPULoongArchState *env, arg_vmod_b *restrict a) {CHECK
 static bool trans_xvmod_h(CPULoongArchState *env, arg_vmod_h *restrict a) {CHECK_FPE(32); return vmod_h(env, a, 32);}
 static bool trans_xvmod_w(CPULoongArchState *env, arg_vmod_w *restrict a) {CHECK_FPE(32); return vmod_w(env, a, 32);}
 static bool trans_xvmod_d(CPULoongArchState *env, arg_vmod_d *restrict a) {CHECK_FPE(32); return vmod_d(env, a, 32);}
-static inline bool vmod_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] % env->fpr[a->vk].vreg.UB[i];}env->pc += 4;return true;}
-static inline bool vmod_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] % env->fpr[a->vk].vreg.UH[i];}env->pc += 4;return true;}
-static inline bool vmod_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] % env->fpr[a->vk].vreg.UW[i];}env->pc += 4;return true;}
-static inline bool vmod_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] % env->fpr[a->vk].vreg.UD[i];}env->pc += 4;return true;}
+static inline bool vmod_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] % env->fpr[a->vk].vreg.UB[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmod_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] % env->fpr[a->vk].vreg.UH[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmod_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] % env->fpr[a->vk].vreg.UW[i];}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vmod_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] % env->fpr[a->vk].vreg.UD[i];}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vmod_bu(CPULoongArchState *env, arg_vmod_bu *restrict a) {CHECK_FPE(16); return vmod_bu(env, a, 16);}
 static bool trans_vmod_hu(CPULoongArchState *env, arg_vmod_hu *restrict a) {CHECK_FPE(16); return vmod_hu(env, a, 16);}
 static bool trans_vmod_wu(CPULoongArchState *env, arg_vmod_wu *restrict a) {CHECK_FPE(16); return vmod_wu(env, a, 16);}
@@ -3128,7 +3156,7 @@ static bool glue(trans_, op)(CPULoongArchState *env, arg_vv_i *restrict a) {    
     int oprsz = size;                                                   \
     uint32_t desc = simd_desc(oprsz, oprsz, 0);                         \
     glue(helper_, helper_name)(&env->fpr[a->vd], &env->fpr[a->vj], (1ll << a->imm) - 1, desc);   \
-    env->pc += 4;                                                       \
+    cpu_set_pc(env, env->pc + 4);                                                       \
     return true;                                                        \
 }
 #define gen_trans_vvid_satu(op, size, helper_name) \
@@ -3138,7 +3166,7 @@ static bool glue(trans_, op)(CPULoongArchState *env, arg_vv_i *restrict a) {    
     uint32_t desc = simd_desc(oprsz, oprsz, 0);                         \
     uint64_t max = (a->imm == 0x3f) ? UINT64_MAX : (1ull << (a->imm + 1)) - 1; \
     glue(helper_, helper_name)(&env->fpr[a->vd], &env->fpr[a->vj], max, desc);   \
-    env->pc += 4;                                                       \
+    cpu_set_pc(env, env->pc + 4);                                                       \
     return true;                                                        \
 }
 gen_trans_vvid_sat(vsat_b, 16, vsat_b)
@@ -3155,7 +3183,7 @@ static bool glue(trans_, op)(CPULoongArchState *env, arg_vv *restrict a) {      
     int oprsz = size;                                                   \
     uint32_t desc = simd_desc(oprsz, oprsz, 0);                         \
     glue(helper_, helper_name)(&env->fpr[a->vd], &env->fpr[a->vj], desc);   \
-    env->pc += 4;                                                       \
+    cpu_set_pc(env, env->pc + 4);                                                       \
     return true;                                                        \
 }
 gen_trans_vvd(vexth_h_b, 16, vexth_h_b)
@@ -3183,7 +3211,7 @@ static bool trans_vmskgez_b(CPULoongArchState *env, arg_vmskgez_b *restrict a) {
     int oprsz = 16;
     uint32_t desc = simd_desc(oprsz, oprsz, 0);
     helper_vmskgez_b(&env->fpr[a->vd], &env->fpr[a->vj], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vmsknz_b(CPULoongArchState *env, arg_vmsknz_b *restrict a) {
@@ -3191,7 +3219,7 @@ static bool trans_vmsknz_b(CPULoongArchState *env, arg_vmsknz_b *restrict a) {
     int oprsz = 16;
     uint32_t desc = simd_desc(oprsz, oprsz, 0);
     helper_vmsknz_b(&env->fpr[a->vd], &env->fpr[a->vj], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 #define EXPAND_BYTE(bit)  ((uint64_t)(bit ? 0xff : 0))
@@ -3330,19 +3358,19 @@ static bool vldi(CPULoongArchState *env, arg_vldi *restrict a, uint32_t vlen) {
             default: g_assert_not_reached();
         }
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
 static inline bool trans_vldi(CPULoongArchState *env, arg_vldi *restrict a) {CHECK_FPE(16); return vldi(env, a, 16); }
 static inline bool trans_xvldi(CPULoongArchState *env, arg_vldi *restrict a) {CHECK_FPE(32); return vldi(env, a, 32); }
 
-static inline bool vand_v(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] & env->fpr[a->vk].vreg.D[i] ;}env->pc += 4;return true;}
-static inline bool vor_v(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] | env->fpr[a->vk].vreg.D[i] ;}env->pc += 4;return true;}
-static inline bool vxor_v(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] ^ env->fpr[a->vk].vreg.D[i] ;}env->pc += 4;return true;}
-static inline bool vnor_v(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = ~(env->fpr[a->vj].vreg.D[i] | env->fpr[a->vk].vreg.D[i]) ;}env->pc += 4;return true;}
-static inline bool vandn_v(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = (~env->fpr[a->vj].vreg.D[i]) & env->fpr[a->vk].vreg.D[i] ;}env->pc += 4;return true;}
-static inline bool vorn_v(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] | (~env->fpr[a->vk].vreg.D[i]) ;}env->pc += 4;return true;}
+static inline bool vand_v(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] & env->fpr[a->vk].vreg.D[i] ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vor_v(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] | env->fpr[a->vk].vreg.D[i] ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vxor_v(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] ^ env->fpr[a->vk].vreg.D[i] ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vnor_v(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = ~(env->fpr[a->vj].vreg.D[i] | env->fpr[a->vk].vreg.D[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vandn_v(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = (~env->fpr[a->vj].vreg.D[i]) & env->fpr[a->vk].vreg.D[i] ;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vorn_v(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] | (~env->fpr[a->vk].vreg.D[i]) ;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vand_v(CPULoongArchState *env, arg_vand_v *restrict a) {CHECK_FPE(16); return vand_v(env, a, 16);}
 static bool trans_vor_v(CPULoongArchState *env, arg_vor_v *restrict a) {CHECK_FPE(16); return vor_v(env, a, 16);}
 static bool trans_vxor_v(CPULoongArchState *env, arg_vxor_v *restrict a) {CHECK_FPE(16); return vxor_v(env, a, 16);}
@@ -3355,10 +3383,10 @@ static bool trans_xvxor_v(CPULoongArchState *env, arg_vxor_v *restrict a) {CHECK
 static bool trans_xvnor_v(CPULoongArchState *env, arg_vnor_v *restrict a) {CHECK_FPE(32); return vnor_v(env, a, 32);}
 static bool trans_xvandn_v(CPULoongArchState *env, arg_vandn_v *restrict a) {CHECK_FPE(32); return vandn_v(env, a, 32);}
 static bool trans_xvorn_v(CPULoongArchState *env, arg_vorn_v *restrict a) {CHECK_FPE(32); return vorn_v(env, a, 32);}
-static inline bool vandi_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] & a->imm;}env->pc += 4;return true;}
-static inline bool vori_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] | a->imm;}env->pc += 4;return true;}
-static inline bool vxori_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] ^ a->imm;}env->pc += 4;return true;}
-static inline bool vnori_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = ~(env->fpr[a->vj].vreg.B[i] | a->imm);}env->pc += 4;return true;}
+static inline bool vandi_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] & a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vori_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] | a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vxori_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] ^ a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vnori_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = ~(env->fpr[a->vj].vreg.B[i] | a->imm);}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vandi_b(CPULoongArchState *env, arg_vandi_b *restrict a) {CHECK_FPE(16); return vandi_b(env, a, 16);}
 static bool trans_vori_b(CPULoongArchState *env, arg_vori_b *restrict a) {CHECK_FPE(16); return vori_b(env, a, 16);}
 static bool trans_vxori_b(CPULoongArchState *env, arg_vxori_b *restrict a) {CHECK_FPE(16); return vxori_b(env, a, 16);}
@@ -3367,10 +3395,10 @@ static bool trans_xvandi_b(CPULoongArchState *env, arg_vandi_b *restrict a) {CHE
 static bool trans_xvori_b(CPULoongArchState *env, arg_vori_b *restrict a) {CHECK_FPE(32); return vori_b(env, a, 32);}
 static bool trans_xvxori_b(CPULoongArchState *env, arg_vxori_b *restrict a) {CHECK_FPE(32); return vxori_b(env, a, 32);}
 static bool trans_xvnori_b(CPULoongArchState *env, arg_vnori_b *restrict a) {CHECK_FPE(32); return vnori_b(env, a, 32);}
-static inline bool vsll_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] << (env->fpr[a->vk].vreg.B[i] & 0x7);}env->pc += 4;return true;}
-static inline bool vsll_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] << (env->fpr[a->vk].vreg.H[i] & 0xf);}env->pc += 4;return true;}
-static inline bool vsll_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] << (env->fpr[a->vk].vreg.W[i] & 0x1f);}env->pc += 4;return true;}
-static inline bool vsll_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] << (env->fpr[a->vk].vreg.D[i] & 0x3f);}env->pc += 4;return true;}
+static inline bool vsll_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] << (env->fpr[a->vk].vreg.B[i] & 0x7);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsll_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] << (env->fpr[a->vk].vreg.H[i] & 0xf);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsll_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] << (env->fpr[a->vk].vreg.W[i] & 0x1f);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsll_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] << (env->fpr[a->vk].vreg.D[i] & 0x3f);}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vsll_b(CPULoongArchState *env, arg_vsll_b *restrict a) {CHECK_FPE(16); return vsll_b(env, a, 16);}
 static bool trans_vsll_h(CPULoongArchState *env, arg_vsll_h *restrict a) {CHECK_FPE(16); return vsll_h(env, a, 16);}
 static bool trans_vsll_w(CPULoongArchState *env, arg_vsll_w *restrict a) {CHECK_FPE(16); return vsll_w(env, a, 16);}
@@ -3379,10 +3407,10 @@ static bool trans_xvsll_b(CPULoongArchState *env, arg_vsll_b *restrict a) {CHECK
 static bool trans_xvsll_h(CPULoongArchState *env, arg_vsll_h *restrict a) {CHECK_FPE(32); return vsll_h(env, a, 32);}
 static bool trans_xvsll_w(CPULoongArchState *env, arg_vsll_w *restrict a) {CHECK_FPE(32); return vsll_w(env, a, 32);}
 static bool trans_xvsll_d(CPULoongArchState *env, arg_vsll_d *restrict a) {CHECK_FPE(32); return vsll_d(env, a, 32);}
-static inline bool vslli_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] << a->imm;}env->pc += 4;return true;}
-static inline bool vslli_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] << a->imm;}env->pc += 4;return true;}
-static inline bool vslli_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] << a->imm;}env->pc += 4;return true;}
-static inline bool vslli_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] << a->imm;}env->pc += 4;return true;}
+static inline bool vslli_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] << a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslli_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] << a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslli_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] << a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslli_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] << a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vslli_b(CPULoongArchState *env, arg_vslli_b *restrict a) {CHECK_FPE(16); return vslli_b(env, a, 16);}
 static bool trans_vslli_h(CPULoongArchState *env, arg_vslli_h *restrict a) {CHECK_FPE(16); return vslli_h(env, a, 16);}
 static bool trans_vslli_w(CPULoongArchState *env, arg_vslli_w *restrict a) {CHECK_FPE(16); return vslli_w(env, a, 16);}
@@ -3391,10 +3419,10 @@ static bool trans_xvslli_b(CPULoongArchState *env, arg_vslli_b *restrict a) {CHE
 static bool trans_xvslli_h(CPULoongArchState *env, arg_vslli_h *restrict a) {CHECK_FPE(32); return vslli_h(env, a, 32);}
 static bool trans_xvslli_w(CPULoongArchState *env, arg_vslli_w *restrict a) {CHECK_FPE(32); return vslli_w(env, a, 32);}
 static bool trans_xvslli_d(CPULoongArchState *env, arg_vslli_d *restrict a) {CHECK_FPE(32); return vslli_d(env, a, 32);}
-static inline bool vsrl_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] >> (env->fpr[a->vk].vreg.B[i] & 0x7);}env->pc += 4;return true;}
-static inline bool vsrl_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] >> (env->fpr[a->vk].vreg.H[i] & 0xf);}env->pc += 4;return true;}
-static inline bool vsrl_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] >> (env->fpr[a->vk].vreg.W[i] & 0x1f);}env->pc += 4;return true;}
-static inline bool vsrl_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] >> (env->fpr[a->vk].vreg.D[i] & 0x3f);}env->pc += 4;return true;}
+static inline bool vsrl_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] >> (env->fpr[a->vk].vreg.B[i] & 0x7);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsrl_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] >> (env->fpr[a->vk].vreg.H[i] & 0xf);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsrl_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] >> (env->fpr[a->vk].vreg.W[i] & 0x1f);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsrl_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] >> (env->fpr[a->vk].vreg.D[i] & 0x3f);}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vsrl_b(CPULoongArchState *env, arg_vsrl_b *restrict a) {CHECK_FPE(16); return vsrl_b(env, a, 16);}
 static bool trans_vsrl_h(CPULoongArchState *env, arg_vsrl_h *restrict a) {CHECK_FPE(16); return vsrl_h(env, a, 16);}
 static bool trans_vsrl_w(CPULoongArchState *env, arg_vsrl_w *restrict a) {CHECK_FPE(16); return vsrl_w(env, a, 16);}
@@ -3403,10 +3431,10 @@ static bool trans_xvsrl_b(CPULoongArchState *env, arg_vsrl_b *restrict a) {CHECK
 static bool trans_xvsrl_h(CPULoongArchState *env, arg_vsrl_h *restrict a) {CHECK_FPE(32); return vsrl_h(env, a, 32);}
 static bool trans_xvsrl_w(CPULoongArchState *env, arg_vsrl_w *restrict a) {CHECK_FPE(32); return vsrl_w(env, a, 32);}
 static bool trans_xvsrl_d(CPULoongArchState *env, arg_vsrl_d *restrict a) {CHECK_FPE(32); return vsrl_d(env, a, 32);}
-static inline bool vsrli_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] >> a->imm;}env->pc += 4;return true;}
-static inline bool vsrli_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] >> a->imm;}env->pc += 4;return true;}
-static inline bool vsrli_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] >> a->imm;}env->pc += 4;return true;}
-static inline bool vsrli_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] >> a->imm;}env->pc += 4;return true;}
+static inline bool vsrli_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] >> a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsrli_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] >> a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsrli_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] >> a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsrli_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] >> a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vsrli_b(CPULoongArchState *env, arg_vsrli_b *restrict a) {CHECK_FPE(16); return vsrli_b(env, a, 16);}
 static bool trans_vsrli_h(CPULoongArchState *env, arg_vsrli_h *restrict a) {CHECK_FPE(16); return vsrli_h(env, a, 16);}
 static bool trans_vsrli_w(CPULoongArchState *env, arg_vsrli_w *restrict a) {CHECK_FPE(16); return vsrli_w(env, a, 16);}
@@ -3415,10 +3443,10 @@ static bool trans_xvsrli_b(CPULoongArchState *env, arg_vsrli_b *restrict a) {CHE
 static bool trans_xvsrli_h(CPULoongArchState *env, arg_vsrli_h *restrict a) {CHECK_FPE(32); return vsrli_h(env, a, 32);}
 static bool trans_xvsrli_w(CPULoongArchState *env, arg_vsrli_w *restrict a) {CHECK_FPE(32); return vsrli_w(env, a, 32);}
 static bool trans_xvsrli_d(CPULoongArchState *env, arg_vsrli_d *restrict a) {CHECK_FPE(32); return vsrli_d(env, a, 32);}
-static inline bool vsra_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] >> (env->fpr[a->vk].vreg.B[i] & 0x7);}env->pc += 4;return true;}
-static inline bool vsra_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] >> (env->fpr[a->vk].vreg.H[i] & 0xf);}env->pc += 4;return true;}
-static inline bool vsra_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] >> (env->fpr[a->vk].vreg.W[i] & 0x1f);}env->pc += 4;return true;}
-static inline bool vsra_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] >> (env->fpr[a->vk].vreg.D[i] & 0x3f);}env->pc += 4;return true;}
+static inline bool vsra_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] >> (env->fpr[a->vk].vreg.B[i] & 0x7);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsra_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] >> (env->fpr[a->vk].vreg.H[i] & 0xf);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsra_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] >> (env->fpr[a->vk].vreg.W[i] & 0x1f);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsra_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] >> (env->fpr[a->vk].vreg.D[i] & 0x3f);}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vsra_b(CPULoongArchState *env, arg_vsra_b *restrict a) {CHECK_FPE(16); return vsra_b(env, a, 16);}
 static bool trans_vsra_h(CPULoongArchState *env, arg_vsra_h *restrict a) {CHECK_FPE(16); return vsra_h(env, a, 16);}
 static bool trans_vsra_w(CPULoongArchState *env, arg_vsra_w *restrict a) {CHECK_FPE(16); return vsra_w(env, a, 16);}
@@ -3428,10 +3456,10 @@ static bool trans_xvsra_b(CPULoongArchState *env, arg_vsra_b *restrict a) {CHECK
 static bool trans_xvsra_h(CPULoongArchState *env, arg_vsra_h *restrict a) {CHECK_FPE(32); return vsra_h(env, a, 32);}
 static bool trans_xvsra_w(CPULoongArchState *env, arg_vsra_w *restrict a) {CHECK_FPE(32); return vsra_w(env, a, 32);}
 static bool trans_xvsra_d(CPULoongArchState *env, arg_vsra_d *restrict a) {CHECK_FPE(32); return vsra_d(env, a, 32);}
-static inline bool vsrai_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] >> a->imm;}env->pc += 4;return true;}
-static inline bool vsrai_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] >> a->imm;}env->pc += 4;return true;}
-static inline bool vsrai_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] >> a->imm;}env->pc += 4;return true;}
-static inline bool vsrai_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] >> a->imm;}env->pc += 4;return true;}
+static inline bool vsrai_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] >> a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsrai_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] >> a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsrai_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] >> a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsrai_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] >> a->imm;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vsrai_b(CPULoongArchState *env, arg_vsrai_b *restrict a) {CHECK_FPE(16); return vsrai_b(env, a, 16);}
 static bool trans_vsrai_h(CPULoongArchState *env, arg_vsrai_h *restrict a) {CHECK_FPE(16); return vsrai_h(env, a, 16);}
 static bool trans_vsrai_w(CPULoongArchState *env, arg_vsrai_w *restrict a) {CHECK_FPE(16); return vsrai_w(env, a, 16);}
@@ -3450,7 +3478,7 @@ static bool trans_vrotri_b(CPULoongArchState *env, arg_vrotri_b *restrict a) {
     int oprsz = size;
     uint32_t desc = simd_desc(oprsz, oprsz, 8 - a->imm);
     helper_gvec_rotl8i(&env->fpr[a->vd], &env->fpr[a->vj], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vrotri_h(CPULoongArchState *env, arg_vrotri_h *restrict a) {
@@ -3459,7 +3487,7 @@ static bool trans_vrotri_h(CPULoongArchState *env, arg_vrotri_h *restrict a) {
     int oprsz = size;
     uint32_t desc = simd_desc(oprsz, oprsz, 16 - a->imm);
     helper_gvec_rotl16i(&env->fpr[a->vd], &env->fpr[a->vj], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vrotri_w(CPULoongArchState *env, arg_vrotri_w *restrict a) {
@@ -3468,7 +3496,7 @@ static bool trans_vrotri_w(CPULoongArchState *env, arg_vrotri_w *restrict a) {
     int oprsz = size;
     uint32_t desc = simd_desc(oprsz, oprsz, 32 - a->imm);
     helper_gvec_rotl32i(&env->fpr[a->vd], &env->fpr[a->vj], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vrotri_d(CPULoongArchState *env, arg_vrotri_d *restrict a) {
@@ -3477,7 +3505,7 @@ static bool trans_vrotri_d(CPULoongArchState *env, arg_vrotri_d *restrict a) {
     int oprsz = size;
     uint32_t desc = simd_desc(oprsz, oprsz, 64 - a->imm);
     helper_gvec_rotl64i(&env->fpr[a->vd], &env->fpr[a->vj], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 gen_trans_vvid(vsllwil_h_b, 16, vsllwil_h_b)
@@ -3613,10 +3641,10 @@ gen_trans_vvd(vpcnt_w, 16, vpcnt_w)
 gen_trans_vvd(vpcnt_d, 16, vpcnt_d)
 
 
-static inline bool vbitclr_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] & (~(1ull << (env->fpr[a->vk].vreg.UB[i] & 0x7)));}env->pc += 4;return true;}
-static inline bool vbitclr_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] & (~(1ull << (env->fpr[a->vk].vreg.UH[i] & 0xf)));}env->pc += 4;return true;}
-static inline bool vbitclr_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] & (~(1ull << (env->fpr[a->vk].vreg.UW[i] & 0x1f)));}env->pc += 4;return true;}
-static inline bool vbitclr_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] & (~(1ull << (env->fpr[a->vk].vreg.UD[i] & 0x3f)));}env->pc += 4;return true;}
+static inline bool vbitclr_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] & (~(1ull << (env->fpr[a->vk].vreg.UB[i] & 0x7)));}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitclr_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] & (~(1ull << (env->fpr[a->vk].vreg.UH[i] & 0xf)));}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitclr_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] & (~(1ull << (env->fpr[a->vk].vreg.UW[i] & 0x1f)));}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitclr_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] & (~(1ull << (env->fpr[a->vk].vreg.UD[i] & 0x3f)));}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vbitclr_b(CPULoongArchState *env, arg_vbitclr_b *restrict a) {CHECK_FPE(16); return vbitclr_b(env, a, 16);}
 static bool trans_vbitclr_h(CPULoongArchState *env, arg_vbitclr_h *restrict a) {CHECK_FPE(16); return vbitclr_h(env, a, 16);}
 static bool trans_vbitclr_w(CPULoongArchState *env, arg_vbitclr_w *restrict a) {CHECK_FPE(16); return vbitclr_w(env, a, 16);}
@@ -3625,10 +3653,10 @@ static bool trans_xvbitclr_b(CPULoongArchState *env, arg_vbitclr_b *restrict a) 
 static bool trans_xvbitclr_h(CPULoongArchState *env, arg_vbitclr_h *restrict a) {CHECK_FPE(32); return vbitclr_h(env, a, 32);}
 static bool trans_xvbitclr_w(CPULoongArchState *env, arg_vbitclr_w *restrict a) {CHECK_FPE(32); return vbitclr_w(env, a, 32);}
 static bool trans_xvbitclr_d(CPULoongArchState *env, arg_vbitclr_d *restrict a) {CHECK_FPE(32); return vbitclr_d(env, a, 32);}
-static inline bool vbitclri_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] & (~(1ull << a->imm));}env->pc += 4;return true;}
-static inline bool vbitclri_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] & (~(1ull << a->imm));}env->pc += 4;return true;}
-static inline bool vbitclri_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] & (~(1ull << a->imm));}env->pc += 4;return true;}
-static inline bool vbitclri_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] & (~(1ull << a->imm));}env->pc += 4;return true;}
+static inline bool vbitclri_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] & (~(1ull << a->imm));}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitclri_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] & (~(1ull << a->imm));}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitclri_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] & (~(1ull << a->imm));}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitclri_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] & (~(1ull << a->imm));}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vbitclri_b(CPULoongArchState *env, arg_vbitclri_b *restrict a) {CHECK_FPE(16); return vbitclri_b(env, a, 16);}
 static bool trans_vbitclri_h(CPULoongArchState *env, arg_vbitclri_h *restrict a) {CHECK_FPE(16); return vbitclri_h(env, a, 16);}
 static bool trans_vbitclri_w(CPULoongArchState *env, arg_vbitclri_w *restrict a) {CHECK_FPE(16); return vbitclri_w(env, a, 16);}
@@ -3637,10 +3665,10 @@ static bool trans_xvbitclri_b(CPULoongArchState *env, arg_vbitclri_b *restrict a
 static bool trans_xvbitclri_h(CPULoongArchState *env, arg_vbitclri_h *restrict a) {CHECK_FPE(32); return vbitclri_h(env, a, 32);}
 static bool trans_xvbitclri_w(CPULoongArchState *env, arg_vbitclri_w *restrict a) {CHECK_FPE(32); return vbitclri_w(env, a, 32);}
 static bool trans_xvbitclri_d(CPULoongArchState *env, arg_vbitclri_d *restrict a) {CHECK_FPE(32); return vbitclri_d(env, a, 32);}
-static inline bool vbitset_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] | ((1ull << (env->fpr[a->vk].vreg.UB[i] & 0x7)));}env->pc += 4;return true;}
-static inline bool vbitset_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] | ((1ull << (env->fpr[a->vk].vreg.UH[i] & 0xf)));}env->pc += 4;return true;}
-static inline bool vbitset_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] | ((1ull << (env->fpr[a->vk].vreg.UW[i] & 0x1f)));}env->pc += 4;return true;}
-static inline bool vbitset_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] | ((1ull << (env->fpr[a->vk].vreg.UD[i] & 0x3f)));}env->pc += 4;return true;}
+static inline bool vbitset_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] | ((1ull << (env->fpr[a->vk].vreg.UB[i] & 0x7)));}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitset_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] | ((1ull << (env->fpr[a->vk].vreg.UH[i] & 0xf)));}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitset_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] | ((1ull << (env->fpr[a->vk].vreg.UW[i] & 0x1f)));}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitset_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] | ((1ull << (env->fpr[a->vk].vreg.UD[i] & 0x3f)));}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vbitset_b(CPULoongArchState *env, arg_vbitset_b *restrict a) {CHECK_FPE(16); return vbitset_b(env, a, 16);}
 static bool trans_vbitset_h(CPULoongArchState *env, arg_vbitset_h *restrict a) {CHECK_FPE(16); return vbitset_h(env, a, 16);}
 static bool trans_vbitset_w(CPULoongArchState *env, arg_vbitset_w *restrict a) {CHECK_FPE(16); return vbitset_w(env, a, 16);}
@@ -3649,10 +3677,10 @@ static bool trans_xvbitset_b(CPULoongArchState *env, arg_vbitset_b *restrict a) 
 static bool trans_xvbitset_h(CPULoongArchState *env, arg_vbitset_h *restrict a) {CHECK_FPE(32); return vbitset_h(env, a, 32);}
 static bool trans_xvbitset_w(CPULoongArchState *env, arg_vbitset_w *restrict a) {CHECK_FPE(32); return vbitset_w(env, a, 32);}
 static bool trans_xvbitset_d(CPULoongArchState *env, arg_vbitset_d *restrict a) {CHECK_FPE(32); return vbitset_d(env, a, 32);}
-static inline bool vbitseti_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] | ((1ull << a->imm));}env->pc += 4;return true;}
-static inline bool vbitseti_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] | ((1ull << a->imm));}env->pc += 4;return true;}
-static inline bool vbitseti_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] | ((1ull << a->imm));}env->pc += 4;return true;}
-static inline bool vbitseti_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] | ((1ull << a->imm));}env->pc += 4;return true;}
+static inline bool vbitseti_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] | ((1ull << a->imm));}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitseti_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] | ((1ull << a->imm));}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitseti_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] | ((1ull << a->imm));}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitseti_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] | ((1ull << a->imm));}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vbitseti_b(CPULoongArchState *env, arg_vbitseti_b *restrict a) {CHECK_FPE(16); return vbitseti_b(env, a, 16);}
 static bool trans_vbitseti_h(CPULoongArchState *env, arg_vbitseti_h *restrict a) {CHECK_FPE(16); return vbitseti_h(env, a, 16);}
 static bool trans_vbitseti_w(CPULoongArchState *env, arg_vbitseti_w *restrict a) {CHECK_FPE(16); return vbitseti_w(env, a, 16);}
@@ -3661,10 +3689,10 @@ static bool trans_xvbitseti_b(CPULoongArchState *env, arg_vbitseti_b *restrict a
 static bool trans_xvbitseti_h(CPULoongArchState *env, arg_vbitseti_h *restrict a) {CHECK_FPE(32); return vbitseti_h(env, a, 32);}
 static bool trans_xvbitseti_w(CPULoongArchState *env, arg_vbitseti_w *restrict a) {CHECK_FPE(32); return vbitseti_w(env, a, 32);}
 static bool trans_xvbitseti_d(CPULoongArchState *env, arg_vbitseti_d *restrict a) {CHECK_FPE(32); return vbitseti_d(env, a, 32);}
-static inline bool vbitrev_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] ^ ((1ull << (env->fpr[a->vk].vreg.UB[i] & 0x7)));}env->pc += 4;return true;}
-static inline bool vbitrev_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] ^ ((1ull << (env->fpr[a->vk].vreg.UH[i] & 0xf)));}env->pc += 4;return true;}
-static inline bool vbitrev_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] ^ ((1ull << (env->fpr[a->vk].vreg.UW[i] & 0x1f)));}env->pc += 4;return true;}
-static inline bool vbitrev_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] ^ ((1ull << (env->fpr[a->vk].vreg.UD[i] & 0x3f)));}env->pc += 4;return true;}
+static inline bool vbitrev_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] ^ ((1ull << (env->fpr[a->vk].vreg.UB[i] & 0x7)));}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitrev_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] ^ ((1ull << (env->fpr[a->vk].vreg.UH[i] & 0xf)));}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitrev_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] ^ ((1ull << (env->fpr[a->vk].vreg.UW[i] & 0x1f)));}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitrev_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] ^ ((1ull << (env->fpr[a->vk].vreg.UD[i] & 0x3f)));}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vbitrev_b(CPULoongArchState *env, arg_vbitrev_b *restrict a) {CHECK_FPE(16); return vbitrev_b(env, a, 16);}
 static bool trans_vbitrev_h(CPULoongArchState *env, arg_vbitrev_h *restrict a) {CHECK_FPE(16); return vbitrev_h(env, a, 16);}
 static bool trans_vbitrev_w(CPULoongArchState *env, arg_vbitrev_w *restrict a) {CHECK_FPE(16); return vbitrev_w(env, a, 16);}
@@ -3673,10 +3701,10 @@ static bool trans_xvbitrev_b(CPULoongArchState *env, arg_vbitrev_b *restrict a) 
 static bool trans_xvbitrev_h(CPULoongArchState *env, arg_vbitrev_h *restrict a) {CHECK_FPE(32); return vbitrev_h(env, a, 32);}
 static bool trans_xvbitrev_w(CPULoongArchState *env, arg_vbitrev_w *restrict a) {CHECK_FPE(32); return vbitrev_w(env, a, 32);}
 static bool trans_xvbitrev_d(CPULoongArchState *env, arg_vbitrev_d *restrict a) {CHECK_FPE(32); return vbitrev_d(env, a, 32);}
-static inline bool vbitrevi_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] ^ (1 << a->imm);}env->pc += 4;return true;}
-static inline bool vbitrevi_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] ^ (1 << a->imm);}env->pc += 4;return true;}
-static inline bool vbitrevi_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] ^ (1 << a->imm);}env->pc += 4;return true;}
-static inline bool vbitrevi_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] ^ (1ull << a->imm);}env->pc += 4;return true;}
+static inline bool vbitrevi_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] ^ (1 << a->imm);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitrevi_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] ^ (1 << a->imm);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitrevi_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] ^ (1 << a->imm);}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vbitrevi_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] ^ (1ull << a->imm);}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vbitrevi_b(CPULoongArchState *env, arg_vbitrevi_b *restrict a) {CHECK_FPE(16); return vbitrevi_b(env, a, 16);}
 static bool trans_vbitrevi_h(CPULoongArchState *env, arg_vbitrevi_h *restrict a) {CHECK_FPE(16); return vbitrevi_h(env, a, 16);}
 static bool trans_vbitrevi_w(CPULoongArchState *env, arg_vbitrevi_w *restrict a) {CHECK_FPE(16); return vbitrevi_w(env, a, 16);}
@@ -3696,7 +3724,7 @@ static bool glue(trans_, op)(CPULoongArchState *env, arg_vvv *restrict a) {   \
     int oprsz = size;                                                   \
     uint32_t desc = simd_desc(oprsz, oprsz, 0);                         \
     glue(helper_, helper_name)(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], env, desc);          \
-    env->pc += 4;                                                       \
+    cpu_set_pc(env, env->pc + 4);                                                       \
     return true;                                                        \
 }
 
@@ -3724,7 +3752,7 @@ static bool glue(trans_, op)(CPULoongArchState *env, arg_vvvv *restrict a) {   \
     int oprsz = size;                                                   \
     uint32_t desc = simd_desc(oprsz, oprsz, 0);                         \
     glue(helper_, helper_name)(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], &env->fpr[a->va], env, desc);          \
-    env->pc += 4;                                                       \
+    cpu_set_pc(env, env->pc + 4);                                                       \
     return true;                                                        \
 }
 
@@ -3770,7 +3798,7 @@ static bool glue(trans_, op)(CPULoongArchState *env, arg_vv *restrict a) {      
     int oprsz = size;                                                   \
     uint32_t desc = simd_desc(oprsz, oprsz, 0);                         \
     glue(helper_, helper_name)(&env->fpr[a->vd], &env->fpr[a->vj], env, desc);   \
-    env->pc += 4;                                                       \
+    cpu_set_pc(env, env->pc + 4);                                                       \
     return true;                                                        \
 }
 gen_trans_vved(vflogb_s, 16, vflogb_s)
@@ -3841,10 +3869,10 @@ gen_trans_vved(vffinth_d_w, 16, vffinth_d_w)
 gen_trans_vvved(vffint_s_l, 16, vffint_s_l)
 
 
-static inline bool vseq_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] == env->fpr[a->vk].vreg.B[i] ? -1 : 0;}env->pc += 4;return true;}
-static inline bool vseq_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] == env->fpr[a->vk].vreg.H[i] ? -1 : 0;}env->pc += 4;return true;}
-static inline bool vseq_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] == env->fpr[a->vk].vreg.W[i] ? -1 : 0;}env->pc += 4;return true;}
-static inline bool vseq_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] == env->fpr[a->vk].vreg.D[i] ? -1 : 0;}env->pc += 4;return true;}
+static inline bool vseq_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] == env->fpr[a->vk].vreg.B[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vseq_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] == env->fpr[a->vk].vreg.H[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vseq_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] == env->fpr[a->vk].vreg.W[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vseq_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] == env->fpr[a->vk].vreg.D[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vseq_b(CPULoongArchState *env, arg_vseq_b *restrict a) {CHECK_FPE(16); return vseq_b(env, a, 16);}
 static bool trans_vseq_h(CPULoongArchState *env, arg_vseq_h *restrict a) {CHECK_FPE(16); return vseq_h(env, a, 16);}
 static bool trans_vseq_w(CPULoongArchState *env, arg_vseq_w *restrict a) {CHECK_FPE(16); return vseq_w(env, a, 16);}
@@ -3853,10 +3881,10 @@ static bool trans_xvseq_b(CPULoongArchState *env, arg_vseq_b *restrict a) {CHECK
 static bool trans_xvseq_h(CPULoongArchState *env, arg_vseq_h *restrict a) {CHECK_FPE(32); return vseq_h(env, a, 32);}
 static bool trans_xvseq_w(CPULoongArchState *env, arg_vseq_w *restrict a) {CHECK_FPE(32); return vseq_w(env, a, 32);}
 static bool trans_xvseq_d(CPULoongArchState *env, arg_vseq_d *restrict a) {CHECK_FPE(32); return vseq_d(env, a, 32);}
-static inline bool vseqi_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] == a->imm ? -1: 0;}env->pc += 4;return true;}
-static inline bool vseqi_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] == a->imm ? -1: 0;}env->pc += 4;return true;}
-static inline bool vseqi_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] == a->imm ? -1: 0;}env->pc += 4;return true;}
-static inline bool vseqi_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] == a->imm ? -1: 0;}env->pc += 4;return true;}
+static inline bool vseqi_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] == a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vseqi_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] == a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vseqi_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] == a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vseqi_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] == a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vseqi_b(CPULoongArchState *env, arg_vseqi_b *restrict a) {CHECK_FPE(16); return vseqi_b(env, a, 16);}
 static bool trans_vseqi_h(CPULoongArchState *env, arg_vseqi_h *restrict a) {CHECK_FPE(16); return vseqi_h(env, a, 16);}
 static bool trans_vseqi_w(CPULoongArchState *env, arg_vseqi_w *restrict a) {CHECK_FPE(16); return vseqi_w(env, a, 16);}
@@ -3866,10 +3894,10 @@ static bool trans_xvseqi_b(CPULoongArchState *env, arg_vseqi_b *restrict a) {CHE
 static bool trans_xvseqi_h(CPULoongArchState *env, arg_vseqi_h *restrict a) {CHECK_FPE(32); return vseqi_h(env, a, 32);}
 static bool trans_xvseqi_w(CPULoongArchState *env, arg_vseqi_w *restrict a) {CHECK_FPE(32); return vseqi_w(env, a, 32);}
 static bool trans_xvseqi_d(CPULoongArchState *env, arg_vseqi_d *restrict a) {CHECK_FPE(32); return vseqi_d(env, a, 32);}
-static inline bool vsle_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] <= env->fpr[a->vk].vreg.B[i] ? -1 : 0;}env->pc += 4;return true;}
-static inline bool vsle_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] <= env->fpr[a->vk].vreg.H[i] ? -1 : 0;}env->pc += 4;return true;}
-static inline bool vsle_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] <= env->fpr[a->vk].vreg.W[i] ? -1 : 0;}env->pc += 4;return true;}
-static inline bool vsle_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] <= env->fpr[a->vk].vreg.D[i] ? -1 : 0;}env->pc += 4;return true;}
+static inline bool vsle_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] <= env->fpr[a->vk].vreg.B[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsle_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] <= env->fpr[a->vk].vreg.H[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsle_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] <= env->fpr[a->vk].vreg.W[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsle_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] <= env->fpr[a->vk].vreg.D[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vsle_b(CPULoongArchState *env, arg_vsle_b *restrict a) {CHECK_FPE(16); return vsle_b(env, a, 16);}
 static bool trans_vsle_h(CPULoongArchState *env, arg_vsle_h *restrict a) {CHECK_FPE(16); return vsle_h(env, a, 16);}
 static bool trans_vsle_w(CPULoongArchState *env, arg_vsle_w *restrict a) {CHECK_FPE(16); return vsle_w(env, a, 16);}
@@ -3878,10 +3906,10 @@ static bool trans_xvsle_b(CPULoongArchState *env, arg_vsle_b *restrict a) {CHECK
 static bool trans_xvsle_h(CPULoongArchState *env, arg_vsle_h *restrict a) {CHECK_FPE(32); return vsle_h(env, a, 32);}
 static bool trans_xvsle_w(CPULoongArchState *env, arg_vsle_w *restrict a) {CHECK_FPE(32); return vsle_w(env, a, 32);}
 static bool trans_xvsle_d(CPULoongArchState *env, arg_vsle_d *restrict a) {CHECK_FPE(32); return vsle_d(env, a, 32);}
-static inline bool vslei_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] <= a->imm ? -1: 0;}env->pc += 4;return true;}
-static inline bool vslei_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] <= a->imm ? -1: 0;}env->pc += 4;return true;}
-static inline bool vslei_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] <= a->imm ? -1: 0;}env->pc += 4;return true;}
-static inline bool vslei_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] <= a->imm ? -1: 0;}env->pc += 4;return true;}
+static inline bool vslei_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] <= a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslei_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] <= a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslei_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] <= a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslei_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] <= a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vslei_b(CPULoongArchState *env, arg_vslei_b *restrict a) {CHECK_FPE(16); return vslei_b(env, a, 16);}
 static bool trans_vslei_h(CPULoongArchState *env, arg_vslei_h *restrict a) {CHECK_FPE(16); return vslei_h(env, a, 16);}
 static bool trans_vslei_w(CPULoongArchState *env, arg_vslei_w *restrict a) {CHECK_FPE(16); return vslei_w(env, a, 16);}
@@ -3890,10 +3918,10 @@ static bool trans_xvslei_b(CPULoongArchState *env, arg_vslei_b *restrict a) {CHE
 static bool trans_xvslei_h(CPULoongArchState *env, arg_vslei_h *restrict a) {CHECK_FPE(32); return vslei_h(env, a, 32);}
 static bool trans_xvslei_w(CPULoongArchState *env, arg_vslei_w *restrict a) {CHECK_FPE(32); return vslei_w(env, a, 32);}
 static bool trans_xvslei_d(CPULoongArchState *env, arg_vslei_d *restrict a) {CHECK_FPE(32); return vslei_d(env, a, 32);}
-static inline bool vsle_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] <= env->fpr[a->vk].vreg.UB[i] ? -1 : 0;}env->pc += 4;return true;}
-static inline bool vsle_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] <= env->fpr[a->vk].vreg.UH[i] ? -1 : 0;}env->pc += 4;return true;}
-static inline bool vsle_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] <= env->fpr[a->vk].vreg.UW[i] ? -1 : 0;}env->pc += 4;return true;}
-static inline bool vsle_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] <= env->fpr[a->vk].vreg.UD[i] ? -1 : 0;}env->pc += 4;return true;}
+static inline bool vsle_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] <= env->fpr[a->vk].vreg.UB[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsle_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] <= env->fpr[a->vk].vreg.UH[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsle_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] <= env->fpr[a->vk].vreg.UW[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vsle_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] <= env->fpr[a->vk].vreg.UD[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vsle_bu(CPULoongArchState *env, arg_vsle_bu *restrict a) {CHECK_FPE(16); return vsle_bu(env, a, 16);}
 static bool trans_vsle_hu(CPULoongArchState *env, arg_vsle_hu *restrict a) {CHECK_FPE(16); return vsle_hu(env, a, 16);}
 static bool trans_vsle_wu(CPULoongArchState *env, arg_vsle_wu *restrict a) {CHECK_FPE(16); return vsle_wu(env, a, 16);}
@@ -3902,10 +3930,10 @@ static bool trans_xvsle_bu(CPULoongArchState *env, arg_vsle_bu *restrict a) {CHE
 static bool trans_xvsle_hu(CPULoongArchState *env, arg_vsle_hu *restrict a) {CHECK_FPE(32); return vsle_hu(env, a, 32);}
 static bool trans_xvsle_wu(CPULoongArchState *env, arg_vsle_wu *restrict a) {CHECK_FPE(32); return vsle_wu(env, a, 32);}
 static bool trans_xvsle_du(CPULoongArchState *env, arg_vsle_du *restrict a) {CHECK_FPE(32); return vsle_du(env, a, 32);}
-static inline bool vslei_bu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] <= (uint64_t)a->imm ? -1: 0;}env->pc += 4;return true;}
-static inline bool vslei_hu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] <= (uint64_t)a->imm ? -1: 0;}env->pc += 4;return true;}
-static inline bool vslei_wu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] <= (uint64_t)a->imm ? -1: 0;}env->pc += 4;return true;}
-static inline bool vslei_du(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] <= (uint64_t)a->imm ? -1: 0;}env->pc += 4;return true;}
+static inline bool vslei_bu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] <= (uint64_t)a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslei_hu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] <= (uint64_t)a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslei_wu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] <= (uint64_t)a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslei_du(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] <= (uint64_t)a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vslei_bu(CPULoongArchState *env, arg_vslei_bu *restrict a) {CHECK_FPE(16); return vslei_bu(env, a, 16);}
 static bool trans_vslei_hu(CPULoongArchState *env, arg_vslei_hu *restrict a) {CHECK_FPE(16); return vslei_hu(env, a, 16);}
 static bool trans_vslei_wu(CPULoongArchState *env, arg_vslei_wu *restrict a) {CHECK_FPE(16); return vslei_wu(env, a, 16);}
@@ -3914,10 +3942,10 @@ static bool trans_xvslei_bu(CPULoongArchState *env, arg_vslei_bu *restrict a) {C
 static bool trans_xvslei_hu(CPULoongArchState *env, arg_vslei_hu *restrict a) {CHECK_FPE(32); return vslei_hu(env, a, 32);}
 static bool trans_xvslei_wu(CPULoongArchState *env, arg_vslei_wu *restrict a) {CHECK_FPE(32); return vslei_wu(env, a, 32);}
 static bool trans_xvslei_du(CPULoongArchState *env, arg_vslei_du *restrict a) {CHECK_FPE(32); return vslei_du(env, a, 32);}
-static inline bool vslt_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] < env->fpr[a->vk].vreg.B[i] ? -1 : 0;}env->pc += 4;return true;}
-static inline bool vslt_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] < env->fpr[a->vk].vreg.H[i] ? -1 : 0;}env->pc += 4;return true;}
-static inline bool vslt_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] < env->fpr[a->vk].vreg.W[i] ? -1 : 0;}env->pc += 4;return true;}
-static inline bool vslt_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] < env->fpr[a->vk].vreg.D[i] ? -1 : 0;}env->pc += 4;return true;}
+static inline bool vslt_b(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] < env->fpr[a->vk].vreg.B[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslt_h(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] < env->fpr[a->vk].vreg.H[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslt_w(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] < env->fpr[a->vk].vreg.W[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslt_d(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] < env->fpr[a->vk].vreg.D[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vslt_b(CPULoongArchState *env, arg_vslt_b *restrict a) {CHECK_FPE(16); return vslt_b(env, a, 16);}
 static bool trans_vslt_h(CPULoongArchState *env, arg_vslt_h *restrict a) {CHECK_FPE(16); return vslt_h(env, a, 16);}
 static bool trans_vslt_w(CPULoongArchState *env, arg_vslt_w *restrict a) {CHECK_FPE(16); return vslt_w(env, a, 16);}
@@ -3926,10 +3954,10 @@ static bool trans_xvslt_b(CPULoongArchState *env, arg_vslt_b *restrict a) {CHECK
 static bool trans_xvslt_h(CPULoongArchState *env, arg_vslt_h *restrict a) {CHECK_FPE(32); return vslt_h(env, a, 32);}
 static bool trans_xvslt_w(CPULoongArchState *env, arg_vslt_w *restrict a) {CHECK_FPE(32); return vslt_w(env, a, 32);}
 static bool trans_xvslt_d(CPULoongArchState *env, arg_vslt_d *restrict a) {CHECK_FPE(32); return vslt_d(env, a, 32);}
-static inline bool vslti_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] < a->imm ? -1: 0;}env->pc += 4;return true;}
-static inline bool vslti_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] < a->imm ? -1: 0;}env->pc += 4;return true;}
-static inline bool vslti_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] < a->imm ? -1: 0;}env->pc += 4;return true;}
-static inline bool vslti_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] < a->imm ? -1: 0;}env->pc += 4;return true;}
+static inline bool vslti_b(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[i] < a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslti_h(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[i] < a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslti_w(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[i] < a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslti_d(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[i] < a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vslti_b(CPULoongArchState *env, arg_vslti_b *restrict a) {CHECK_FPE(16); return vslti_b(env, a, 16);}
 static bool trans_vslti_h(CPULoongArchState *env, arg_vslti_h *restrict a) {CHECK_FPE(16); return vslti_h(env, a, 16);}
 static bool trans_vslti_w(CPULoongArchState *env, arg_vslti_w *restrict a) {CHECK_FPE(16); return vslti_w(env, a, 16);}
@@ -3938,10 +3966,10 @@ static bool trans_xvslti_b(CPULoongArchState *env, arg_vslti_b *restrict a) {CHE
 static bool trans_xvslti_h(CPULoongArchState *env, arg_vslti_h *restrict a) {CHECK_FPE(32); return vslti_h(env, a, 32);}
 static bool trans_xvslti_w(CPULoongArchState *env, arg_vslti_w *restrict a) {CHECK_FPE(32); return vslti_w(env, a, 32);}
 static bool trans_xvslti_d(CPULoongArchState *env, arg_vslti_d *restrict a) {CHECK_FPE(32); return vslti_d(env, a, 32);}
-static inline bool vslt_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] < env->fpr[a->vk].vreg.UB[i] ? -1 : 0;}env->pc += 4;return true;}
-static inline bool vslt_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] < env->fpr[a->vk].vreg.UH[i] ? -1 : 0;}env->pc += 4;return true;}
-static inline bool vslt_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] < env->fpr[a->vk].vreg.UW[i] ? -1 : 0;}env->pc += 4;return true;}
-static inline bool vslt_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] < env->fpr[a->vk].vreg.UD[i] ? -1 : 0;}env->pc += 4;return true;}
+static inline bool vslt_bu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] < env->fpr[a->vk].vreg.UB[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslt_hu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] < env->fpr[a->vk].vreg.UH[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslt_wu(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] < env->fpr[a->vk].vreg.UW[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslt_du(CPULoongArchState *env, arg_vvv *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8; for (size_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] < env->fpr[a->vk].vreg.UD[i] ? -1 : 0;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vslt_bu(CPULoongArchState *env, arg_vslt_bu *restrict a) {CHECK_FPE(16); return vslt_bu(env, a, 16);}
 static bool trans_vslt_hu(CPULoongArchState *env, arg_vslt_hu *restrict a) {CHECK_FPE(16); return vslt_hu(env, a, 16);}
 static bool trans_vslt_wu(CPULoongArchState *env, arg_vslt_wu *restrict a) {CHECK_FPE(16); return vslt_wu(env, a, 16);}
@@ -3950,10 +3978,10 @@ static bool trans_xvslt_bu(CPULoongArchState *env, arg_vslt_bu *restrict a) {CHE
 static bool trans_xvslt_hu(CPULoongArchState *env, arg_vslt_hu *restrict a) {CHECK_FPE(32); return vslt_hu(env, a, 32);}
 static bool trans_xvslt_wu(CPULoongArchState *env, arg_vslt_wu *restrict a) {CHECK_FPE(32); return vslt_wu(env, a, 32);}
 static bool trans_xvslt_du(CPULoongArchState *env, arg_vslt_du *restrict a) {CHECK_FPE(32); return vslt_du(env, a, 32);}
-static inline bool vslti_bu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] < (uint64_t)a->imm ? -1: 0;}env->pc += 4;return true;}
-static inline bool vslti_hu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] < (uint64_t)a->imm ? -1: 0;}env->pc += 4;return true;}
-static inline bool vslti_wu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] < (uint64_t)a->imm ? -1: 0;}env->pc += 4;return true;}
-static inline bool vslti_du(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] < (uint64_t)a->imm ? -1: 0;}env->pc += 4;return true;}
+static inline bool vslti_bu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 1;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UB[i] = env->fpr[a->vj].vreg.UB[i] < (uint64_t)a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslti_hu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 2;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UH[i] = env->fpr[a->vj].vreg.UH[i] < (uint64_t)a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslti_wu(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 4;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UW[i] = env->fpr[a->vj].vreg.UW[i] < (uint64_t)a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
+static inline bool vslti_du(CPULoongArchState *env, arg_vv_i *restrict a, uint32_t vlen) {uint32_t ele_cnt = vlen / 8;for (uint32_t i = 0; i < ele_cnt; i++) {env->fpr[a->vd].vreg.UD[i] = env->fpr[a->vj].vreg.UD[i] < (uint64_t)a->imm ? -1: 0;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vslti_bu(CPULoongArchState *env, arg_vslti_bu *restrict a) {CHECK_FPE(16); return vslti_bu(env, a, 16);}
 static bool trans_vslti_hu(CPULoongArchState *env, arg_vslti_hu *restrict a) {CHECK_FPE(16); return vslti_hu(env, a, 16);}
 static bool trans_vslti_wu(CPULoongArchState *env, arg_vslti_wu *restrict a) {CHECK_FPE(16); return vslti_wu(env, a, 16);}
@@ -3966,14 +3994,14 @@ static bool trans_vfcmp_cond_s(CPULoongArchState *env, arg_vfcmp_cond_s *restric
     CHECK_FPE(16);
     uint32_t flags = get_fcmp_flags(a->fcond >> 1);
     (a->fcond & 1) ? helper_vfcmp_s_s(env, 16, a->vd, a->vj, a->vk, flags) : helper_vfcmp_c_s(env, 16, a->vd, a->vj, a->vk, flags);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vfcmp_cond_d(CPULoongArchState *env, arg_vfcmp_cond_d *restrict a) {
     CHECK_FPE(16);
     uint32_t flags = get_fcmp_flags(a->fcond >> 1);
     (a->fcond & 1) ? helper_vfcmp_s_d(env, 16, a->vd, a->vj, a->vk, flags) : helper_vfcmp_c_d(env, 16, a->vd, a->vj, a->vk, flags);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vbitsel_v(CPULoongArchState *env, arg_vbitsel_v *restrict a) {
@@ -3981,7 +4009,7 @@ static bool trans_vbitsel_v(CPULoongArchState *env, arg_vbitsel_v *restrict a) {
     for (size_t i = 0; i < 2; i++) {
         env->fpr[a->vd].vreg.D[i] = ((~env->fpr[a->va].vreg.D[i]) & env->fpr[a->vj].vreg.D[i]) | (env->fpr[a->va].vreg.D[i] & env->fpr[a->vk].vreg.D[i]);
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vbitseli_b(CPULoongArchState *env, arg_vbitseli_b *restrict a) {
@@ -3989,7 +4017,7 @@ static bool trans_vbitseli_b(CPULoongArchState *env, arg_vbitseli_b *restrict a)
     for (size_t i = 0; i < 16; i++) {
         env->fpr[a->vd].vreg.B[i] = ((~env->fpr[a->vd].vreg.B[i]) & env->fpr[a->vj].vreg.B[i]) | (env->fpr[a->vd].vreg.B[i] & a->imm);
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vseteqz_v(CPULoongArchState *env, arg_vseteqz_v *restrict a) {
@@ -4000,7 +4028,7 @@ static bool trans_vseteqz_v(CPULoongArchState *env, arg_vseteqz_v *restrict a) {
         r &= (env->fpr[a->vj].vreg.D[i] == 0);
     }
     env->cf[a->cd] = r;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vsetnez_v(CPULoongArchState *env, arg_vsetnez_v *restrict a) {
@@ -4011,13 +4039,13 @@ static bool trans_vsetnez_v(CPULoongArchState *env, arg_vsetnez_v *restrict a) {
         r |= (env->fpr[a->vj].vreg.D[i] != 0);
     }
     env->cf[a->cd] = r;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
-static inline bool vsetanyeqz_b(CPULoongArchState *env, arg_cv *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 1; bool r = 0; for (uint32_t i = 0; i < ele_cnt; i++) { r |= (env->fpr[a->vj].vreg.B[i]==0); } env->cf[a->cd] = r; env->pc += 4; return true;}
-static inline bool vsetanyeqz_h(CPULoongArchState *env, arg_cv *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 2; bool r = 0; for (uint32_t i = 0; i < ele_cnt; i++) { r |= (env->fpr[a->vj].vreg.H[i]==0); } env->cf[a->cd] = r; env->pc += 4; return true;}
-static inline bool vsetanyeqz_w(CPULoongArchState *env, arg_cv *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 4; bool r = 0; for (uint32_t i = 0; i < ele_cnt; i++) { r |= (env->fpr[a->vj].vreg.W[i]==0); } env->cf[a->cd] = r; env->pc += 4; return true;}
-static inline bool vsetanyeqz_d(CPULoongArchState *env, arg_cv *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 8; bool r = 0; for (uint32_t i = 0; i < ele_cnt; i++) { r |= (env->fpr[a->vj].vreg.D[i]==0); } env->cf[a->cd] = r; env->pc += 4; return true;}
+static inline bool vsetanyeqz_b(CPULoongArchState *env, arg_cv *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 1; bool r = 0; for (uint32_t i = 0; i < ele_cnt; i++) { r |= (env->fpr[a->vj].vreg.B[i]==0); } env->cf[a->cd] = r; cpu_set_pc(env, env->pc + 4); return true;}
+static inline bool vsetanyeqz_h(CPULoongArchState *env, arg_cv *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 2; bool r = 0; for (uint32_t i = 0; i < ele_cnt; i++) { r |= (env->fpr[a->vj].vreg.H[i]==0); } env->cf[a->cd] = r; cpu_set_pc(env, env->pc + 4); return true;}
+static inline bool vsetanyeqz_w(CPULoongArchState *env, arg_cv *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 4; bool r = 0; for (uint32_t i = 0; i < ele_cnt; i++) { r |= (env->fpr[a->vj].vreg.W[i]==0); } env->cf[a->cd] = r; cpu_set_pc(env, env->pc + 4); return true;}
+static inline bool vsetanyeqz_d(CPULoongArchState *env, arg_cv *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 8; bool r = 0; for (uint32_t i = 0; i < ele_cnt; i++) { r |= (env->fpr[a->vj].vreg.D[i]==0); } env->cf[a->cd] = r; cpu_set_pc(env, env->pc + 4); return true;}
 static bool trans_vsetanyeqz_b(CPULoongArchState *env, arg_vsetanyeqz_b *restrict a) {CHECK_FPE(16); return vsetanyeqz_b(env, a, 16);}
 static bool trans_vsetanyeqz_h(CPULoongArchState *env, arg_vsetanyeqz_h *restrict a) {CHECK_FPE(16); return vsetanyeqz_h(env, a, 16);}
 static bool trans_vsetanyeqz_w(CPULoongArchState *env, arg_vsetanyeqz_w *restrict a) {CHECK_FPE(16); return vsetanyeqz_w(env, a, 16);}
@@ -4026,10 +4054,10 @@ static bool trans_xvsetanyeqz_b(CPULoongArchState *env, arg_vsetanyeqz_b *restri
 static bool trans_xvsetanyeqz_h(CPULoongArchState *env, arg_vsetanyeqz_h *restrict a) {CHECK_FPE(32); return vsetanyeqz_h(env, a, 32);}
 static bool trans_xvsetanyeqz_w(CPULoongArchState *env, arg_vsetanyeqz_w *restrict a) {CHECK_FPE(32); return vsetanyeqz_w(env, a, 32);}
 static bool trans_xvsetanyeqz_d(CPULoongArchState *env, arg_vsetanyeqz_d *restrict a) {CHECK_FPE(32); return vsetanyeqz_d(env, a, 32);}
-static inline bool vsetallnez_b(CPULoongArchState *env, arg_cv *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 1; bool r = 1; for (uint32_t i = 0; i < ele_cnt; i++) { r &= (env->fpr[a->vj].vreg.B[i]!=0); } env->cf[a->cd] = r; env->pc += 4; return true;}
-static inline bool vsetallnez_h(CPULoongArchState *env, arg_cv *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 2; bool r = 1; for (uint32_t i = 0; i < ele_cnt; i++) { r &= (env->fpr[a->vj].vreg.H[i]!=0); } env->cf[a->cd] = r; env->pc += 4; return true;}
-static inline bool vsetallnez_w(CPULoongArchState *env, arg_cv *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 4; bool r = 1; for (uint32_t i = 0; i < ele_cnt; i++) { r &= (env->fpr[a->vj].vreg.W[i]!=0); } env->cf[a->cd] = r; env->pc += 4; return true;}
-static inline bool vsetallnez_d(CPULoongArchState *env, arg_cv *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 8; bool r = 1; for (uint32_t i = 0; i < ele_cnt; i++) { r &= (env->fpr[a->vj].vreg.D[i]!=0); } env->cf[a->cd] = r; env->pc += 4; return true;}
+static inline bool vsetallnez_b(CPULoongArchState *env, arg_cv *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 1; bool r = 1; for (uint32_t i = 0; i < ele_cnt; i++) { r &= (env->fpr[a->vj].vreg.B[i]!=0); } env->cf[a->cd] = r; cpu_set_pc(env, env->pc + 4); return true;}
+static inline bool vsetallnez_h(CPULoongArchState *env, arg_cv *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 2; bool r = 1; for (uint32_t i = 0; i < ele_cnt; i++) { r &= (env->fpr[a->vj].vreg.H[i]!=0); } env->cf[a->cd] = r; cpu_set_pc(env, env->pc + 4); return true;}
+static inline bool vsetallnez_w(CPULoongArchState *env, arg_cv *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 4; bool r = 1; for (uint32_t i = 0; i < ele_cnt; i++) { r &= (env->fpr[a->vj].vreg.W[i]!=0); } env->cf[a->cd] = r; cpu_set_pc(env, env->pc + 4); return true;}
+static inline bool vsetallnez_d(CPULoongArchState *env, arg_cv *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 8; bool r = 1; for (uint32_t i = 0; i < ele_cnt; i++) { r &= (env->fpr[a->vj].vreg.D[i]!=0); } env->cf[a->cd] = r; cpu_set_pc(env, env->pc + 4); return true;}
 static bool trans_vsetallnez_b(CPULoongArchState *env, arg_vsetallnez_b *restrict a) {CHECK_FPE(16); return vsetallnez_b(env, a, 16);}
 static bool trans_vsetallnez_h(CPULoongArchState *env, arg_vsetallnez_h *restrict a) {CHECK_FPE(16); return vsetallnez_h(env, a, 16);}
 static bool trans_vsetallnez_w(CPULoongArchState *env, arg_vsetallnez_w *restrict a) {CHECK_FPE(16); return vsetallnez_w(env, a, 16);}
@@ -4038,29 +4066,29 @@ static bool trans_xvsetallnez_b(CPULoongArchState *env, arg_vsetallnez_b *restri
 static bool trans_xvsetallnez_h(CPULoongArchState *env, arg_vsetallnez_h *restrict a) {CHECK_FPE(32); return vsetallnez_h(env, a, 32);}
 static bool trans_xvsetallnez_w(CPULoongArchState *env, arg_vsetallnez_w *restrict a) {CHECK_FPE(32); return vsetallnez_w(env, a, 32);}
 static bool trans_xvsetallnez_d(CPULoongArchState *env, arg_vsetallnez_d *restrict a) {CHECK_FPE(32); return vsetallnez_d(env, a, 32);}
-static bool trans_vinsgr2vr_b(CPULoongArchState *env, arg_vinsgr2vr_b *restrict a) {CHECK_FPE(16); env->fpr[a->vd].vreg.UB[a->imm] = env->gpr[a->rj]; env->pc += 4; return true;}
-static bool trans_vinsgr2vr_h(CPULoongArchState *env, arg_vinsgr2vr_h *restrict a) {CHECK_FPE(16); env->fpr[a->vd].vreg.UH[a->imm] = env->gpr[a->rj]; env->pc += 4; return true;}
-static bool trans_vinsgr2vr_w(CPULoongArchState *env, arg_vinsgr2vr_w *restrict a) {CHECK_FPE(16); env->fpr[a->vd].vreg.UW[a->imm] = env->gpr[a->rj]; env->pc += 4; return true;}
-static bool trans_vinsgr2vr_d(CPULoongArchState *env, arg_vinsgr2vr_d *restrict a) {CHECK_FPE(16); env->fpr[a->vd].vreg.UD[a->imm] = env->gpr[a->rj]; env->pc += 4; return true;}
-static bool trans_vpickve2gr_b(CPULoongArchState *env, arg_vpickve2gr_b *restrict a) {CHECK_FPE(16); env->gpr[a->rd] = (int64_t)env->fpr[a->vj].vreg.B[a->imm]; env->pc += 4; return true;}
-static bool trans_vpickve2gr_h(CPULoongArchState *env, arg_vpickve2gr_h *restrict a) {CHECK_FPE(16); env->gpr[a->rd] = (int64_t)env->fpr[a->vj].vreg.H[a->imm]; env->pc += 4; return true;}
-static bool trans_vpickve2gr_w(CPULoongArchState *env, arg_vpickve2gr_w *restrict a) {CHECK_FPE(16); env->gpr[a->rd] = (int64_t)env->fpr[a->vj].vreg.W[a->imm]; env->pc += 4; return true;}
-static bool trans_vpickve2gr_d(CPULoongArchState *env, arg_vpickve2gr_d *restrict a) {CHECK_FPE(16); env->gpr[a->rd] = (int64_t)env->fpr[a->vj].vreg.D[a->imm]; env->pc += 4; return true;}
-static bool trans_vpickve2gr_bu(CPULoongArchState *env, arg_vpickve2gr_bu *restrict a) {CHECK_FPE(16); env->gpr[a->rd] = (uint64_t)env->fpr[a->vj].vreg.UB[a->imm]; env->pc += 4; return true;}
-static bool trans_vpickve2gr_hu(CPULoongArchState *env, arg_vpickve2gr_hu *restrict a) {CHECK_FPE(16); env->gpr[a->rd] = (uint64_t)env->fpr[a->vj].vreg.UH[a->imm]; env->pc += 4; return true;}
-static bool trans_vpickve2gr_wu(CPULoongArchState *env, arg_vpickve2gr_wu *restrict a) {CHECK_FPE(16); env->gpr[a->rd] = (uint64_t)env->fpr[a->vj].vreg.UW[a->imm]; env->pc += 4; return true;}
-static bool trans_vpickve2gr_du(CPULoongArchState *env, arg_vpickve2gr_du *restrict a) {CHECK_FPE(16); env->gpr[a->rd] = (uint64_t)env->fpr[a->vj].vreg.UD[a->imm]; env->pc += 4; return true;}
+static bool trans_vinsgr2vr_b(CPULoongArchState *env, arg_vinsgr2vr_b *restrict a) {CHECK_FPE(16); env->fpr[a->vd].vreg.UB[a->imm] = env->gpr[a->rj]; cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vinsgr2vr_h(CPULoongArchState *env, arg_vinsgr2vr_h *restrict a) {CHECK_FPE(16); env->fpr[a->vd].vreg.UH[a->imm] = env->gpr[a->rj]; cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vinsgr2vr_w(CPULoongArchState *env, arg_vinsgr2vr_w *restrict a) {CHECK_FPE(16); env->fpr[a->vd].vreg.UW[a->imm] = env->gpr[a->rj]; cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vinsgr2vr_d(CPULoongArchState *env, arg_vinsgr2vr_d *restrict a) {CHECK_FPE(16); env->fpr[a->vd].vreg.UD[a->imm] = env->gpr[a->rj]; cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vpickve2gr_b(CPULoongArchState *env, arg_vpickve2gr_b *restrict a) {CHECK_FPE(16); env->gpr[a->rd] = (int64_t)env->fpr[a->vj].vreg.B[a->imm]; cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vpickve2gr_h(CPULoongArchState *env, arg_vpickve2gr_h *restrict a) {CHECK_FPE(16); env->gpr[a->rd] = (int64_t)env->fpr[a->vj].vreg.H[a->imm]; cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vpickve2gr_w(CPULoongArchState *env, arg_vpickve2gr_w *restrict a) {CHECK_FPE(16); env->gpr[a->rd] = (int64_t)env->fpr[a->vj].vreg.W[a->imm]; cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vpickve2gr_d(CPULoongArchState *env, arg_vpickve2gr_d *restrict a) {CHECK_FPE(16); env->gpr[a->rd] = (int64_t)env->fpr[a->vj].vreg.D[a->imm]; cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vpickve2gr_bu(CPULoongArchState *env, arg_vpickve2gr_bu *restrict a) {CHECK_FPE(16); env->gpr[a->rd] = (uint64_t)env->fpr[a->vj].vreg.UB[a->imm]; cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vpickve2gr_hu(CPULoongArchState *env, arg_vpickve2gr_hu *restrict a) {CHECK_FPE(16); env->gpr[a->rd] = (uint64_t)env->fpr[a->vj].vreg.UH[a->imm]; cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vpickve2gr_wu(CPULoongArchState *env, arg_vpickve2gr_wu *restrict a) {CHECK_FPE(16); env->gpr[a->rd] = (uint64_t)env->fpr[a->vj].vreg.UW[a->imm]; cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vpickve2gr_du(CPULoongArchState *env, arg_vpickve2gr_du *restrict a) {CHECK_FPE(16); env->gpr[a->rd] = (uint64_t)env->fpr[a->vj].vreg.UD[a->imm]; cpu_set_pc(env, env->pc + 4); return true;}
 
-static bool trans_xvinsgr2vr_w(CPULoongArchState *env, arg_vinsgr2vr_w *restrict a) {CHECK_FPE(32); env->fpr[a->vd].vreg.UW[a->imm] = env->gpr[a->rj]; env->pc += 4; return true;}
-static bool trans_xvinsgr2vr_d(CPULoongArchState *env, arg_vinsgr2vr_d *restrict a) {CHECK_FPE(32); env->fpr[a->vd].vreg.UD[a->imm] = env->gpr[a->rj]; env->pc += 4; return true;}
-static bool trans_xvpickve2gr_w(CPULoongArchState *env, arg_vpickve2gr_w *restrict a) {CHECK_FPE(32); env->gpr[a->rd] = (int64_t)env->fpr[a->vj].vreg.W[a->imm]; env->pc += 4; return true;}
-static bool trans_xvpickve2gr_d(CPULoongArchState *env, arg_vpickve2gr_d *restrict a) {CHECK_FPE(32); env->gpr[a->rd] = (int64_t)env->fpr[a->vj].vreg.D[a->imm]; env->pc += 4; return true;}
-static bool trans_xvpickve2gr_wu(CPULoongArchState *env, arg_vpickve2gr_wu *restrict a) {CHECK_FPE(32); env->gpr[a->rd] = (uint64_t)env->fpr[a->vj].vreg.UW[a->imm]; env->pc += 4; return true;}
-static bool trans_xvpickve2gr_du(CPULoongArchState *env, arg_vpickve2gr_du *restrict a) {CHECK_FPE(32); env->gpr[a->rd] = (uint64_t)env->fpr[a->vj].vreg.UD[a->imm]; env->pc += 4; return true;}
-static bool vreplgr2vr_b(CPULoongArchState *env, arg_vr *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 1; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.UB[i] = env->gpr[a->rj]; } env->pc += 4;return true;}
-static bool vreplgr2vr_h(CPULoongArchState *env, arg_vr *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 2; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.UH[i] = env->gpr[a->rj]; } env->pc += 4;return true;}
-static bool vreplgr2vr_w(CPULoongArchState *env, arg_vr *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 4; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.UW[i] = env->gpr[a->rj]; } env->pc += 4;return true;}
-static bool vreplgr2vr_d(CPULoongArchState *env, arg_vr *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 8; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.UD[i] = env->gpr[a->rj]; } env->pc += 4;return true;}
+static bool trans_xvinsgr2vr_w(CPULoongArchState *env, arg_vinsgr2vr_w *restrict a) {CHECK_FPE(32); env->fpr[a->vd].vreg.UW[a->imm] = env->gpr[a->rj]; cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvinsgr2vr_d(CPULoongArchState *env, arg_vinsgr2vr_d *restrict a) {CHECK_FPE(32); env->fpr[a->vd].vreg.UD[a->imm] = env->gpr[a->rj]; cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvpickve2gr_w(CPULoongArchState *env, arg_vpickve2gr_w *restrict a) {CHECK_FPE(32); env->gpr[a->rd] = (int64_t)env->fpr[a->vj].vreg.W[a->imm]; cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvpickve2gr_d(CPULoongArchState *env, arg_vpickve2gr_d *restrict a) {CHECK_FPE(32); env->gpr[a->rd] = (int64_t)env->fpr[a->vj].vreg.D[a->imm]; cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvpickve2gr_wu(CPULoongArchState *env, arg_vpickve2gr_wu *restrict a) {CHECK_FPE(32); env->gpr[a->rd] = (uint64_t)env->fpr[a->vj].vreg.UW[a->imm]; cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvpickve2gr_du(CPULoongArchState *env, arg_vpickve2gr_du *restrict a) {CHECK_FPE(32); env->gpr[a->rd] = (uint64_t)env->fpr[a->vj].vreg.UD[a->imm]; cpu_set_pc(env, env->pc + 4); return true;}
+static bool vreplgr2vr_b(CPULoongArchState *env, arg_vr *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 1; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.UB[i] = env->gpr[a->rj]; } cpu_set_pc(env, env->pc + 4);return true;}
+static bool vreplgr2vr_h(CPULoongArchState *env, arg_vr *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 2; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.UH[i] = env->gpr[a->rj]; } cpu_set_pc(env, env->pc + 4);return true;}
+static bool vreplgr2vr_w(CPULoongArchState *env, arg_vr *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 4; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.UW[i] = env->gpr[a->rj]; } cpu_set_pc(env, env->pc + 4);return true;}
+static bool vreplgr2vr_d(CPULoongArchState *env, arg_vr *restrict a, uint32_t vlen) { uint32_t ele_cnt = vlen / 8; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.UD[i] = env->gpr[a->rj]; } cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_vreplgr2vr_b(CPULoongArchState *env, arg_vreplgr2vr_b *restrict a) {CHECK_FPE(16); return vreplgr2vr_b(env, a, 16);}
 static bool trans_vreplgr2vr_h(CPULoongArchState *env, arg_vreplgr2vr_h *restrict a) {CHECK_FPE(16); return vreplgr2vr_h(env, a, 16);}
 static bool trans_vreplgr2vr_w(CPULoongArchState *env, arg_vreplgr2vr_w *restrict a) {CHECK_FPE(16); return vreplgr2vr_w(env, a, 16);}
@@ -4069,14 +4097,14 @@ static bool trans_xvreplgr2vr_b(CPULoongArchState *env, arg_vreplgr2vr_b *restri
 static bool trans_xvreplgr2vr_h(CPULoongArchState *env, arg_vreplgr2vr_h *restrict a) {CHECK_FPE(32); return vreplgr2vr_h(env, a, 32);}
 static bool trans_xvreplgr2vr_w(CPULoongArchState *env, arg_vreplgr2vr_w *restrict a) {CHECK_FPE(32); return vreplgr2vr_w(env, a, 32);}
 static bool trans_xvreplgr2vr_d(CPULoongArchState *env, arg_vreplgr2vr_d *restrict a) {CHECK_FPE(32); return vreplgr2vr_d(env, a, 32);}
-static bool trans_vreplve_b(CPULoongArchState *env, arg_vreplve_b *restrict a) {CHECK_FPE(16); int32_t ele_cnt = 16 / 1; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[env->gpr[a->rk] & (ele_cnt - 1)]; } env->pc += 4; return true;}
-static bool trans_vreplve_h(CPULoongArchState *env, arg_vreplve_h *restrict a) {CHECK_FPE(16); int32_t ele_cnt = 16 / 2; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[env->gpr[a->rk] & (ele_cnt - 1)]; } env->pc += 4; return true;}
-static bool trans_vreplve_w(CPULoongArchState *env, arg_vreplve_w *restrict a) {CHECK_FPE(16); int32_t ele_cnt = 16 / 4; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[env->gpr[a->rk] & (ele_cnt - 1)]; } env->pc += 4; return true;}
-static bool trans_vreplve_d(CPULoongArchState *env, arg_vreplve_d *restrict a) {CHECK_FPE(16); int32_t ele_cnt = 16 / 8; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[env->gpr[a->rk] & (ele_cnt - 1)]; } env->pc += 4; return true;}
-static bool trans_vreplvei_b(CPULoongArchState *env, arg_vreplvei_b *restrict a) {CHECK_FPE(16); uint32_t ele_cnt = 16 / 1; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[a->imm]; } env->pc += 4; return true;}
-static bool trans_vreplvei_h(CPULoongArchState *env, arg_vreplvei_h *restrict a) {CHECK_FPE(16); uint32_t ele_cnt = 16 / 2; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[a->imm]; } env->pc += 4; return true;}
-static bool trans_vreplvei_w(CPULoongArchState *env, arg_vreplvei_w *restrict a) {CHECK_FPE(16); uint32_t ele_cnt = 16 / 4; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[a->imm]; } env->pc += 4; return true;}
-static bool trans_vreplvei_d(CPULoongArchState *env, arg_vreplvei_d *restrict a) {CHECK_FPE(16); uint32_t ele_cnt = 16 / 8; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[a->imm]; } env->pc += 4; return true;}
+static bool trans_vreplve_b(CPULoongArchState *env, arg_vreplve_b *restrict a) {CHECK_FPE(16); int32_t ele_cnt = 16 / 1; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[env->gpr[a->rk] & (ele_cnt - 1)]; } cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vreplve_h(CPULoongArchState *env, arg_vreplve_h *restrict a) {CHECK_FPE(16); int32_t ele_cnt = 16 / 2; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[env->gpr[a->rk] & (ele_cnt - 1)]; } cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vreplve_w(CPULoongArchState *env, arg_vreplve_w *restrict a) {CHECK_FPE(16); int32_t ele_cnt = 16 / 4; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[env->gpr[a->rk] & (ele_cnt - 1)]; } cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vreplve_d(CPULoongArchState *env, arg_vreplve_d *restrict a) {CHECK_FPE(16); int32_t ele_cnt = 16 / 8; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[env->gpr[a->rk] & (ele_cnt - 1)]; } cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vreplvei_b(CPULoongArchState *env, arg_vreplvei_b *restrict a) {CHECK_FPE(16); uint32_t ele_cnt = 16 / 1; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[a->imm]; } cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vreplvei_h(CPULoongArchState *env, arg_vreplvei_h *restrict a) {CHECK_FPE(16); uint32_t ele_cnt = 16 / 2; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[a->imm]; } cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vreplvei_w(CPULoongArchState *env, arg_vreplvei_w *restrict a) {CHECK_FPE(16); uint32_t ele_cnt = 16 / 4; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[a->imm]; } cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vreplvei_d(CPULoongArchState *env, arg_vreplvei_d *restrict a) {CHECK_FPE(16); uint32_t ele_cnt = 16 / 8; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[a->imm]; } cpu_set_pc(env, env->pc + 4); return true;}
 static bool trans_vbsll_v(CPULoongArchState *env, arg_vbsll_v *restrict a) {
     CHECK_FPE(16);
     int imm = a->imm & 0xf;
@@ -4086,7 +4114,7 @@ static bool trans_vbsll_v(CPULoongArchState *env, arg_vbsll_v *restrict a) {
     for (int i = 0; i < imm; i ++) {
         env->fpr[a->vd].vreg.B[i] = 0;
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vbsrl_v(CPULoongArchState *env, arg_vbsrl_v *restrict a) {
@@ -4098,7 +4126,7 @@ static bool trans_vbsrl_v(CPULoongArchState *env, arg_vbsrl_v *restrict a) {
     for (int i = (16 - imm); i < 16; i ++) {
         env->fpr[a->vd].vreg.B[i] = 0;
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 gen_trans_vvvd(vpackev_b, 16, vpackev_b)
@@ -4109,28 +4137,28 @@ gen_trans_vvvd(vpackod_b, 16, vpackod_b)
 gen_trans_vvvd(vpackod_h, 16, vpackod_h)
 gen_trans_vvvd(vpackod_w, 16, vpackod_w)
 gen_trans_vvvd(vpackod_d, 16, vpackod_d)
-static bool trans_vpickev_b(CPULoongArchState *env, arg_vpickev_b *restrict a) {CHECK_FPE(16); int oprsz = 16; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickev_b(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); env->pc += 4; return true;}
-static bool trans_vpickev_h(CPULoongArchState *env, arg_vpickev_h *restrict a) {CHECK_FPE(16); int oprsz = 16; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickev_h(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); env->pc += 4; return true;}
-static bool trans_vpickev_w(CPULoongArchState *env, arg_vpickev_w *restrict a) {CHECK_FPE(16); int oprsz = 16; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickev_w(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); env->pc += 4; return true;}
-static bool trans_vpickev_d(CPULoongArchState *env, arg_vpickev_d *restrict a) {CHECK_FPE(16); int oprsz = 16; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickev_d(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); env->pc += 4; return true;}
-static bool trans_vpickod_b(CPULoongArchState *env, arg_vpickod_b *restrict a) {CHECK_FPE(16); int oprsz = 16; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickod_b(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); env->pc += 4; return true;}
-static bool trans_vpickod_h(CPULoongArchState *env, arg_vpickod_h *restrict a) {CHECK_FPE(16); int oprsz = 16; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickod_h(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); env->pc += 4; return true;}
-static bool trans_vpickod_w(CPULoongArchState *env, arg_vpickod_w *restrict a) {CHECK_FPE(16); int oprsz = 16; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickod_w(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); env->pc += 4; return true;}
-static bool trans_vpickod_d(CPULoongArchState *env, arg_vpickod_d *restrict a) {CHECK_FPE(16); int oprsz = 16; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickod_d(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); env->pc += 4; return true;}
-static bool trans_xvpickev_b(CPULoongArchState *env, arg_vpickev_b *restrict a) {CHECK_FPE(32); int oprsz = 32; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickev_b(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); env->pc += 4; return true;}
-static bool trans_xvpickev_h(CPULoongArchState *env, arg_vpickev_h *restrict a) {CHECK_FPE(32); int oprsz = 32; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickev_h(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); env->pc += 4; return true;}
-static bool trans_xvpickev_w(CPULoongArchState *env, arg_vpickev_w *restrict a) {CHECK_FPE(32); int oprsz = 32; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickev_w(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); env->pc += 4; return true;}
-static bool trans_xvpickev_d(CPULoongArchState *env, arg_vpickev_d *restrict a) {CHECK_FPE(32); int oprsz = 32; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickev_d(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); env->pc += 4; return true;}
-static bool trans_xvpickod_b(CPULoongArchState *env, arg_vpickod_b *restrict a) {CHECK_FPE(32); int oprsz = 32; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickod_b(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); env->pc += 4; return true;}
-static bool trans_xvpickod_h(CPULoongArchState *env, arg_vpickod_h *restrict a) {CHECK_FPE(32); int oprsz = 32; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickod_h(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); env->pc += 4; return true;}
-static bool trans_xvpickod_w(CPULoongArchState *env, arg_vpickod_w *restrict a) {CHECK_FPE(32); int oprsz = 32; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickod_w(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); env->pc += 4; return true;}
-static bool trans_xvpickod_d(CPULoongArchState *env, arg_vpickod_d *restrict a) {CHECK_FPE(32); int oprsz = 32; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickod_d(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); env->pc += 4; return true;}
+static bool trans_vpickev_b(CPULoongArchState *env, arg_vpickev_b *restrict a) {CHECK_FPE(16); int oprsz = 16; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickev_b(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vpickev_h(CPULoongArchState *env, arg_vpickev_h *restrict a) {CHECK_FPE(16); int oprsz = 16; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickev_h(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vpickev_w(CPULoongArchState *env, arg_vpickev_w *restrict a) {CHECK_FPE(16); int oprsz = 16; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickev_w(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vpickev_d(CPULoongArchState *env, arg_vpickev_d *restrict a) {CHECK_FPE(16); int oprsz = 16; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickev_d(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vpickod_b(CPULoongArchState *env, arg_vpickod_b *restrict a) {CHECK_FPE(16); int oprsz = 16; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickod_b(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vpickod_h(CPULoongArchState *env, arg_vpickod_h *restrict a) {CHECK_FPE(16); int oprsz = 16; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickod_h(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vpickod_w(CPULoongArchState *env, arg_vpickod_w *restrict a) {CHECK_FPE(16); int oprsz = 16; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickod_w(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_vpickod_d(CPULoongArchState *env, arg_vpickod_d *restrict a) {CHECK_FPE(16); int oprsz = 16; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickod_d(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvpickev_b(CPULoongArchState *env, arg_vpickev_b *restrict a) {CHECK_FPE(32); int oprsz = 32; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickev_b(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvpickev_h(CPULoongArchState *env, arg_vpickev_h *restrict a) {CHECK_FPE(32); int oprsz = 32; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickev_h(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvpickev_w(CPULoongArchState *env, arg_vpickev_w *restrict a) {CHECK_FPE(32); int oprsz = 32; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickev_w(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvpickev_d(CPULoongArchState *env, arg_vpickev_d *restrict a) {CHECK_FPE(32); int oprsz = 32; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickev_d(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvpickod_b(CPULoongArchState *env, arg_vpickod_b *restrict a) {CHECK_FPE(32); int oprsz = 32; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickod_b(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvpickod_h(CPULoongArchState *env, arg_vpickod_h *restrict a) {CHECK_FPE(32); int oprsz = 32; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickod_h(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvpickod_w(CPULoongArchState *env, arg_vpickod_w *restrict a) {CHECK_FPE(32); int oprsz = 32; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickod_w(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvpickod_d(CPULoongArchState *env, arg_vpickod_d *restrict a) {CHECK_FPE(32); int oprsz = 32; uint32_t desc = simd_desc(oprsz, oprsz, 0); helper_vpickod_d(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc); cpu_set_pc(env, env->pc + 4); return true;}
 static bool trans_vilvl_b(CPULoongArchState *env, arg_vilvl_b *restrict a) {
     CHECK_FPE(16);
     int oprsz = 16;
     uint32_t desc = simd_desc(oprsz, oprsz, 0);
     helper_vilvl_b(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vilvl_h(CPULoongArchState *env, arg_vilvl_h *restrict a) {
@@ -4138,7 +4166,7 @@ static bool trans_vilvl_h(CPULoongArchState *env, arg_vilvl_h *restrict a) {
     int oprsz = 16;
     uint32_t desc = simd_desc(oprsz, oprsz, 0);
     helper_vilvl_h(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vilvl_w(CPULoongArchState *env, arg_vilvl_w *restrict a) {
@@ -4146,7 +4174,7 @@ static bool trans_vilvl_w(CPULoongArchState *env, arg_vilvl_w *restrict a) {
     int oprsz = 16;
     uint32_t desc = simd_desc(oprsz, oprsz, 0);
     helper_vilvl_w(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vilvl_d(CPULoongArchState *env, arg_vilvl_d *restrict a) {
@@ -4154,7 +4182,7 @@ static bool trans_vilvl_d(CPULoongArchState *env, arg_vilvl_d *restrict a) {
     int oprsz = 16;
     uint32_t desc = simd_desc(oprsz, oprsz, 0);
     helper_vilvl_d(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vilvh_b(CPULoongArchState *env, arg_vilvh_b *restrict a) {
@@ -4162,7 +4190,7 @@ static bool trans_vilvh_b(CPULoongArchState *env, arg_vilvh_b *restrict a) {
     int oprsz = 16;
     uint32_t desc = simd_desc(oprsz, oprsz, 0);
     helper_vilvh_b(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vilvh_h(CPULoongArchState *env, arg_vilvh_h *restrict a) {
@@ -4170,7 +4198,7 @@ static bool trans_vilvh_h(CPULoongArchState *env, arg_vilvh_h *restrict a) {
     int oprsz = 16;
     uint32_t desc = simd_desc(oprsz, oprsz, 0);
     helper_vilvh_h(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vilvh_w(CPULoongArchState *env, arg_vilvh_w *restrict a) {
@@ -4178,7 +4206,7 @@ static bool trans_vilvh_w(CPULoongArchState *env, arg_vilvh_w *restrict a) {
     int oprsz = 16;
     uint32_t desc = simd_desc(oprsz, oprsz, 0);
     helper_vilvh_w(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vilvh_d(CPULoongArchState *env, arg_vilvh_d *restrict a) {
@@ -4186,7 +4214,7 @@ static bool trans_vilvh_d(CPULoongArchState *env, arg_vilvh_d *restrict a) {
     int oprsz = 16;
     uint32_t desc = simd_desc(oprsz, oprsz, 0);
     helper_vilvh_d(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vshuf_b(CPULoongArchState *env, arg_vshuf_b *restrict a) {
@@ -4194,12 +4222,12 @@ static bool trans_vshuf_b(CPULoongArchState *env, arg_vshuf_b *restrict a) {
     int oprsz = 16;
     uint32_t desc = simd_desc(oprsz, oprsz, 0);
     helper_vshuf_b(&env->fpr[a->vd], &env->fpr[a->vj], &env->fpr[a->vk], &env->fpr[a->va], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
-static bool trans_vshuf_h(CPULoongArchState *env, arg_vshuf_h *restrict a) {CHECK_FPE(16); const uint32_t ele_cnt = 16 / 2;int16_t vv[ele_cnt * 2];for (size_t i = 0; i < ele_cnt; i++) {vv[i] = env->fpr[a->vk].vreg.H[i];vv[ele_cnt + i] = env->fpr[a->vj].vreg.H[i];}for (size_t i = 0; i < ele_cnt; i++) { env->fpr[a->vd].vreg.H[i] = vv[env->fpr[a->vd].vreg.H[i] & (ele_cnt * 2 - 1)];}env->pc += 4;return true;}
-static bool trans_vshuf_w(CPULoongArchState *env, arg_vshuf_w *restrict a) {CHECK_FPE(16); const uint32_t ele_cnt = 16 / 4;int32_t vv[ele_cnt * 2];for (size_t i = 0; i < ele_cnt; i++) {vv[i] = env->fpr[a->vk].vreg.W[i];vv[ele_cnt + i] = env->fpr[a->vj].vreg.W[i];}for (size_t i = 0; i < ele_cnt; i++) { env->fpr[a->vd].vreg.W[i] = vv[env->fpr[a->vd].vreg.W[i] & (ele_cnt * 2 - 1)];}env->pc += 4;return true;}
-static bool trans_vshuf_d(CPULoongArchState *env, arg_vshuf_d *restrict a) {CHECK_FPE(16); const uint32_t ele_cnt = 16 / 8;int64_t vv[ele_cnt * 2];for (size_t i = 0; i < ele_cnt; i++) {vv[i] = env->fpr[a->vk].vreg.D[i];vv[ele_cnt + i] = env->fpr[a->vj].vreg.D[i];}for (size_t i = 0; i < ele_cnt; i++) { env->fpr[a->vd].vreg.D[i] = vv[env->fpr[a->vd].vreg.D[i] & (ele_cnt * 2 - 1)];}env->pc += 4;return true;}
+static bool trans_vshuf_h(CPULoongArchState *env, arg_vshuf_h *restrict a) {CHECK_FPE(16); const uint32_t ele_cnt = 16 / 2;int16_t vv[ele_cnt * 2];for (size_t i = 0; i < ele_cnt; i++) {vv[i] = env->fpr[a->vk].vreg.H[i];vv[ele_cnt + i] = env->fpr[a->vj].vreg.H[i];}for (size_t i = 0; i < ele_cnt; i++) { env->fpr[a->vd].vreg.H[i] = vv[env->fpr[a->vd].vreg.H[i] & (ele_cnt * 2 - 1)];}cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_vshuf_w(CPULoongArchState *env, arg_vshuf_w *restrict a) {CHECK_FPE(16); const uint32_t ele_cnt = 16 / 4;int32_t vv[ele_cnt * 2];for (size_t i = 0; i < ele_cnt; i++) {vv[i] = env->fpr[a->vk].vreg.W[i];vv[ele_cnt + i] = env->fpr[a->vj].vreg.W[i];}for (size_t i = 0; i < ele_cnt; i++) { env->fpr[a->vd].vreg.W[i] = vv[env->fpr[a->vd].vreg.W[i] & (ele_cnt * 2 - 1)];}cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_vshuf_d(CPULoongArchState *env, arg_vshuf_d *restrict a) {CHECK_FPE(16); const uint32_t ele_cnt = 16 / 8;int64_t vv[ele_cnt * 2];for (size_t i = 0; i < ele_cnt; i++) {vv[i] = env->fpr[a->vk].vreg.D[i];vv[ele_cnt + i] = env->fpr[a->vj].vreg.D[i];}for (size_t i = 0; i < ele_cnt; i++) { env->fpr[a->vd].vreg.D[i] = vv[env->fpr[a->vd].vreg.D[i] & (ele_cnt * 2 - 1)];}cpu_set_pc(env, env->pc + 4);return true;}
 gen_trans_vvid(vshuf4i_b, 16, vshuf4i_b)
 gen_trans_vvid(vshuf4i_h, 16, vshuf4i_h)
 gen_trans_vvid(vshuf4i_w, 16, vshuf4i_w)
@@ -4216,7 +4244,7 @@ static bool trans_vld(CPULoongArchState *env, arg_vld *restrict a) {
     lsassert(!is_io(load_pa(env, va)));
     env->fpr[a->vd].vreg.D[0] = ld_d(env, va);
     env->fpr[a->vd].vreg.D[1] = ld_d(env, va + 8);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vst(CPULoongArchState *env, arg_vst *restrict a) {
@@ -4225,7 +4253,7 @@ static bool trans_vst(CPULoongArchState *env, arg_vst *restrict a) {
     lsassert(!is_io(store_pa(env, va)));
     st_d(env, va, env->fpr[a->vd].vreg.D[0]);
     st_d(env, va + 8, env->fpr[a->vd].vreg.D[1]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vldx(CPULoongArchState *env, arg_vldx *restrict a) {
@@ -4234,7 +4262,7 @@ static bool trans_vldx(CPULoongArchState *env, arg_vldx *restrict a) {
     lsassert(!is_io(load_pa(env, va)));
     env->fpr[a->vd].vreg.D[0] = ld_d(env, va);
     env->fpr[a->vd].vreg.D[1] = ld_d(env, va + 8);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_vstx(CPULoongArchState *env, arg_vstx *restrict a) {
@@ -4243,17 +4271,17 @@ static bool trans_vstx(CPULoongArchState *env, arg_vstx *restrict a) {
     lsassert(!is_io(store_pa(env, va)));
     st_d(env, va, env->fpr[a->vd].vreg.D[0]);
     st_d(env, va + 8, env->fpr[a->vd].vreg.D[1]);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
-static bool trans_vldrepl_b(CPULoongArchState *env, arg_vldrepl_b *restrict a) {CHECK_FPE(16); int8_t data = ld_b(env, add_addr(env->gpr[a->rj], a->imm));for (size_t i = 0; i < 16; i++){env->fpr[a->vd].vreg.B[i] = data;}env->pc += 4;return true;}
-static bool trans_vldrepl_h(CPULoongArchState *env, arg_vldrepl_h *restrict a) {CHECK_FPE(16); int16_t data = ld_h(env, add_addr(env->gpr[a->rj], a->imm));for (size_t i = 0; i < 8; i++){env->fpr[a->vd].vreg.H[i] = data;}env->pc += 4;return true;}
-static bool trans_vldrepl_w(CPULoongArchState *env, arg_vldrepl_w *restrict a) {CHECK_FPE(16); int32_t data = ld_w(env, add_addr(env->gpr[a->rj], a->imm));for (size_t i = 0; i < 4; i++){env->fpr[a->vd].vreg.W[i] = data;}env->pc += 4;return true;}
-static bool trans_vldrepl_d(CPULoongArchState *env, arg_vldrepl_d *restrict a) {CHECK_FPE(16); int64_t data = ld_d(env, add_addr(env->gpr[a->rj], a->imm));for (size_t i = 0; i < 2; i++){env->fpr[a->vd].vreg.D[i] = data;}env->pc += 4;return true;}
-static bool trans_vstelm_b(CPULoongArchState *env, arg_vstelm_b *restrict a) {CHECK_FPE(16); st_b(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->vd].vreg.B[a->imm2]);env->pc += 4;return true;}
-static bool trans_vstelm_h(CPULoongArchState *env, arg_vstelm_h *restrict a) {CHECK_FPE(16); st_h(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->vd].vreg.H[a->imm2]);env->pc += 4;return true;}
-static bool trans_vstelm_w(CPULoongArchState *env, arg_vstelm_w *restrict a) {CHECK_FPE(16); st_w(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->vd].vreg.W[a->imm2]);env->pc += 4;return true;}
-static bool trans_vstelm_d(CPULoongArchState *env, arg_vstelm_d *restrict a) {CHECK_FPE(16); st_d(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->vd].vreg.D[a->imm2]);env->pc += 4;return true;}
+static bool trans_vldrepl_b(CPULoongArchState *env, arg_vldrepl_b *restrict a) {CHECK_FPE(16); int8_t data = ld_b(env, add_addr(env->gpr[a->rj], a->imm));for (size_t i = 0; i < 16; i++){env->fpr[a->vd].vreg.B[i] = data;}cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_vldrepl_h(CPULoongArchState *env, arg_vldrepl_h *restrict a) {CHECK_FPE(16); int16_t data = ld_h(env, add_addr(env->gpr[a->rj], a->imm));for (size_t i = 0; i < 8; i++){env->fpr[a->vd].vreg.H[i] = data;}cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_vldrepl_w(CPULoongArchState *env, arg_vldrepl_w *restrict a) {CHECK_FPE(16); int32_t data = ld_w(env, add_addr(env->gpr[a->rj], a->imm));for (size_t i = 0; i < 4; i++){env->fpr[a->vd].vreg.W[i] = data;}cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_vldrepl_d(CPULoongArchState *env, arg_vldrepl_d *restrict a) {CHECK_FPE(16); int64_t data = ld_d(env, add_addr(env->gpr[a->rj], a->imm));for (size_t i = 0; i < 2; i++){env->fpr[a->vd].vreg.D[i] = data;}cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_vstelm_b(CPULoongArchState *env, arg_vstelm_b *restrict a) {CHECK_FPE(16); st_b(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->vd].vreg.B[a->imm2]);cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_vstelm_h(CPULoongArchState *env, arg_vstelm_h *restrict a) {CHECK_FPE(16); st_h(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->vd].vreg.H[a->imm2]);cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_vstelm_w(CPULoongArchState *env, arg_vstelm_w *restrict a) {CHECK_FPE(16); st_w(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->vd].vreg.W[a->imm2]);cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_vstelm_d(CPULoongArchState *env, arg_vstelm_d *restrict a) {CHECK_FPE(16); st_d(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->vd].vreg.D[a->imm2]);cpu_set_pc(env, env->pc + 4);return true;}
 
 
 gen_trans_vvd(vext2xv_d_b, 32, vext2xv_d_b)
@@ -4273,7 +4301,7 @@ static bool trans_xvadd_q(CPULoongArchState *env, arg_xvadd_q *restrict a) {
     CHECK_FPE(32);
     env->fpr[a->vd].vreg.Q[0] = env->fpr[a->vj].vreg.Q[0] + env->fpr[a->vk].vreg.Q[0];
     env->fpr[a->vd].vreg.Q[1] = env->fpr[a->vj].vreg.Q[1] + env->fpr[a->vk].vreg.Q[1];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 gen_trans_vvvd(xvaddwev_d_w, 32, vaddwev_d_w)
@@ -4305,7 +4333,7 @@ static bool trans_xvbitseli_b(CPULoongArchState *env, arg_xvbitseli_b *restrict 
     for (size_t i = 0; i < 32; i++) {
         env->fpr[a->vd].vreg.B[i] = ((~env->fpr[a->vd].vreg.B[i]) & env->fpr[a->vj].vreg.B[i]) | (env->fpr[a->vd].vreg.B[i] & a->imm);
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvbitsel_v(CPULoongArchState *env, arg_xvbitsel_v *restrict a) {
@@ -4313,7 +4341,7 @@ static bool trans_xvbitsel_v(CPULoongArchState *env, arg_xvbitsel_v *restrict a)
     for (size_t i = 0; i < 4; i++) {
         env->fpr[a->vd].vreg.D[i] = ((~env->fpr[a->va].vreg.D[i]) & env->fpr[a->vj].vreg.D[i]) | (env->fpr[a->va].vreg.D[i] & env->fpr[a->vk].vreg.D[i]);
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvbsll_v(CPULoongArchState *env, arg_xvbsll_v *restrict a) {
@@ -4328,7 +4356,7 @@ static bool trans_xvbsll_v(CPULoongArchState *env, arg_xvbsll_v *restrict a) {
         env->fpr[a->vd].vreg.B[i] = 0;
         env->fpr[a->vd].vreg.B[i + vlen] = 0;
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvbsrl_v(CPULoongArchState *env, arg_xvbsrl_v *restrict a) {
@@ -4342,7 +4370,7 @@ static bool trans_xvbsrl_v(CPULoongArchState *env, arg_xvbsrl_v *restrict a) {
         env->fpr[a->vd].vreg.B[i] = 0;
         env->fpr[a->vd].vreg.B[i + vlen] = 0;
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 gen_trans_vvd(xvclo_b, 32, vclo_b)
@@ -4378,14 +4406,14 @@ static bool trans_xvfcmp_cond_d(CPULoongArchState *env, arg_xvfcmp_cond_d *restr
     CHECK_FPE(32);
     uint32_t flags = get_fcmp_flags(a->fcond >> 1);
     (a->fcond & 1) ? helper_vfcmp_s_d(env, 32, a->vd, a->vj, a->vk, flags) : helper_vfcmp_c_d(env, 32, a->vd, a->vj, a->vk, flags);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvfcmp_cond_s(CPULoongArchState *env, arg_xvfcmp_cond_s *restrict a) {
     CHECK_FPE(32);
     uint32_t flags = get_fcmp_flags(a->fcond >> 1);
     (a->fcond & 1) ? helper_vfcmp_s_s(env, 32, a->vd, a->vj, a->vk, flags) : helper_vfcmp_c_s(env, 32, a->vd, a->vj, a->vk, flags);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 gen_trans_vved(xvfcvtl_s_h, 32, vfcvtl_s_h)
@@ -4479,13 +4507,13 @@ gen_trans_vvvd(xvilvl_w, 32, vilvl_w)
 static bool trans_xvinsve0_d(CPULoongArchState *env, arg_xvinsve0_d *restrict a) {
     CHECK_FPE(32);
     env->fpr[a->vd].vreg.D[a->imm] = env->fpr[a->vj].vreg.D[0];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvinsve0_w(CPULoongArchState *env, arg_xvinsve0_w *restrict a) {
     CHECK_FPE(32);
     env->fpr[a->vd].vreg.W[a->imm] = env->fpr[a->vj].vreg.W[0];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvld(CPULoongArchState *env, arg_xvld *restrict a) {
@@ -4494,20 +4522,20 @@ static bool trans_xvld(CPULoongArchState *env, arg_xvld *restrict a) {
     for (int32_t i = 0; i < ele_cnt; i++) {
         env->fpr[a->vd].vreg.D[i] = ld_d(env, add_addr(env->gpr[a->rj], a->imm + (i * 8)));
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
-static bool trans_xvldrepl_b(CPULoongArchState *env, arg_xvldrepl_b *restrict a) {CHECK_FPE(32); int8_t data = ld_b(env, add_addr(env->gpr[a->rj], a->imm));for (size_t i = 0; i < 32; i++){env->fpr[a->vd].vreg.B[i] = data;}env->pc += 4;return true;}
-static bool trans_xvldrepl_h(CPULoongArchState *env, arg_xvldrepl_h *restrict a) {CHECK_FPE(32); int16_t data = ld_h(env, add_addr(env->gpr[a->rj], a->imm));for (size_t i = 0; i < 16; i++){env->fpr[a->vd].vreg.H[i] = data;}env->pc += 4;return true;}
-static bool trans_xvldrepl_w(CPULoongArchState *env, arg_xvldrepl_w *restrict a) {CHECK_FPE(32); int32_t data = ld_w(env, add_addr(env->gpr[a->rj], a->imm));for (size_t i = 0; i < 8; i++){env->fpr[a->vd].vreg.W[i] = data;}env->pc += 4;return true;}
-static bool trans_xvldrepl_d(CPULoongArchState *env, arg_xvldrepl_d *restrict a) {CHECK_FPE(32); int64_t data = ld_d(env, add_addr(env->gpr[a->rj], a->imm));for (size_t i = 0; i < 4; i++){env->fpr[a->vd].vreg.D[i] = data;}env->pc += 4;return true;}
+static bool trans_xvldrepl_b(CPULoongArchState *env, arg_xvldrepl_b *restrict a) {CHECK_FPE(32); int8_t data = ld_b(env, add_addr(env->gpr[a->rj], a->imm));for (size_t i = 0; i < 32; i++){env->fpr[a->vd].vreg.B[i] = data;}cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_xvldrepl_h(CPULoongArchState *env, arg_xvldrepl_h *restrict a) {CHECK_FPE(32); int16_t data = ld_h(env, add_addr(env->gpr[a->rj], a->imm));for (size_t i = 0; i < 16; i++){env->fpr[a->vd].vreg.H[i] = data;}cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_xvldrepl_w(CPULoongArchState *env, arg_xvldrepl_w *restrict a) {CHECK_FPE(32); int32_t data = ld_w(env, add_addr(env->gpr[a->rj], a->imm));for (size_t i = 0; i < 8; i++){env->fpr[a->vd].vreg.W[i] = data;}cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_xvldrepl_d(CPULoongArchState *env, arg_xvldrepl_d *restrict a) {CHECK_FPE(32); int64_t data = ld_d(env, add_addr(env->gpr[a->rj], a->imm));for (size_t i = 0; i < 4; i++){env->fpr[a->vd].vreg.D[i] = data;}cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_xvldx(CPULoongArchState *env, arg_xvldx *restrict a) {
     CHECK_FPE(32);
     int32_t ele_cnt = 32 / 8;
     for (int32_t i = 0; i < ele_cnt; i++) {
         env->fpr[a->vd].vreg.D[i] = ld_d(env, add_addr(env->gpr[a->rj], env->gpr[a->rk] + (i * 8)));
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 gen_trans_vvvd(xvmaddwev_h_b, 32, vmaddwev_h_b)
@@ -4535,7 +4563,7 @@ static bool trans_xvmaddwev_q_d(CPULoongArchState *env, arg_xvmaddwev_q_d *restr
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] += (__int128_t)env->fpr[a->vj].vreg.D[i * 2 + index] * (__int128_t)env->fpr[a->vk].vreg.D[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvmaddwod_q_d(CPULoongArchState *env, arg_xvmaddwod_q_d *restrict a) {
@@ -4545,7 +4573,7 @@ static bool trans_xvmaddwod_q_d(CPULoongArchState *env, arg_xvmaddwod_q_d *restr
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] += (__int128_t)env->fpr[a->vj].vreg.D[i * 2 + index] * (__int128_t)env->fpr[a->vk].vreg.D[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvmaddwev_q_du(CPULoongArchState *env, arg_xvmaddwev_q_du *restrict a) {
@@ -4555,7 +4583,7 @@ static bool trans_xvmaddwev_q_du(CPULoongArchState *env, arg_xvmaddwev_q_du *res
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] += (__uint128_t)env->fpr[a->vj].vreg.UD[i * 2 + index] * (__uint128_t)env->fpr[a->vk].vreg.UD[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvmaddwod_q_du(CPULoongArchState *env, arg_xvmaddwod_q_du *restrict a) {
@@ -4565,7 +4593,7 @@ static bool trans_xvmaddwod_q_du(CPULoongArchState *env, arg_xvmaddwod_q_du *res
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] += (__uint128_t)env->fpr[a->vj].vreg.UD[i * 2 + index] * (__uint128_t)env->fpr[a->vk].vreg.UD[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvmaddwev_q_du_d(CPULoongArchState *env, arg_xvmaddwev_q_du_d *restrict a) {
@@ -4575,7 +4603,7 @@ static bool trans_xvmaddwev_q_du_d(CPULoongArchState *env, arg_xvmaddwev_q_du_d 
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] += (__uint128_t)env->fpr[a->vj].vreg.UD[i * 2 + index] * (__int128_t)env->fpr[a->vk].vreg.D[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvmaddwod_q_du_d(CPULoongArchState *env, arg_xvmaddwod_q_du_d *restrict a) {
@@ -4585,7 +4613,7 @@ static bool trans_xvmaddwod_q_du_d(CPULoongArchState *env, arg_xvmaddwod_q_du_d 
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] += (__uint128_t)env->fpr[a->vj].vreg.UD[i * 2 + index] * (__int128_t)env->fpr[a->vk].vreg.D[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvmskgez_b(CPULoongArchState *env, arg_xvmskgez_b *restrict a) {
@@ -4593,7 +4621,7 @@ static bool trans_xvmskgez_b(CPULoongArchState *env, arg_xvmskgez_b *restrict a)
     int oprsz = 32;
     uint32_t desc = simd_desc(oprsz, oprsz, 0);
     helper_vmskgez_b(&env->fpr[a->vd], &env->fpr[a->vj], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 gen_trans_vvd(xvmskltz_b, 32, vmskltz_b)
@@ -4605,7 +4633,7 @@ static bool trans_xvmsknz_b(CPULoongArchState *env, arg_xvmsknz_b *restrict a) {
     int oprsz = 32;
     uint32_t desc = simd_desc(oprsz, oprsz, 0);
     helper_vmsknz_b(&env->fpr[a->vd], &env->fpr[a->vj], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 gen_trans_vvvd(xvmuh_b, 32, vmuh_b)
@@ -4641,7 +4669,7 @@ static bool trans_xvmulwev_q_d(CPULoongArchState *env, arg_xvmulwev_q_d *restric
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] = (__int128_t)env->fpr[a->vj].vreg.D[i * 2 + index] * (__int128_t)env->fpr[a->vk].vreg.D[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvmulwod_q_d(CPULoongArchState *env, arg_xvmulwod_q_d *restrict a) {
@@ -4651,7 +4679,7 @@ static bool trans_xvmulwod_q_d(CPULoongArchState *env, arg_xvmulwod_q_d *restric
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] = (__int128_t)env->fpr[a->vj].vreg.D[i * 2 + index] * (__int128_t)env->fpr[a->vk].vreg.D[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvmulwev_q_du(CPULoongArchState *env, arg_xvmulwev_q_du *restrict a) {
@@ -4661,7 +4689,7 @@ static bool trans_xvmulwev_q_du(CPULoongArchState *env, arg_xvmulwev_q_du *restr
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] = (__uint128_t)env->fpr[a->vj].vreg.UD[i * 2 + index] * (__uint128_t)env->fpr[a->vk].vreg.UD[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvmulwod_q_du(CPULoongArchState *env, arg_xvmulwod_q_du *restrict a) {
@@ -4671,7 +4699,7 @@ static bool trans_xvmulwod_q_du(CPULoongArchState *env, arg_xvmulwod_q_du *restr
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] = (__uint128_t)env->fpr[a->vj].vreg.UD[i * 2 + index] * (__uint128_t)env->fpr[a->vk].vreg.UD[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvmulwev_q_du_d(CPULoongArchState *env, arg_xvmulwev_q_du_d *restrict a) {
@@ -4681,7 +4709,7 @@ static bool trans_xvmulwev_q_du_d(CPULoongArchState *env, arg_xvmulwev_q_du_d *r
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] = (__uint128_t)env->fpr[a->vj].vreg.UD[i * 2 + index] * (__int128_t)env->fpr[a->vk].vreg.D[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvmulwod_q_du_d(CPULoongArchState *env, arg_xvmulwod_q_du_d *restrict a) {
@@ -4691,7 +4719,7 @@ static bool trans_xvmulwod_q_du_d(CPULoongArchState *env, arg_xvmulwod_q_du_d *r
     for (int i = 0; i < (size / 16); i++) {
         env->fpr[a->vd].vreg.Q[i] = (__uint128_t)env->fpr[a->vj].vreg.UD[i * 2 + index] * (__int128_t)env->fpr[a->vk].vreg.D[i *2 + index];
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 gen_trans_vvvd(xvpackev_b, 32, vpackev_b)
@@ -4708,27 +4736,27 @@ gen_trans_vvid(xvpermi_q, 32, vpermi_q)
 gen_trans_vvvd(xvperm_w, 32, vperm_w)
 gen_trans_vvid(xvpickve_d, 32, xvpickve_d)
 gen_trans_vvid(xvpickve_w, 32, xvpickve_w)
-static bool trans_xvrepl128vei_b(CPULoongArchState *env, arg_xvrepl128vei_b *restrict a) {CHECK_FPE(32); uint32_t ele_cnt = 16 / 1; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[a->imm]; env->fpr[a->vd].vreg.B[i + ele_cnt] = env->fpr[a->vj].vreg.B[a->imm + ele_cnt]; } env->pc += 4; return true;}
-static bool trans_xvrepl128vei_h(CPULoongArchState *env, arg_xvrepl128vei_h *restrict a) {CHECK_FPE(32); uint32_t ele_cnt = 16 / 2; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[a->imm]; env->fpr[a->vd].vreg.H[i + ele_cnt] = env->fpr[a->vj].vreg.H[a->imm + ele_cnt]; } env->pc += 4; return true;}
-static bool trans_xvrepl128vei_w(CPULoongArchState *env, arg_xvrepl128vei_w *restrict a) {CHECK_FPE(32); uint32_t ele_cnt = 16 / 4; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[a->imm]; env->fpr[a->vd].vreg.W[i + ele_cnt] = env->fpr[a->vj].vreg.W[a->imm + ele_cnt]; } env->pc += 4; return true;}
-static bool trans_xvrepl128vei_d(CPULoongArchState *env, arg_xvrepl128vei_d *restrict a) {CHECK_FPE(32); uint32_t ele_cnt = 16 / 8; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[a->imm]; env->fpr[a->vd].vreg.D[i + ele_cnt] = env->fpr[a->vj].vreg.D[a->imm + ele_cnt]; } env->pc += 4; return true;}
-static bool trans_xvreplve0_b(CPULoongArchState *env, arg_xvreplve0_b *restrict a) {CHECK_FPE(32); int32_t ele_cnt = 32 / 1; for (int32_t i = 0; i < ele_cnt; i++) { env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[0]; } env->pc += 4; return true;}
-static bool trans_xvreplve0_h(CPULoongArchState *env, arg_xvreplve0_h *restrict a) {CHECK_FPE(32); int32_t ele_cnt = 32 / 2; for (int32_t i = 0; i < ele_cnt; i++) { env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[0]; } env->pc += 4; return true;}
-static bool trans_xvreplve0_w(CPULoongArchState *env, arg_xvreplve0_w *restrict a) {CHECK_FPE(32); int32_t ele_cnt = 32 / 4; for (int32_t i = 0; i < ele_cnt; i++) { env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[0]; } env->pc += 4; return true;}
-static bool trans_xvreplve0_d(CPULoongArchState *env, arg_xvreplve0_d *restrict a) {CHECK_FPE(32); int32_t ele_cnt = 32 / 8; for (int32_t i = 0; i < ele_cnt; i++) { env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[0]; } env->pc += 4; return true;}
+static bool trans_xvrepl128vei_b(CPULoongArchState *env, arg_xvrepl128vei_b *restrict a) {CHECK_FPE(32); uint32_t ele_cnt = 16 / 1; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[a->imm]; env->fpr[a->vd].vreg.B[i + ele_cnt] = env->fpr[a->vj].vreg.B[a->imm + ele_cnt]; } cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvrepl128vei_h(CPULoongArchState *env, arg_xvrepl128vei_h *restrict a) {CHECK_FPE(32); uint32_t ele_cnt = 16 / 2; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[a->imm]; env->fpr[a->vd].vreg.H[i + ele_cnt] = env->fpr[a->vj].vreg.H[a->imm + ele_cnt]; } cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvrepl128vei_w(CPULoongArchState *env, arg_xvrepl128vei_w *restrict a) {CHECK_FPE(32); uint32_t ele_cnt = 16 / 4; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[a->imm]; env->fpr[a->vd].vreg.W[i + ele_cnt] = env->fpr[a->vj].vreg.W[a->imm + ele_cnt]; } cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvrepl128vei_d(CPULoongArchState *env, arg_xvrepl128vei_d *restrict a) {CHECK_FPE(32); uint32_t ele_cnt = 16 / 8; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[a->imm]; env->fpr[a->vd].vreg.D[i + ele_cnt] = env->fpr[a->vj].vreg.D[a->imm + ele_cnt]; } cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvreplve0_b(CPULoongArchState *env, arg_xvreplve0_b *restrict a) {CHECK_FPE(32); int32_t ele_cnt = 32 / 1; for (int32_t i = 0; i < ele_cnt; i++) { env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[0]; } cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvreplve0_h(CPULoongArchState *env, arg_xvreplve0_h *restrict a) {CHECK_FPE(32); int32_t ele_cnt = 32 / 2; for (int32_t i = 0; i < ele_cnt; i++) { env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[0]; } cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvreplve0_w(CPULoongArchState *env, arg_xvreplve0_w *restrict a) {CHECK_FPE(32); int32_t ele_cnt = 32 / 4; for (int32_t i = 0; i < ele_cnt; i++) { env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[0]; } cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvreplve0_d(CPULoongArchState *env, arg_xvreplve0_d *restrict a) {CHECK_FPE(32); int32_t ele_cnt = 32 / 8; for (int32_t i = 0; i < ele_cnt; i++) { env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[0]; } cpu_set_pc(env, env->pc + 4); return true;}
 static bool trans_xvreplve0_q(CPULoongArchState *env, arg_xvreplve0_q *restrict a) {
     CHECK_FPE(32);
     env->fpr[a->vd].vreg.D[0] = env->fpr[a->vj].vreg.D[0];
     env->fpr[a->vd].vreg.D[1] = env->fpr[a->vj].vreg.D[1];
     env->fpr[a->vd].vreg.D[2] = env->fpr[a->vj].vreg.D[0];
     env->fpr[a->vd].vreg.D[3] = env->fpr[a->vj].vreg.D[1];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
-static bool trans_xvreplve_b(CPULoongArchState *env, arg_xvreplve_b *restrict a) {CHECK_FPE(32); int32_t ele_cnt = 16 / 1; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[env->gpr[a->rk] & (ele_cnt - 1)]; env->fpr[a->vd].vreg.B[i + ele_cnt] = env->fpr[a->vj].vreg.B[(env->gpr[a->rk] & (ele_cnt - 1)) + ele_cnt]; } env->pc += 4; return true;}
-static bool trans_xvreplve_h(CPULoongArchState *env, arg_xvreplve_h *restrict a) {CHECK_FPE(32); int32_t ele_cnt = 16 / 2; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[env->gpr[a->rk] & (ele_cnt - 1)]; env->fpr[a->vd].vreg.H[i + ele_cnt] = env->fpr[a->vj].vreg.H[(env->gpr[a->rk] & (ele_cnt - 1)) + ele_cnt]; } env->pc += 4; return true;}
-static bool trans_xvreplve_w(CPULoongArchState *env, arg_xvreplve_w *restrict a) {CHECK_FPE(32); int32_t ele_cnt = 16 / 4; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[env->gpr[a->rk] & (ele_cnt - 1)]; env->fpr[a->vd].vreg.W[i + ele_cnt] = env->fpr[a->vj].vreg.W[(env->gpr[a->rk] & (ele_cnt - 1)) + ele_cnt]; } env->pc += 4; return true;}
-static bool trans_xvreplve_d(CPULoongArchState *env, arg_xvreplve_d *restrict a) {CHECK_FPE(32); int32_t ele_cnt = 16 / 8; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[env->gpr[a->rk] & (ele_cnt - 1)]; env->fpr[a->vd].vreg.D[i + ele_cnt] = env->fpr[a->vj].vreg.D[(env->gpr[a->rk] & (ele_cnt - 1)) + ele_cnt]; } env->pc += 4; return true;}
+static bool trans_xvreplve_b(CPULoongArchState *env, arg_xvreplve_b *restrict a) {CHECK_FPE(32); int32_t ele_cnt = 16 / 1; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.B[i] = env->fpr[a->vj].vreg.B[env->gpr[a->rk] & (ele_cnt - 1)]; env->fpr[a->vd].vreg.B[i + ele_cnt] = env->fpr[a->vj].vreg.B[(env->gpr[a->rk] & (ele_cnt - 1)) + ele_cnt]; } cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvreplve_h(CPULoongArchState *env, arg_xvreplve_h *restrict a) {CHECK_FPE(32); int32_t ele_cnt = 16 / 2; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.H[i] = env->fpr[a->vj].vreg.H[env->gpr[a->rk] & (ele_cnt - 1)]; env->fpr[a->vd].vreg.H[i + ele_cnt] = env->fpr[a->vj].vreg.H[(env->gpr[a->rk] & (ele_cnt - 1)) + ele_cnt]; } cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvreplve_w(CPULoongArchState *env, arg_xvreplve_w *restrict a) {CHECK_FPE(32); int32_t ele_cnt = 16 / 4; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.W[i] = env->fpr[a->vj].vreg.W[env->gpr[a->rk] & (ele_cnt - 1)]; env->fpr[a->vd].vreg.W[i + ele_cnt] = env->fpr[a->vj].vreg.W[(env->gpr[a->rk] & (ele_cnt - 1)) + ele_cnt]; } cpu_set_pc(env, env->pc + 4); return true;}
+static bool trans_xvreplve_d(CPULoongArchState *env, arg_xvreplve_d *restrict a) {CHECK_FPE(32); int32_t ele_cnt = 16 / 8; for (int i = 0; i < ele_cnt; i ++) { env->fpr[a->vd].vreg.D[i] = env->fpr[a->vj].vreg.D[env->gpr[a->rk] & (ele_cnt - 1)]; env->fpr[a->vd].vreg.D[i + ele_cnt] = env->fpr[a->vj].vreg.D[(env->gpr[a->rk] & (ele_cnt - 1)) + ele_cnt]; } cpu_set_pc(env, env->pc + 4); return true;}
 gen_trans_vvvd(xvrotr_b, 32, gvec_rotr8v)
 gen_trans_vvvd(xvrotr_h, 32, gvec_rotr16v)
 gen_trans_vvvd(xvrotr_w, 32, gvec_rotr32v)
@@ -4739,7 +4767,7 @@ static bool trans_xvrotri_b(CPULoongArchState *env, arg_xvrotri_b *restrict a) {
     int oprsz = size;
     uint32_t desc = simd_desc(oprsz, oprsz, 8 - a->imm);
     helper_gvec_rotl8i(&env->fpr[a->vd], &env->fpr[a->vj], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvrotri_h(CPULoongArchState *env, arg_xvrotri_h *restrict a) {
@@ -4748,7 +4776,7 @@ static bool trans_xvrotri_h(CPULoongArchState *env, arg_xvrotri_h *restrict a) {
     int oprsz = size;
     uint32_t desc = simd_desc(oprsz, oprsz, 16 - a->imm);
     helper_gvec_rotl16i(&env->fpr[a->vd], &env->fpr[a->vj], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvrotri_w(CPULoongArchState *env, arg_xvrotri_w *restrict a) {
@@ -4757,7 +4785,7 @@ static bool trans_xvrotri_w(CPULoongArchState *env, arg_xvrotri_w *restrict a) {
     int oprsz = size;
     uint32_t desc = simd_desc(oprsz, oprsz, 32 - a->imm);
     helper_gvec_rotl32i(&env->fpr[a->vd], &env->fpr[a->vj], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvrotri_d(CPULoongArchState *env, arg_xvrotri_d *restrict a) {
@@ -4766,7 +4794,7 @@ static bool trans_xvrotri_d(CPULoongArchState *env, arg_xvrotri_d *restrict a) {
     int oprsz = size;
     uint32_t desc = simd_desc(oprsz, oprsz, 64 - a->imm);
     helper_gvec_rotl64i(&env->fpr[a->vd], &env->fpr[a->vj], desc);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 gen_trans_vvvd(xvsadd_b, 32, gvec_ssadd8)
@@ -4793,7 +4821,7 @@ static bool trans_xvseteqz_v(CPULoongArchState *env, arg_xvseteqz_v *restrict a)
         r &= (env->fpr[a->vj].vreg.D[i] == 0);
     }
     env->cf[a->cd] = r;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvsetnez_v(CPULoongArchState *env, arg_xvsetnez_v *restrict a) {
@@ -4804,7 +4832,7 @@ static bool trans_xvsetnez_v(CPULoongArchState *env, arg_xvsetnez_v *restrict a)
         r |= (env->fpr[a->vj].vreg.D[i] != 0);
     }
     env->cf[a->cd] = r;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 gen_trans_vvid(xvshuf4i_b, 32, vshuf4i_b)
@@ -4939,27 +4967,27 @@ static bool trans_xvst(CPULoongArchState *env, arg_xvst *restrict a) {
     for (int32_t i = 0; i < ele_cnt; i++) {
         st_d(env, add_addr(env->gpr[a->rj], a->imm + (i * 8)), env->fpr[a->vd].vreg.D[i]);
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
-static bool trans_xvstelm_b(CPULoongArchState *env, arg_xvstelm_b *restrict a) {CHECK_FPE(32); st_b(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->vd].vreg.B[a->imm2]);env->pc += 4;return true;}
-static bool trans_xvstelm_h(CPULoongArchState *env, arg_xvstelm_h *restrict a) {CHECK_FPE(32); st_h(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->vd].vreg.H[a->imm2]);env->pc += 4;return true;}
-static bool trans_xvstelm_w(CPULoongArchState *env, arg_xvstelm_w *restrict a) {CHECK_FPE(32); st_w(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->vd].vreg.W[a->imm2]);env->pc += 4;return true;}
-static bool trans_xvstelm_d(CPULoongArchState *env, arg_xvstelm_d *restrict a) {CHECK_FPE(32); st_d(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->vd].vreg.D[a->imm2]);env->pc += 4;return true;}
+static bool trans_xvstelm_b(CPULoongArchState *env, arg_xvstelm_b *restrict a) {CHECK_FPE(32); st_b(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->vd].vreg.B[a->imm2]);cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_xvstelm_h(CPULoongArchState *env, arg_xvstelm_h *restrict a) {CHECK_FPE(32); st_h(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->vd].vreg.H[a->imm2]);cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_xvstelm_w(CPULoongArchState *env, arg_xvstelm_w *restrict a) {CHECK_FPE(32); st_w(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->vd].vreg.W[a->imm2]);cpu_set_pc(env, env->pc + 4);return true;}
+static bool trans_xvstelm_d(CPULoongArchState *env, arg_xvstelm_d *restrict a) {CHECK_FPE(32); st_d(env, add_addr(env->gpr[a->rj], a->imm), env->fpr[a->vd].vreg.D[a->imm2]);cpu_set_pc(env, env->pc + 4);return true;}
 static bool trans_xvstx(CPULoongArchState *env, arg_xvstx *restrict a) {
     CHECK_FPE(32);
     int32_t ele_cnt = 32 / 8;
     for (int32_t i = 0; i < ele_cnt; i++) {
         st_d(env, add_addr(env->gpr[a->rj], env->gpr[a->rk] + (i * 8)), env->fpr[a->vd].vreg.D[i]);
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_xvsub_q(CPULoongArchState *env, arg_xvsub_q *restrict a) {
     CHECK_FPE(32);
     env->fpr[a->vd].vreg.Q[0] = env->fpr[a->vj].vreg.Q[0] - env->fpr[a->vk].vreg.Q[0];
     env->fpr[a->vd].vreg.Q[1] = env->fpr[a->vj].vreg.Q[1] - env->fpr[a->vk].vreg.Q[1];
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
@@ -5000,7 +5028,7 @@ static bool trans_amadd_db_b(DisasContext *env, arg_amadd_db_b *a) {
     int32_t new_v = env->gpr[a->rk] + old_v;
     ram_stb(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amadd_db_h(DisasContext *env, arg_amadd_db_h *a) {
@@ -5010,7 +5038,7 @@ static bool trans_amadd_db_h(DisasContext *env, arg_amadd_db_h *a) {
     int32_t new_v = env->gpr[a->rk] + old_v;
     ram_sth(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amswap_db_b(DisasContext *env, arg_amswap_db_b *a) {
@@ -5019,7 +5047,7 @@ static bool trans_amswap_db_b(DisasContext *env, arg_amswap_db_b *a) {
     int32_t old_v = ram_ldb(ha);
     ram_stb(ha, env->gpr[a->rk]);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amswap_db_h(DisasContext *env, arg_amswap_db_h *a) {
@@ -5028,7 +5056,7 @@ static bool trans_amswap_db_h(DisasContext *env, arg_amswap_db_h *a) {
     int32_t old_v = ram_ldh(ha);
     ram_sth(ha, env->gpr[a->rk]);
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amadd_b(DisasContext *env, arg_amadd_b *a) {return trans_amadd_db_b(env, a);}
@@ -5044,7 +5072,7 @@ static bool trans_amcas_db_b(DisasContext *env, arg_amcas_db_b *a) {
         ram_stb(ha, env->gpr[a->rk]);
     }
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amcas_db_h(DisasContext *env, arg_amcas_db_h *a) {
@@ -5055,7 +5083,7 @@ static bool trans_amcas_db_h(DisasContext *env, arg_amcas_db_h *a) {
         ram_sth(ha, env->gpr[a->rk]);
     }
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amcas_db_w(DisasContext *env, arg_amcas_db_w *a) {
@@ -5066,7 +5094,7 @@ static bool trans_amcas_db_w(DisasContext *env, arg_amcas_db_w *a) {
         ram_stw(ha, env->gpr[a->rk]);
     }
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amcas_db_d(DisasContext *env, arg_amcas_db_d *a) {
@@ -5077,7 +5105,7 @@ static bool trans_amcas_db_d(DisasContext *env, arg_amcas_db_d *a) {
         ram_std(ha, env->gpr[a->rk]);
     }
     env->gpr[a->rd] = (int64_t)old_v;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_amcas_b(DisasContext *env, arg_amcas_b *a) {return trans_amcas_db_b(env, a);}
@@ -5126,7 +5154,7 @@ static bool trans_sc_q(DisasContext *env , arg_sc_q *a) {
     } else {
         env->gpr[a->rd] = 0;
     }
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
@@ -5136,7 +5164,7 @@ static bool trans_x86##name(DisasContext *env, arg_x86##name *a)\
 {\
     CHECK_BTE;\
     helper_lbt_x86##name(env, env->gpr[a->rj], env->gpr[a->rk]);\
-    env->pc += 4;\
+    cpu_set_pc(env, env->pc + 4);\
     return true;\
 }
 #define TRANS_X86I(name,field) \
@@ -5144,7 +5172,7 @@ static bool trans_x86##name(DisasContext *env, arg_x86##name *a)\
 {\
     CHECK_BTE;\
     helper_lbt_x86##name(env, env->gpr[a->rj], a->imm);\
-    env->pc += 4;\
+    cpu_set_pc(env, env->pc + 4);\
     return true;\
 }
 #define TRANS_X86MJ(name) \
@@ -5152,7 +5180,7 @@ static bool trans_x86##name(DisasContext *env, arg_x86##name *a)\
 {\
     CHECK_BTE;\
     helper_lbt_x86##name(env, env->gpr[a->rj]);\
-    env->pc += 4;\
+    cpu_set_pc(env, env->pc + 4);\
     return true;\
 }
 #define TRANS_X86E(name) \
@@ -5160,7 +5188,7 @@ static bool trans_x86##name(DisasContext *env, arg_x86##name *a)\
 {\
     CHECK_BTE;\
     helper_lbt_x86##name(env);\
-    env->pc += 4;\
+    cpu_set_pc(env, env->pc + 4);\
     return true;\
 }
 
@@ -5278,7 +5306,7 @@ static bool trans_ ## name (DisasContext *env, arg_ ## name *a) \
 {\
     CHECK_BTE;\
     env->gpr[a->rd] = helper_lbt_## name (env, env->gpr[a->rj], env->gpr[a->rk]);  \
-    env->pc += 4;\
+    cpu_set_pc(env, env->pc + 4);\
     return true;    \
 }
 TRANS_ADC(adc_b)    // trans_adc_b
@@ -5300,7 +5328,7 @@ static bool trans_ ## name (DisasContext *env, arg_ ## name *a) \
 {\
     CHECK_BTE;\
     env->gpr[a->rd] = helper_lbt_## name (env, env->gpr[a->rj], a->imm);  \
-    env->pc += 4;\
+    cpu_set_pc(env, env->pc + 4);\
     return true;    \
 }
 TRANS_ADCI(rcri_b)    // trans_rcri_b
@@ -5312,21 +5340,21 @@ TRANS_ADCI(rcri_d)    // trans_rcri_d
 static bool trans_setx86j(DisasContext *env, arg_setx86j *a) {
     CHECK_BTE;
     env->gpr[a->rd] = helper_lbt_setx86j(env, a->imm);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
 static bool trans_x86mfflag(DisasContext *env, arg_x86mfflag *a) {
     CHECK_BTE;
     env->gpr[a->rd] = helper_lbt_x86mfflag(env, a->imm);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
 static bool trans_x86mtflag(DisasContext *env, arg_x86mtflag *a) {
     CHECK_BTE;
     helper_lbt_x86mtflag(env, env->gpr[a->rd], a->imm);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
@@ -5334,7 +5362,7 @@ static bool trans_x86loope(DisasContext *env, arg_x86loope *a) {
     CHECK_BTE;
     env->gpr[a->rd] = helper_lbt_x86loop(env, env->gpr[a->rj], 0);
     env->gpr[a->rj] += -1;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
@@ -5342,35 +5370,40 @@ static bool trans_x86loopne(DisasContext *env, arg_x86loopne *a) {
     CHECK_BTE;
     env->gpr[a->rd] = helper_lbt_x86loop(env, env->gpr[a->rj], 1);
     env->gpr[a->rj] += -1;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
 static bool trans_gr2scr(DisasContext *ctx, arg_gr2scr *a) {
     CHECK_BTE;
     helper_lbt_gr2scr(env, a->sd, a->rj);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
 static bool trans_scr2gr(DisasContext *ctx, arg_scr2gr *a) {
     CHECK_BTE;
     helper_lbt_scr2gr(env, a->rd, a->sj);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
 static bool trans_grsel(DisasContext *ctx, arg_grsel *a) {
     CHECK_BTE;
     helper_lbt_grsel(env, a->rd, a->rj, a->imm);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
 static bool trans_jiscr0(DisasContext *ctx, arg_jiscr0 *a) {
     CHECK_BTE;
     PERF_INC(COUNTER_INST_BRANCH);
-    env->pc = env->scr[0] + a->offs;
+    uint64_t target = env->scr[0] + a->offs;
+    cpu_set_pc(env, target);
+#ifdef RECORD_BRANCH
+    env->taken = true;
+    env->target = target;
+#endif
     return true;
 }
 
@@ -5378,7 +5411,12 @@ static bool trans_jiscr1(DisasContext *ctx, arg_jiscr1 *a) {
     CHECK_BTE;
     PERF_INC(COUNTER_INST_BRANCH);
     env->scr[0] = env->pc;
-    env->pc = env->scr[1] + a->offs;
+    uint64_t target = env->scr[1] + a->offs;
+    cpu_set_pc(env, target);
+#ifdef RECORD_BRANCH
+    env->taken = true;
+    env->target = target;
+#endif
     return true;
 }
 
@@ -5386,37 +5424,37 @@ static bool trans_jiscr1(DisasContext *ctx, arg_jiscr1 *a) {
 static bool trans_x86clrtm(DisasContext *env, arg_x86clrtm *a) {
     CHECK_BTE;
     env->fcsr0 &=~(1<<21);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_x86settm(DisasContext *env, arg_x86settm *a) {
     CHECK_BTE;
     env->fcsr0 |=  1<<21;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_x86dectop(DisasContext *env, arg_x86dectop *a) {
     CHECK_BTE;
     env->x86_top = (env->x86_top + 8 - 1) % 8;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_x86inctop(DisasContext *env, arg_x86inctop *a) {
     CHECK_BTE;
     env->x86_top = (env->x86_top + 1) % 8;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_x86mftop(DisasContext *env, arg_x86mftop *a) {
     CHECK_BTE;
     env->gpr[a->rd] = env->x86_top;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_x86mttop(DisasContext *env, arg_x86mttop *a) {
     CHECK_BTE;
     env->x86_top = a->ptr;
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
@@ -5426,22 +5464,22 @@ static bool trans_addu12i_d(DisasContext *env, arg_addu12i_d *a) {__NOT_IMPLEMEN
 static bool trans_addu12i_w(DisasContext *env, arg_addu12i_w *a) {__NOT_IMPLEMENTED__}
 static bool trans_add_wu(DisasContext *env, arg_add_wu *a) {
     SET_RD(RJU + RK);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_alsl_uw(DisasContext *env, arg_alsl_uw *a) {
     SET_RD((RJU << a->sa) + RK);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_bitinv(DisasContext *env, arg_bitinv *a) {
     SET_RD(RJ ^ (1ull << (RK & 0x3f)));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_bitinvi(DisasContext *env, arg_bitinvi *a) {
     SET_RD(RJ ^ (1ull << a->imm));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fcvt_d_ld(DisasContext *env, arg_fcvt_d_ld *a) {__NOT_IMPLEMENTED__}
@@ -5480,7 +5518,7 @@ static bool trans_fldi_s(DisasContext *env, arg_fldi_s *a) {
     (extract32(imm8, 0, 6) << 3);
     fd <<= 16;
     set_fpr(env, a->fd, fd);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fldi_d(DisasContext *env, arg_fldi_d *a) {
@@ -5492,7 +5530,7 @@ static bool trans_fldi_d(DisasContext *env, arg_fldi_d *a) {
     extract32(imm8, 0, 6);
     fd <<= 48;
     set_fpr(env, a->fd, fd);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_fmaxn_s(DisasContext *env, arg_fmaxn_s *a) {CHECK_FPE(8); return gen_ff2(env, a, helper_fmaxn_s);}
@@ -5509,32 +5547,32 @@ gen_trans_vved(xvfminn_s, 32, vfminn_s)
 gen_trans_vved(xvfminn_d, 32, vfminn_d)
 static bool trans_max(DisasContext *env, arg_max *a) {
     SET_RD(MAX(RJ, RK));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_maxu(DisasContext *env, arg_maxu *a) {
     SET_RD(MAX((uint64_t)RJ, (uint64_t)RK));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_maxwu(DisasContext *env, arg_maxwu *a) {
     SET_RD(MAX(RJU, RKU));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_min(DisasContext *env, arg_min *a) {
     SET_RD(MIN(RJ, RK));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_minu(DisasContext *env, arg_minu *a) {
     SET_RD(MIN((uint64_t)RJ, (uint64_t)RK));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_minwu(DisasContext *env, arg_minwu *a) {
     SET_RD(MIN(RJU, RKU));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_orc_b(DisasContext *env, arg_orc_b *a) {
@@ -5548,17 +5586,17 @@ static bool trans_orc_b(DisasContext *env, arg_orc_b *a) {
         }
     }
     SET_RD(rd);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_pcnt_w(DisasContext *env, arg_pcnt_w *a) {
     SET_RD(ctpop32(RJU));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_pcnt_d(DisasContext *env, arg_pcnt_d *a) {
     SET_RD(ctpop64(RJ));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_rotr_b(DisasContext *env, arg_rotr_b *a) {__NOT_IMPLEMENTED__}
@@ -5567,13 +5605,13 @@ static bool trans_rotri_b(DisasContext *env, arg_rotri_b *a) {__NOT_IMPLEMENTED_
 static bool trans_rotri_h(DisasContext *env, arg_rotri_h *a) {__NOT_IMPLEMENTED__}
 static bool trans_slli_wu(DisasContext *env, arg_slli_wu *a) {
     SET_RD((uint64_t)RJU << a->imm);
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_x86settag(DisasContext *env, arg_x86settag *a) {__NOT_IMPLEMENTED__}
 static bool trans_xnor(DisasContext *env, arg_xnor *a) {
     SET_RD(~(RJ ^ RK));
-    env->pc += 4;
+    cpu_set_pc(env, env->pc + 4);
     return true;
 }
 
