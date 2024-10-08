@@ -513,7 +513,7 @@ static int debug_handle_x(const char* str) {
     }
     int r = sscanf(end, "%lx", &addr);
     if (r != 1) {
-        fprintf(stderr, "can not prase %s\n", str);
+        fprintf(stderr, "can not parse %s\n", str);
         return 0;
     }
     // fprintf(stderr, "addr:%lx len:%d size:%c format:%c\n", addr, len, size, format);
@@ -548,13 +548,13 @@ static void handle_debug(void) {
             if (item->func) {
                 int r = item->func(line_buff);
                 if (r < 0) {
-                    fprintf(stderr, "cannot prase %s\n", line_buff);
+                    fprintf(stderr, "cannot parse %s\n", line_buff);
                 } else if (r > 0) {
                     fprintf(stderr, "Continuing.\n");
                     break;
                 }
             } else {
-                fprintf(stderr, "cannot prase %s\n", line_buff);
+                fprintf(stderr, "cannot parse %s\n", line_buff);
             }
         }
     } while (1);

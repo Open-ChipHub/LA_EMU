@@ -447,6 +447,11 @@ typedef struct CPUArchState {
 
     uint64_t prev_pc;
     uint32_t insn;
+    #ifdef RECORD_BRNACH
+    /* for branch */
+    bool     taken;
+    uint64_t target;
+    #endif
 
     /* LoongArch CSRs */
     uint64_t CSR_CRMD;

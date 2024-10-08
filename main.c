@@ -33,8 +33,8 @@
 
 #if defined(CONFIG_PLUGIN)
 la_emu_plugin_ops* plugin_ops;
-char plugin_name[PATH_MAX];
-char plugin_arg[PATH_MAX];
+char plugin_name[PATH_MAX+1];
+char plugin_arg[PATH_MAX+1];
 #endif
 bool new_abi;
 bool determined;
@@ -937,7 +937,7 @@ void handle_logmask(const char* str) {
             }
         }
         if (item->mask == 0) {
-            fprintf(stderr, "unable to prase %s\n", start);
+            fprintf(stderr, "unable to parse %s\n", start);
             laemu_exit(EXIT_FAILURE);
         }
         if (*p) {
@@ -976,7 +976,7 @@ void handle_checkmask(const char* str) {
             }
         }
         if (item->mask == 0) {
-            fprintf(stderr, "unable to prase %s\n", start);
+            fprintf(stderr, "unable to parse %s\n", start);
             laemu_exit(EXIT_FAILURE);
         }
         if (*p) {
