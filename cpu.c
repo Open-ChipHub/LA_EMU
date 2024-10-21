@@ -368,3 +368,10 @@ void cpu_set_feature(CPULoongArchState* env, char* feature, int value) {
     } else  if (strncmp(feature, "scq",         3) == 0){   env->cpucfg[2] = FIELD_DP32(env->cpucfg[2], CPUCFG2, SCQ, value);        qemu_log("set scq %d\n", value);
     }
 }
+
+size_t la_emu_get_handle_gpr() {
+    return offsetof(CPUArchState, gpr);
+}
+size_t la_emu_get_handle_fpr() {
+    return offsetof(CPUArchState, fpr);
+}
