@@ -805,11 +805,7 @@ int exec_env(CPULoongArchState *env) {
                 env->insn = insn;
                 env->prev_pc = env->pc;
 #endif
-#if defined(CONFIG_PLUGIN)
-            if (plugin_ops.emu_insn_before) {
-                plugin_ops.emu_insn_before(env, env->pc, insn);
-            }
-#endif
+                PLUGIN_CALL(emu_insn_before, env, env->pc, insn);
                 int r = interpreter(env, insn, ic);
                 if(unlikely(!r)) {
                     qemu_log("ill instruction, pc:%lx insn:%08x\n", env->pc, insn);
@@ -1462,9 +1458,7 @@ int main(int argc, char** argv, char **envp) {
             laemu_exit(EXIT_FAILURE);
         }
         plugin_ops = *install_func(plugin_arg);
-        if (plugin_ops.emu_start) {
-            plugin_ops.emu_start();
-        }
+        PLUGIN_CALL(emu_start);
     }
 #endif
     if (gdbserver) {

@@ -868,15 +868,19 @@ static inline bool enable_hw_ptw(CPULoongArchState* env) {
 
 #if defined(CONFIG_PLUGIN)
 extern la_emu_plugin_ops plugin_ops;
+    #define PLUGIN_CALL(func, ...)           \
+        do {                                 \
+            if (plugin_ops.func) {            \
+                plugin_ops.func(__VA_ARGS__); \
+            }                                \
+        } while(0)
+#else
+    #define PLUGIN_CALL(func, ...) do {} while(0)
 #endif
 
 
 static inline void laemu_exit(int64_t status) {
-#if defined (CONFIG_PLUGIN)
-    if (plugin_ops.emu_stop) {
-        plugin_ops.emu_stop();
-    }
-#endif
+    PLUGIN_CALL(emu_stop);
     exit(status);
 }
 
