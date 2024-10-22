@@ -32,7 +32,7 @@
 #endif
 
 #if defined(CONFIG_PLUGIN)
-la_emu_plugin_ops* plugin_ops;
+la_emu_plugin_ops plugin_ops;
 char plugin_name[PATH_MAX+1];
 char plugin_arg[PATH_MAX+1];
 #endif
@@ -806,8 +806,8 @@ int exec_env(CPULoongArchState *env) {
                 env->prev_pc = env->pc;
 #endif
 #if defined(CONFIG_PLUGIN)
-            if (plugin_ops && plugin_ops->emu_insn_before) {
-                plugin_ops->emu_insn_before(env, env->pc, insn);
+            if (plugin_ops.emu_insn_before) {
+                plugin_ops.emu_insn_before(env, env->pc, insn);
             }
 #endif
                 int r = interpreter(env, insn, ic);
@@ -1461,9 +1461,9 @@ int main(int argc, char** argv, char **envp) {
             fprintf(stderr, "%s\n", error);
             laemu_exit(EXIT_FAILURE);
         }
-        plugin_ops = install_func(plugin_arg);
-        if (plugin_ops && plugin_ops->emu_start) {
-            plugin_ops->emu_start();
+        plugin_ops = *install_func(plugin_arg);
+        if (plugin_ops.emu_start) {
+            plugin_ops.emu_start();
         }
     }
 #endif
