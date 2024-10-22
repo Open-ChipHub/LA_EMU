@@ -84,6 +84,13 @@ static inline long long la_get_tval(CPULoongArchState *env){
 #define __NOT_CORRECTED_IMPLEMENTED__ do {fprintf(stderr, "LA_EMU NOT CORRECTED IMPLEMENTED %s, pc:%lx\n", __func__, env->pc);} while(0);
 #define __NOT_IMPLEMENTED_EXIT__ do {fprintf(stderr, "LA_EMU NOT IMPLEMENTED %s, pc:%lx\n", __func__, env->pc); laemu_exit(1); return false;} while(0);
 
+#define SIZE_SHIFT_B  0  // Byte, 1 byte
+#define SIZE_SHIFT_H  1  // Halfword, 2 bytes
+#define SIZE_SHIFT_W  2  // Word, 4 bytes
+#define SIZE_SHIFT_D  3  // Doubleword, 8 bytes
+#define SIZE_SHIFT_Q  4  // Quadword, 16 bytes
+#define SIZE_SHIFT_O  5  // Octaword, 32 bytes
+
 #define DisasContext CPULoongArchState
 #define ctx env
 #define TCGv int64_t
@@ -803,11 +810,14 @@ static uint64_t add_addr(int64_t base, int64_t disp) {
 
 static int8_t ld_b(CPULoongArchState *env, uint64_t va) {
     hwaddr ha = load_pa(env, va);
+    int8_t data;
 #if defined(CONFIG_USER_ONLY)
-    return ram_ldb(ha);
+    data = ram_ldb(ha);
 #else
-    return is_io(ha) ? do_io_ld(ha, 1) : ram_ldb(ha);
+    data = is_io(ha) ? do_io_ld(ha, 1) : ram_ldb(ha);
 #endif
+    PLUGIN_CALL(emu_load, va, SIZE_SHIFT_B, &data);
+    return data;
 }
 
 static int16_t ld_h(CPULoongArchState *env, uint64_t va) {
@@ -829,6 +839,7 @@ static int16_t ld_h(CPULoongArchState *env, uint64_t va) {
             }
         }
     }
+    PLUGIN_CALL(emu_load, va, SIZE_SHIFT_H, &data);
     return data;
 }
 
@@ -851,6 +862,7 @@ static int32_t ld_w(CPULoongArchState *env, uint64_t va) {
             }
         }
     }
+    PLUGIN_CALL(emu_load, va, SIZE_SHIFT_W, &data);
     return data;
 }
 
@@ -873,6 +885,7 @@ static int64_t ld_d(CPULoongArchState *env, uint64_t va) {
             }
         }
     }
+    PLUGIN_CALL(emu_load, va, SIZE_SHIFT_D, &data);
     return data;
 }
 
@@ -920,6 +933,7 @@ static void st_b(CPULoongArchState *env, uint64_t va, uint8_t data) {
 #else
     is_io(ha) ? do_io_st(ha, data, 1) : ram_stb(ha, data);
 #endif
+    PLUGIN_CALL(emu_store, va, SIZE_SHIFT_B, &data);
 }
 
 static void st_h(CPULoongArchState *env, uint64_t va, uint16_t data) {
@@ -939,6 +953,7 @@ static void st_h(CPULoongArchState *env, uint64_t va, uint16_t data) {
             }
         }
     }
+    PLUGIN_CALL(emu_store, va, SIZE_SHIFT_W, &data);
 }
 
 static void st_w(CPULoongArchState *env, uint64_t va, uint32_t data) {
@@ -958,6 +973,7 @@ static void st_w(CPULoongArchState *env, uint64_t va, uint32_t data) {
             }
         }
     }
+    PLUGIN_CALL(emu_store, va, SIZE_SHIFT_W, &data);
 }
 
 static void st_d(CPULoongArchState *env, uint64_t va, uint64_t data) {
@@ -977,6 +993,7 @@ static void st_d(CPULoongArchState *env, uint64_t va, uint64_t data) {
             }
         }
     }
+    PLUGIN_CALL(emu_store, va, SIZE_SHIFT_D, &data);
 }
 
 // static void st_128(CPULoongArchState *env, uint64_t va, Int128 data) {
