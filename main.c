@@ -801,7 +801,7 @@ int exec_env(CPULoongArchState *env) {
                     }
                 }
                 insn = fetch(env, &ic);
-#ifdef CONFIG_DIFF
+#if defined(CONFIG_DIFF) || defined(CONFIG_PLUGIN)
                 env->insn = insn;
                 env->prev_pc = env->pc;
 #endif
@@ -810,6 +810,7 @@ int exec_env(CPULoongArchState *env) {
                 if(unlikely(!r)) {
                     qemu_log("ill instruction, pc:%lx insn:%08x\n", env->pc, insn);
                 }
+                PLUGIN_CALL(emu_insn_after, env, env->prev_pc, insn, env->pc);
 
                 // need update after fetch and exec so exception would not cause singlestep and icount change
 #if defined (CONFIG_DIFF) || defined (CONFIG_CLI)

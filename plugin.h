@@ -7,6 +7,7 @@ typedef struct la_emu_plugin_ops {
     void (*emu_start)(void);
     void (*emu_stop)(void);
     void (*emu_insn_before)(void* env, uint64_t pc, uint32_t insn);
+    void (*emu_insn_after)(void* env, uint64_t pc, uint32_t insn, uint64_t next_pc);
     void (*emu_execption)(void* env, int ecode);
     // size_shift: size of access in ^2 (0=byte, 1=16bit, 2=32bit etc...)
     void (*emu_load)(uint64_t vaddr, uint32_t size_shift, void* data);
