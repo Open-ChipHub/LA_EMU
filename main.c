@@ -26,6 +26,7 @@
 #include "irq.h"
 #include "serial.h"
 #include "serial_plus.h"
+#include "simple_virtio_blk.h"
 #endif
 #if defined(CONFIG_PLUGIN)
 #include <dlfcn.h>
@@ -173,6 +174,7 @@ uint64_t initrd_start = 0xa0000000;
 uint64_t kernel_arg_a1 = 0x100000;
 char* kernel_cmdline;
 char real_kernel_cmdline[0x1000];
+char* hda_filename;
 #endif
 // for checkpoint restore
 char* ckpt_mem_filename;
@@ -916,6 +918,8 @@ const QEMULogItem qemu_log_items[] = {
       "log timer amd timer csr read/write" },
     { CPU_LOG_PTW, "ptw",
       "log Page Table Walker" },
+    { CPU_LOG_VIRTIO_BLK, "virtio_blk",
+      "log virtio block input/output"},
     { 0, NULL, NULL },
 };
 
@@ -985,6 +989,7 @@ void handle_checkmask(const char* str) {
 }
 
 #if !defined(CONFIG_USER_ONLY)
+VirtioBlkState *blk;
 void do_io_st(hwaddr ha, uint64_t data, int size) {
     switch (ha)
     {
@@ -1010,6 +1015,9 @@ void do_io_st(hwaddr ha, uint64_t data, int size) {
             laemu_exit(0);
         }
         break;
+    case 0x1f000000 ... 0x1f100000:
+        if (blk) virtio_blk_ioport_write(blk, ha - 0x1f000000, data, size);
+        break;
     default:
         fprintf(stderr, "do_io_st, pc:%lx, addr:%lx, data:%lx, size:%d\n", current_env->pc, ha, data, size);
         // lsassert(0);
@@ -1031,6 +1039,9 @@ uint64_t do_io_ld(hwaddr ha, int size) {
         break;
     case 0x100d0014:
         data = 0;
+        break;
+    case 0x1f000000 ... 0x1f100000:
+        if (blk) data = virtio_blk_ioport_read(blk, ha - 0x1f000000, size);
         break;
     default:
         fprintf(stderr, "do_io_ld, addr:%lx, size:%d\n", ha, size);
@@ -1083,6 +1094,7 @@ struct option long_options[] = {
     {"kernel", required_argument, 0, 'k'},
     {"initrd", required_argument, 0, 0},
     {"append", required_argument, 0, 0},
+    {"hda", required_argument, 0, 0},
     {0, 0 ,0 ,0}
 };
 
@@ -1159,6 +1171,8 @@ int main(int argc, char** argv, char **envp) {
                 } else if (strcmp(long_options[long_option_idx].name, "append") == 0) {
                     kernel_cmdline = optarg;
                     strcpy(real_kernel_cmdline, kernel_cmdline);
+                } else if (strcmp(long_options[long_option_idx].name, "hda") == 0) {
+                    hda_filename = optarg;
                 } else {
                     usage();
                     return 1;
@@ -1354,6 +1368,10 @@ int main(int argc, char** argv, char **envp) {
         env->gpr[5] = kernel_arg_a1;
     }
 
+    if (hda_filename) {
+        qemu_irq irq = qemu_allocate_irq(loongarch_cpu_set_irq, (void*)env, 8);
+        blk = simple_virtio_blk_init(irq, hda_filename);
+    }
 #endif
     env->pc = entry_addr;
 
