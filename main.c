@@ -27,6 +27,7 @@
 #include "serial.h"
 #include "serial_plus.h"
 #include "simple_virtio_blk.h"
+#include "device_io.h"
 #endif
 #if defined(CONFIG_PLUGIN)
 #include <dlfcn.h>
@@ -990,64 +991,36 @@ void handle_checkmask(const char* str) {
 
 #if !defined(CONFIG_USER_ONLY)
 VirtioBlkState *blk;
-void do_io_st(hwaddr ha, uint64_t data, int size) {
-    switch (ha)
-    {
-    case UART_BASE ... UART_END:
-        if (serial_plus) {
-            serial_plus_ioport_write(ss, ha - UART_BASE, data, size);
-        } else {
-            serial_ioport_write(NULL, ha - UART_BASE, data, size);
-        }
-        break;
-    case 0x1fe002e0:
-            fprintf(stderr, "%c", (char)(data));
-            fflush(stdout);
-        break;
 
-    case 0x100d0014:
-        fprintf(stderr,"lxy: %s:%d %s poweroff@100d0014 data:%x\n",__FILE__, __LINE__, __FUNCTION__, (int)data);
-        if ((data & 0x3c00) == 0x3c00) {
+void poweroff_ioport_write(void* opaque, uint64_t addr, uint64_t val, unsigned size) {
+        fprintf(stderr,"lxy: %s:%d %s poweroff@100d0014 data:%x\n",__FILE__, __LINE__, __FUNCTION__, (int)val);
+        if ((val & 0x3c00) == 0x3c00) {
             dump_exec_info(current_env, stderr);
 #if defined(CONFIG_PERF)
             perf_report(current_env, stderr);
 #endif
             laemu_exit(0);
         }
-        break;
-    case 0x1f000000 ... 0x1f100000:
-        if (blk) virtio_blk_ioport_write(blk, ha - 0x1f000000, data, size);
-        break;
-    default:
-        fprintf(stderr, "do_io_st, pc:%lx, addr:%lx, data:%lx, size:%d\n", current_env->pc, ha, data, size);
-        // lsassert(0);
-    }
+}
+
+uint64_t poweroff_ioport_read(void *opaque, hwaddr addr, unsigned size) {
+    return 0;
+}
+
+void debugcon_ioport_write(void* opaque, uint64_t addr, uint64_t val, unsigned size) {
+    fprintf(stderr, "%c", (char)(val));
+    fflush(stdout);
+}
+
+uint64_t debugcon_ioport_read(void *opaque, hwaddr addr, unsigned size) {
+    return 'a';
+}
+
+void do_io_st(hwaddr ha, uint64_t data, int size) {
+    io_write(ha, data, size);
 }
 uint64_t do_io_ld(hwaddr ha, int size) {
-    uint64_t data = 'x';
-    switch (ha)
-    {
-    case UART_BASE ... UART_END:
-        if (serial_plus) {
-            data = serial_plus_ioport_read(ss, ha - UART_BASE, size);
-        } else {
-            data = serial_ioport_read(NULL, ha - UART_BASE, size);
-        }
-        break;
-    case 0x1fe00120:
-            data = 'a';
-        break;
-    case 0x100d0014:
-        data = 0;
-        break;
-    case 0x1f000000 ... 0x1f100000:
-        if (blk) data = virtio_blk_ioport_read(blk, ha - 0x1f000000, size);
-        break;
-    default:
-        fprintf(stderr, "do_io_ld, addr:%lx, size:%d\n", ha, size);
-        break;
-    }
-    return data;
+    return io_read(ha, size);
 }
 
 void loongarch_cpu_check_irq(CPULoongArchState *env) {
@@ -1297,6 +1270,8 @@ int main(int argc, char** argv, char **envp) {
         qemu_irq irq = qemu_allocate_irq(loongarch_cpu_set_irq, (void*)env, 7);
         ss = simple_serial_init(0x1fe001e0, irq, 115200);
 
+        io_register_device(ss, serial_plus_ioport_read, serial_plus_ioport_write, NULL, 0x1fe001e0, 8);
+
         struct sigevent sev;
         sev.sigev_notify = SIGEV_SIGNAL;
         sev.sigev_signo = SIGRTMIN + 1;
@@ -1316,7 +1291,12 @@ int main(int argc, char** argv, char **envp) {
         its.it_interval.tv_sec = 0;
         its.it_interval.tv_nsec = 5000000;
         lsassert(timer_settime(serial_timerid, 0, &its, NULL) == 0);
+    } else {
+        io_register_device(NULL, serial_ioport_read, serial_ioport_write, NULL, 0x1fe001e0, 8);
     }
+
+    io_register_device(NULL, poweroff_ioport_read, poweroff_ioport_write, NULL, 0x100d0014, 8);
+    io_register_device(NULL, debugcon_ioport_read, debugcon_ioport_write, NULL, 0x1fe002e0, 8);
 
     qemu_log("kernel_addr: %lx-%lx\n", kernel_addr_low, kernel_addr_high);
 
@@ -1371,6 +1351,7 @@ int main(int argc, char** argv, char **envp) {
     if (hda_filename) {
         qemu_irq irq = qemu_allocate_irq(loongarch_cpu_set_irq, (void*)env, 8);
         blk = simple_virtio_blk_init(irq, hda_filename);
+        io_register_device(blk, virtio_blk_ioport_read, virtio_blk_ioport_write, simple_virtio_blk_fini, 0x1f000000, 0x1000);
     }
 #endif
     env->pc = entry_addr;
