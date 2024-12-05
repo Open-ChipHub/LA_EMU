@@ -35,7 +35,6 @@
 #define CONFIG_IOVEC
 #define CONFIG_INT128
 #define CONFIG_TCG
-#define TARGET_LOONGARCH64
 typedef struct Error Error;
 # define G_NORETURN __attribute__ ((__noreturn__))
 #define G_GNUC_WARN_UNUSED_RESULT __attribute__((warn_unused_result))

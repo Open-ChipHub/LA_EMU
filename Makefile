@@ -1,10 +1,21 @@
+TARGET_CPU ?= loongarch64
+
+ifeq ($(TARGET_CPU),loongarch64)
+TARGET_ABBR := la
+TARGET_MACRO := -DTARGET_LOONGARCH64
+else
+$(error Unsupported TARGET_CPU $(TARGET_CPU))
+endif
+
+BUILD_DIR := build
+
 CC=gcc
 OPT_FLAG = -O2 -flto=auto
 ifeq (${DEBUG},1)
 	OPT_FLAG = -Og
 endif
 # CFLAGS ?= -g -O3 -flto=auto -march=native -mtune=native -MMD -MP -I. -Iinclude -DCONFIG_INT128
-CFLAGS ?= -g ${OPT_FLAG} -MMD -MP -I. -Iinclude -Ibuild -Wall -Werror
+CFLAGS ?= -g ${OPT_FLAG} -MMD -MP -I. -Iinclude -I${TARGET_CPU} -Idevice -I$(BUILD_DIR) -Wall -Werror $(TARGET_MACRO)
 LDFLAGS ?= -lm -lrt -rdynamic ${OPT_FLAG}
 ifeq (${GDB},1)
 	CFLAGS += -DCONFIG_GDB
@@ -42,14 +53,18 @@ ifeq (${DIFF},1)
 	LDFLAGS += -shared -fPIC -Wl,--no-undefined
 endif
 
-BUILD_DIR := ./build
 SRC_DIRS := ./
 
-USER_SOURCES := fpu_helper.c  host-utils.c  int128.c  interpreter.c  main.c  softfloat.c vec_helper.c lbt_helper.c tcg-runtime-gvec.c syscall.c ${GDB_SOURCES} debug_cli.c cpu.c checkpoint.c
+TARGET_COMMON_SOURCE := $(addprefix ${TARGET_CPU}/, cpu.c fpu_helper.c interpreter.c vec_helper.c lbt_helper.c)
+USER_KERNEL_COMMON_SOURCES := ${TARGET_COMMON_SOURCE} ${GDB_SOURCES} host-utils.c  int128.c main.c softfloat.c tcg-runtime-gvec.c debug_cli.c checkpoint.c
+
+USER_SOURCES := ${USER_KERNEL_COMMON_SOURCES} syscall.c
 USER_OBJS := $(addprefix $(BUILD_DIR)/, $(patsubst %.c,%_user.o,$(USER_SOURCES)))
 USER_DEPS := $(USER_OBJS:.o=.d)
 
-KERNEL_SOURCES := fpu_helper.c  host-utils.c  int128.c  interpreter.c  main.c  softfloat.c  tlb_helper.c cpu_helper.c vec_helper.c lbt_helper.c tcg-runtime-gvec.c serial.c serial_plus.c simple_virtio_blk.c device_io.c ${GDB_SOURCES} debug_cli.c cpu.c fifo.c checkpoint.c
+DEVICE_SOURCES := $(wildcard device/*.c)
+
+KERNEL_SOURCES := ${USER_KERNEL_COMMON_SOURCES} ${DEVICE_SOURCES} ${TARGET_CPU}/tlb_helper.c ${TARGET_CPU}/cpu_helper.c  fifo.c
 KERNEL_OBJS := $(addprefix $(BUILD_DIR)/, $(patsubst %.c,%_kernel.o,$(KERNEL_SOURCES)))
 KERNEL_DEPS := $(KERNEL_OBJS:.o=.d)
 
@@ -70,9 +85,9 @@ $(info $$DIFF_OBJS is [${DIFF_OBJS}])
 $(info $$DIFF_DEPS is [${DIFF_DEPS}])
 
 ifeq (${DIFF},1)
-	TARGETS = $(BUILD_DIR)/la_emu_ref.so
+	TARGETS = $(BUILD_DIR)/$(TARGET_ABBR)_emu_ref.so
 else
-	TARGETS = $(BUILD_DIR)/la_emu_user $(BUILD_DIR)/la_emu_kernel
+	TARGETS = $(BUILD_DIR)/$(TARGET_ABBR)_emu_user $(BUILD_DIR)/$(TARGET_ABBR)_emu_kernel
 endif
 
 all: $(TARGETS)
@@ -80,26 +95,26 @@ all: $(TARGETS)
 
 ${USER_OBJS} ${KERNEL_OBJS} ${DIFF_OBJS} : $(BUILD_DIR)/trans_la.c.inc
 
-$(BUILD_DIR)/trans_la.c.inc: insns.decode
+$(BUILD_DIR)/trans_la.c.inc: ${TARGET_CPU}/insns.decode
 	@mkdir -p $(BUILD_DIR)
-	python3 ./scripts/decodetree.py ./insns.decode -o $(BUILD_DIR)/decode-insns.c.inc
+	python3 ./scripts/decodetree.py ${TARGET_CPU}/insns.decode -o $(BUILD_DIR)/decode-insns.c.inc
 	python3 ./scripts/emu_cpu_put_ic.py $(BUILD_DIR)/decode-insns.c.inc > $(BUILD_DIR)/trans_la.c.inc
 
-$(BUILD_DIR)/la_emu_user : ${USER_OBJS}
+$(BUILD_DIR)/$(TARGET_ABBR)_emu_user : ${USER_OBJS}
 	$(CC) $(USER_OBJS) -o $@ $(LDFLAGS)
 
 $(BUILD_DIR)/%_user.o : %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -DCONFIG_USER_ONLY=1 -c -o $@ $<
 
-$(BUILD_DIR)/la_emu_kernel : ${KERNEL_OBJS}
+$(BUILD_DIR)/$(TARGET_ABBR)_emu_kernel : ${KERNEL_OBJS}
 	$(CC) $(KERNEL_OBJS) -o $@ $(LDFLAGS)
 
 $(BUILD_DIR)/%_kernel.o : %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
-$(BUILD_DIR)/la_emu_ref.so : ${DIFF_OBJS}
+$(BUILD_DIR)/$(TARGET_ABBR)_emu_ref.so : ${DIFF_OBJS}
 	$(CC) $(DIFF_OBJS) -o $@ $(LDFLAGS)
 
 $(BUILD_DIR)/%_diff.o : %.c
@@ -107,7 +122,7 @@ $(BUILD_DIR)/%_diff.o : %.c
 	$(CC) $(CFLAGS) -c -o $@ $<
 
 clean:
-	rm -rf build $(BUILD_DIR)/trans_la.c.inc
+	rm -rf $(BUILD_DIR) $(BUILD_DIR)/trans_la.c.inc
 
 .EXTRA_PREREQS = Makefile
 -include $(USER_DEPS)
