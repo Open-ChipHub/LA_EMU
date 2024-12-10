@@ -56,7 +56,11 @@ endif
 SRC_DIRS := ./
 
 TARGET_COMMON_SOURCE := $(addprefix ${TARGET_CPU}/, cpu.c fpu_helper.c interpreter.c vec_helper.c lbt_helper.c)
-USER_KERNEL_COMMON_SOURCES := ${TARGET_COMMON_SOURCE} ${GDB_SOURCES} host-utils.c  int128.c main.c softfloat.c tcg-runtime-gvec.c debug_cli.c checkpoint.c
+USER_KERNEL_COMMON_SOURCES := ${TARGET_COMMON_SOURCE} ${GDB_SOURCES} host-utils.c  int128.c main.c softfloat.c tcg-runtime-gvec.c checkpoint.c
+
+ifeq (${CLI},1)
+	USER_KERNEL_COMMON_SOURCES += debug_cli.c
+endif
 
 USER_SOURCES := ${USER_KERNEL_COMMON_SOURCES} syscall.c
 USER_OBJS := $(addprefix $(BUILD_DIR)/, $(patsubst %.c,%_user.o,$(USER_SOURCES)))

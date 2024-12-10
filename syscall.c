@@ -10,6 +10,7 @@
 #include <sys/times.h>
 #include <sys/resource.h>
 #include <sys/ioctl.h>
+#include <sys/random.h>
 
 #define TARGET_NR_getcwd 17
 #define TARGET_NR_fcntl 25
@@ -32,9 +33,13 @@
 #define TARGET_NR_fstat64 80
 #define TARGET_NR_exit 93
 #define TARGET_NR_exit_group 94
+#define TARGET_NR_set_tid_address 96
+#define TARGET_NR_set_robust_list 99
 #define TARGET_NR_clock_gettime 113
 #define TARGET_NR_rt_sigaction 134
+#define TARGET_NR_rt_sigprocmask 135
 #define TARGET_NR_times 153
+#define TARGET_NR_uname 160
 #define TARGET_NR_getrusage 165
 #define TARGET_NR_umask 166
 #define TARGET_NR_gettimeofday 169
@@ -50,8 +55,10 @@
 #define TARGET_NR_munmap 215
 #define TARGET_NR_mremap 216
 #define TARGET_NR_mmap 222
+#define TARGET_NR_mprotect 226
 #define TARGET_NR_prlimit64 261
 #define TARGET_NR_renameat2 276
+#define TARGET_NR_getrandom 278
 
 
 static abi_ulong target_brk, initial_target_brk;
@@ -414,6 +421,9 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
         case TARGET_NR_rt_sigaction:
             fprintf(stderr, "unimp rt_sigaction\n");
             return 0;
+        case TARGET_NR_rt_sigprocmask:
+            fprintf(stderr, "unimp rt_sigprocmask\n");
+            return 0;
         case TARGET_NR_unlinkat:
             ret = get_errno(unlinkat(arg1, (void*)arg2, arg3));
             return ret;
@@ -488,12 +498,25 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
             return get_errno((abi_long)mremap((void*)arg1, arg2, arg3, arg4, (void*)arg5));
         case TARGET_NR_mmap:
             return do_mmap(arg1, arg2, arg3, arg4, arg5, arg6);
+        case TARGET_NR_mprotect:
+            return get_errno((abi_long)mprotect((void*)arg1, arg2, arg3));
         case TARGET_NR_prlimit64:
             return get_errno(prlimit(arg1, arg2, (void*)arg3, (void*)arg4));
         #ifdef __NR_renameat2
         case TARGET_NR_renameat2:
             return get_errno(renameat2(arg1, (void*)arg2, arg3, (void*)4, arg5));
         #endif
+        case TARGET_NR_set_tid_address:
+            fprintf(stderr, "unimp TARGET_NR_set_tid_address\n");
+            return -host_to_target_errno(ENOSYS);
+        case TARGET_NR_set_robust_list:
+            fprintf(stderr, "unimp TARGET_NR_set_robust_list\n");
+            return -host_to_target_errno(ENOSYS);
+        case TARGET_NR_uname:
+            fprintf(stderr, "unimp TARGET_NR_uname\n");
+            return -host_to_target_errno(ENOSYS);
+        case TARGET_NR_getrandom:
+            return get_errno(getrandom((void*)arg1, arg2, arg3));
         default:
             lsassertm(0, "unimplement syscall %d\n", num);
     }

@@ -17,7 +17,6 @@
 #define DUT_TO_REF 0
 #define REF_TO_DUT 1
 
-extern char* ram;
 
 extern int64_t singlestep;
 extern int check_level;

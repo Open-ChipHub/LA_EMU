@@ -9,10 +9,6 @@
 
 #include "sizes.h"
 #include "cpu.h"
-#include "internals.h"
-
-#define GETBIT(__a, __index) ((__a >> __index) & 1)
-#define GETBITS(__a, __index, __len) ((__a >> __index) & ((1 << __len) - 1))
 
 extern const char * const regnames[32];
 
@@ -24,13 +20,6 @@ extern const char *const loongarch_f_alias[32];
 
 extern void save_checkpoint(CPULoongArchState *env, char* name);
 extern void save_checkpoint_qemu_format(CPULoongArchState *env, char* name);
-
-#ifndef CONFIG_USER_ONLY
-extern char* ram;
-#else
-// In "USER_ONLY" mode, the guest address is mapped directly to the host
-char* ram = 0;
-#endif
 
 static int debug_handle_continue(const char* str);
 static int debug_handle_quit(const char* str);
@@ -63,7 +52,7 @@ const debug_cmd debugcmds[] = {
     {0, NULL, NULL},
 };
 
-int64_t singlestep = -1;
+extern int64_t singlestep;
 
 #define BREAKPOINT_NUM 4
 struct FetchBreakpoint {
@@ -75,53 +64,6 @@ static int fetch_breakpoint_num = 0;
 static FetchBreakpoint fetch_breakpoints[BREAKPOINT_NUM] = {0};
 
 int check_signal = 0;
-
-static void dump_vzoui(int fcsr) {
-    fprintf(stderr, "%c%c%c%c%c", GETBIT(fcsr, 4) ? 'V' : '-',  GETBIT(fcsr, 3) ? 'Z' : '-',  GETBIT(fcsr, 2) ? 'O' : '-',  GETBIT(fcsr, 1) ? 'U' : '-',  GETBIT(fcsr, 0) ? 'I' : '-');
-}
-
-static void dump_fcsr(int fcsr) {
-    int rm = (fcsr >> 8) & 0x3;
-    static const char* rm_mode[4] = {
-        "RNE",
-        "RZ",
-        "RP",
-        "RM",
-    };
-    // printf("    Enables:V:%d, Z:%d, O:%d, U:%d, I:%d\n", GETBIT(fcsr, 4), GETBIT(fcsr, 3), GETBIT(fcsr, 2), GETBIT(fcsr, 1), GETBIT(fcsr, 0));
-    // printf("    RM     :%d(%s)\n", rm, rm_mode[rm]);
-    // printf("    Flags  :V:%d, Z:%d, O:%d, U:%d, I:%d\n", GETBIT(fcsr, 20), GETBIT(fcsr, 19), GETBIT(fcsr, 18), GETBIT(fcsr, 17), GETBIT(fcsr, 16));
-    // printf("    Cause  :V:%d, Z:%d, O:%d, U:%d, I:%d\n", GETBIT(fcsr, 28), GETBIT(fcsr, 27), GETBIT(fcsr, 26), GETBIT(fcsr, 25), GETBIT(fcsr, 24));
-
-    fprintf(stderr, "RM:%d(%s)", rm, rm_mode[rm]);
-    fprintf(stderr, ",Enables:");dump_vzoui(GETBITS(fcsr, 0, 5));
-    fprintf(stderr, ",Flags:");dump_vzoui(GETBITS(fcsr, 16, 5));
-    fprintf(stderr, ",Cause:");dump_vzoui(GETBITS(fcsr, 24, 5));
-    fprintf(stderr, "\n");
-}
-
-__attribute__((noinline)) void show_register(CPULoongArchState *env) {
-    fprintf(stderr, "pc:0x%lx\n", env->pc);
-    for (int i = 0; i <32; i++) {
-        fprintf(stderr, "r%02d/%-3s:%016lx    ", i, loongarch_r_alias[i], env->gpr[i]);
-        if ((i + 1) % 4 == 0) {
-            fprintf(stderr, "\n");
-        }
-    }
-}
-
-__attribute__((noinline)) void show_register_fpr(CPULoongArchState *env) {
-    for (int i = 0; i <32; i++) {
-        fprintf(stderr, "f%02d   {f = 0x%08x, d = 0x%016lx} {f = %.6f\t, d = %.12f\t}\n",
-            i, env->fpr[i].vreg.W[0], env->fpr[i].vreg.D[0], *(float*)&env->fpr[i], *(double*)&env->fpr[i]);
-    }
-    for (int i = 0; i <8; i++) {
-        fprintf(stderr, "fcc%d:%d ", i, env->cf[i]);
-    }
-    fprintf(stderr, "\n");
-    fprintf(stderr, "fcsr:%08x\n", env->fcsr0);
-    dump_fcsr(env->fcsr0);
-}
 
 static void show_csr(CPULoongArchState *env) {
     fprintf(stderr,"CSR_CRMD\t:0x%-16lx ",env->CSR_CRMD);

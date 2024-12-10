@@ -11,7 +11,7 @@
 
 #include "sizes.h"
 #include "cpu.h"
-#include "internals.h"
+// #include "internals.h"
 
 #if !defined(CONFIG_USER_ONLY)
 
@@ -25,7 +25,6 @@
 #define HIGHMEM_SIZE 0xf0000000ul
 
 static uint8_t zero4k[__4KB] __attribute__ ((aligned (__4KB)));
-extern char* ram;
 extern uint64_t ram_size;
 extern const char* const csrnames[];
 
@@ -761,24 +760,24 @@ void save_checkpoint_qemu_format(CPULoongArchState *env, char* name) {
 }
 
 #else
-void save_checkpoint(CPULoongArchState *env, char* name) {
+void save_checkpoint(void *env, char* name) {
     fprintf(stderr, "error :can not save checkpoint in user mode\n");
 }
 
-void restore_checkpoint(CPULoongArchState *env, char* name) {
+void restore_checkpoint(void *env, char* name) {
     lsassertm(false, "can not restore checkpoint in user mode\n");
 }
 
-void save_checkpoint_qemu_format(CPULoongArchState *env, char* name) {
+void save_checkpoint_qemu_format(void *env, char* name) {
     fprintf(stderr, "error :can not save checkpoint in user mode\n");
 }
 
-void restore_checkpoint_qemu_format(CPULoongArchState *env, char* mem_path, char* cpu_path) {
+void restore_checkpoint_qemu_format(void *env, char* mem_path, char* cpu_path) {
     lsassertm(false, "can not restore checkpoint in user mode\n");
 }
 #endif
 
 // export save_checkpoint to dynamic library
 void la_emu_save_checkpoint(void *env, char* name) {
-    save_checkpoint((CPULoongArchState*)env, name);
+    save_checkpoint(env, name);
 }

@@ -700,24 +700,11 @@ int probe_get_physical_address(CPULoongArchState *env, hwaddr *physical,
 bool interpreter(CPULoongArchState *env, uint32_t insn, INSCache* ic);
 
 #ifdef CONFIG_USER_ONLY
-static inline uint64_t ram_ldb(hwaddr addr) {return (int64_t)*(int8_t*)(addr);}
-static inline uint64_t ram_ldh(hwaddr addr) {return (int64_t)*(int16_t*)(addr);}
-static inline uint64_t ram_ldw(hwaddr addr) {return (int64_t)*(int32_t*)(addr);}
-static inline uint64_t ram_ldd(hwaddr addr) {return (int64_t)*(int64_t*)(addr);}
-static inline uint64_t ram_ldub(hwaddr addr) {return *(uint8_t*)(addr);}
-static inline uint64_t ram_lduh(hwaddr addr) {return *(uint16_t*)(addr);}
-static inline uint64_t ram_lduw(hwaddr addr) {return *(uint32_t*)(addr);}
-static inline uint64_t ram_ldud(hwaddr addr) {return *(uint64_t*)(addr);}
-// static inline Int128  ram_ld128(hwaddr addr) {return *(Int128*)(addr);}
-// static inline VReg    ram_ld256(hwaddr addr) {return *(VReg*)(addr);}
-static inline void ram_stb(hwaddr addr, uint64_t data) {*(uint8_t*)(addr) = data;}
-static inline void ram_sth(hwaddr addr, uint64_t data) {*(uint16_t*)(addr) = data;}
-static inline void ram_stw(hwaddr addr, uint64_t data) {*(uint32_t*)(addr) = data;}
-static inline void ram_std(hwaddr addr, uint64_t data) {*(uint64_t*)(addr) = data;}
-// static inline void ram_st128(hwaddr addr, Int128 data) {*(Int128*)(addr) = data;}
-// static inline void ram_st256(hwaddr addr, VReg data) {*(VReg*)(addr) = data;}
+static char* const ram;
 #else
 extern char* ram;
+#endif
+
 static inline uint64_t ram_ldb(hwaddr addr) {return (int64_t)*(int8_t*)(ram + addr);}
 static inline uint64_t ram_ldh(hwaddr addr) {return (int64_t)*(int16_t*)(ram + addr);}
 static inline uint64_t ram_ldw(hwaddr addr) {return (int64_t)*(int32_t*)(ram + addr);}
@@ -734,6 +721,7 @@ static inline void ram_stw(hwaddr addr, uint64_t data) {*(uint32_t*)(ram + addr)
 static inline void ram_std(hwaddr addr, uint64_t data) {*(uint64_t*)(ram + addr) = data;}
 // static inline void ram_st128(hwaddr addr, Int128 data) {*(Int128*)(ram + addr) = data;}
 // static inline void ram_st256(hwaddr addr, VReg data) {*(VReg*)(ram + addr) = data;}
+#ifndef CONFIG_USER_ONLY
 bool addr_in_ram(hwaddr pa);
 static inline bool ram_ldub_check(hwaddr addr, uint8_t *data) {if (!addr_in_ram(addr)){*data = 0xff; return false;} *data = *(uint8_t*)(ram + addr); return true;}
 #endif
@@ -882,6 +870,19 @@ extern la_emu_plugin_ops plugin_ops;
 static inline void laemu_exit(int64_t status) {
     PLUGIN_CALL(emu_stop);
     exit(status);
+}
+
+void cpu_reset(CPUState* cs);
+#define cpu_do_interrupt loongarch_cpu_do_interrupt
+void loongarch_cpu_do_interrupt(CPUState *cs);
+
+const char *loongarch_exception_name(int32_t exception);
+
+void show_register(CPUArchState *env);
+void show_register_fpr(CPUArchState *env);
+
+static inline void cpu_set_sp(CPUArchState *env, target_ulong sp) {
+    env->gpr[3] = sp;
 }
 
 #endif /* LOONGARCH_CPU_H */
