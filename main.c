@@ -27,6 +27,11 @@
 #include "serial_plus.h"
 #include "simple_virtio_blk.h"
 #include "device_io.h"
+
+#if defined(TARGET_RISCV64)
+#include "riscv_plic.h"
+#endif
+
 #endif
 #if defined(CONFIG_PLUGIN)
 #include <dlfcn.h>
@@ -43,6 +48,10 @@ bool hw_ptw;
 bool ptw_hw_setVD = true;
 bool serial_plus;
 #if !defined(CONFIG_USER_ONLY)
+#if defined(TARGET_RISCV64)
+PlicState *plic;
+qemu_irq_handler plic_irq_rqeuest;
+#endif
 SerialState *ss;
 timer_t serial_timerid;
 volatile sig_atomic_t serial_timer_int;
@@ -151,7 +160,7 @@ char* ckpt_cpu_filename;
 char* cpu_option;
 
 #if !defined (CONFIG_USER_ONLY) && !defined (CONFIG_DIFF)
-static char* readfile(const char* filename, uint64_t* length) {
+__attribute__((unused)) static char* readfile(const char* filename, uint64_t* length) {
     // int r;
     char * buffer;
     FILE * f = fopen (filename, "rb");
@@ -197,6 +206,7 @@ static target_ulong user_setup_stack() {
 #define elf_shdr Elf64_Shdr
 #define elf_phdr Elf64_Phdr
 #if !defined (CONFIG_USER_ONLY) && !defined (CONFIG_DIFF)
+#if defined(TARGET_LOONGARCH64)
 static char* alloc_ram(uint64_t ram_size) {
     void* start = mmap(NULL, ram_size + SZ_2G, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     lsassert(start != MAP_FAILED);
@@ -222,6 +232,29 @@ bool addr_range_in_ram(hwaddr begin, hwaddr end) {
         ||
         (begin >= SZ_2G + SZ_256M && end <= ram_size + SZ_2G);
 }
+#elif defined(TARGET_RISCV64)
+#define DTB_BLOB_ADDR SZ_1G
+static char* alloc_ram(uint64_t ram_size) {
+    void* start = mmap(NULL, ram_size + SZ_2G, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    lsassert(start != MAP_FAILED);
+    void* part1 = mmap(start + SZ_1G, SZ_1G, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+    lsassert(part1 != MAP_FAILED);
+    void* part2 = mmap(start + SZ_2G, ram_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+    lsassert(part2 != MAP_FAILED);
+    return start;
+}
+
+bool addr_in_ram(hwaddr pa) {
+    return
+        (pa >= SZ_1G && pa < ram_size + SZ_2G);
+}
+
+bool addr_range_in_ram(hwaddr begin, hwaddr end) {
+    return
+        (begin >= SZ_1G && end <= ram_size + SZ_2G);
+}
+
+#endif
 
 void ram_copy_bytes(hwaddr pa, void* src, size_t size) {
     lsassertm(addr_range_in_ram(pa, pa + size), "copy to ram addr:%lx, size:%lx failed\n", pa, size);
@@ -481,11 +514,27 @@ fail:
 
 static uint32_t fetch(CPUArchState *env, INSCache** ic) {
 #if defined(CONFIG_USER_ONLY)
+#if defined(TARGET_LOONGARCH64)
         uint32_t insn = ram_lduw(env->pc);
         *ic = cpu_get_ic(env, insn);
         return insn;
 
+#elif defined(TARGET_RISCV64)
+        uint32_t insn = ram_lduh(env->pc);
+        if ((insn & 3) == 3) {
+            insn |= (ram_lduh(env->pc + 2) << 16);
+            env->cur_insn_len = 4;
+        } else {
+            env->cur_insn_len = 2;
+        }
+        // *ic = cpu_get_ic(env, insn);
+        *ic = NULL;
+        return insn;
 #else
+    #error "unknown arch"
+#endif
+#else
+#if defined(TARGET_LOONGARCH64)
     int insn;
     hwaddr ha;
     int prot;
@@ -505,6 +554,29 @@ static uint32_t fetch(CPUArchState *env, INSCache** ic) {
     insn = ram_lduw(ha);
     *ic = cpu_get_ic(env, insn);
     return insn;
+#elif defined(TARGET_RISCV64)
+    uint64_t addr = env->pc;
+    hwaddr phys_addr = trans_pa(env, addr, MMU_INST_FETCH);
+    uint32_t insn = ram_lduh(phys_addr);
+    if ((insn & 3) == 3) {
+        uint64_t addr2 = addr + 2;
+        if (addr2 & (TARGET_PAGE_SIZE - 1)) {
+            phys_addr = phys_addr + 2;
+        } else {
+            phys_addr = trans_pa(env, addr2, MMU_INST_FETCH);
+        }
+        insn |= (ram_lduh(phys_addr) << 16);
+        env->cur_insn_len = 4;
+    } else {
+        env->cur_insn_len = 2;
+    }
+    // *ic = cpu_get_ic(env, insn);
+    *ic = NULL;
+    return insn;
+#else
+    #error "unknown arch"
+#endif
+
 #endif
 }
 
@@ -534,8 +606,12 @@ int exec_env(CPUArchState *env) {
                 loongarch_cpu_check_irq(env);
 #endif
                 if (unlikely(loongarch_cpu_has_irq(env))) {
+#if defined(TARGET_LOONGARCH64)
                     cs->exception_index = EXCCODE_INT;
                     loongarch_cpu_do_interrupt(cs);
+#else
+                    riscv_cpu_exec_interrupt(cs, 0);
+#endif
                 }
 #endif
 
@@ -763,6 +839,7 @@ uint64_t do_io_ld(hwaddr ha, int size) {
     return io_read(ha, size);
 }
 
+#if defined(TARGET_LOONGARCH64)
 void loongarch_cpu_check_irq(CPUArchState *env) {
     if (determined) {
         env->timer_counter -= (env->CSR_TCFG & CONSTANT_TIMER_ENABLE);
@@ -796,6 +873,45 @@ void loongarch_cpu_check_irq(CPUArchState *env) {
 bool loongarch_cpu_has_irq(CPUArchState *env) {
     return FIELD_EX64(env->CSR_CRMD, CSR_CRMD, IE) && (FIELD_EX64(env->CSR_ESTAT, CSR_ESTAT, IS) & FIELD_EX64(env->CSR_ECFG, CSR_ECFG, LIE));
 }
+#elif defined (TARGET_RISCV64)
+inline void loongarch_cpu_check_irq(CPUArchState *env) {
+    if (determined) {
+        if (la_get_tval(env) >= env->clint_mtimecmp) {
+            loongarch_cpu_set_irq(env_cpu(env), IRQ_M_TIMER, 1);
+        }
+    } else {
+        if (unlikely(env->timer_int)) {
+            env->timer_int = false;
+            loongarch_cpu_set_irq(env_cpu(env), IRQ_M_TIMER, 1);
+        }
+    }
+
+    // always false when disable serial_plus
+    if (unlikely(serial_timer_int)) {
+        serial_timer_int = false;
+        serial_check_io(ss);
+        riscv_plic_check_io(plic);
+    }
+}
+
+inline bool loongarch_cpu_has_irq(CPUArchState *env) {
+    uint64_t gein, vsgein = 0, vstip = 0, irqf = 0;
+
+    if (env->virt_enabled) {
+        gein = get_field(env->hstatus, HSTATUS_VGEIN);
+        vsgein = (env->hgeip & (1ULL << gein)) ? MIP_VSEIP : 0;
+        irqf = env->hvien & env->hvip & env->vsie;
+    } else {
+        irqf = env->mvien & env->mvip & env->sie;
+    }
+
+    vstip = env->vstime_irq ? MIP_VSTIP : 0;
+
+    return env->mip | vsgein | vstip | irqf;
+    // return (env->mip | (env->mvien & env->mvip & env->sie)) ;
+}
+#endif
+
 #endif
 
 #ifndef CONFIG_DIFF
@@ -978,7 +1094,9 @@ int main(int argc, char** argv, char **envp) {
     CPUArchState* env = &cpu->env;
     cs->env = env;
     cpu_reset(cs);
+#if !defined(TARGET_RISCV)
     loongarch_core_initfn(env);
+#endif
     if (cpu_option) {
         // "la464,+aaa,-bbb,+lsx,-alsx";
         char* dot = strchr(cpu_option, ',');
@@ -1006,12 +1124,9 @@ int main(int argc, char** argv, char **envp) {
     env->timer_counter = INT64_MAX;
 #ifndef CONFIG_USER_ONLY
     env->timerid = timerid;
+
+    // check int
     if (serial_plus) {
-        qemu_irq irq = qemu_allocate_irq(loongarch_cpu_set_irq, env_cpu(env), 7);
-        ss = simple_serial_init(0x1fe001e0, irq, 115200);
-
-        io_register_device(ss, serial_plus_ioport_read, serial_plus_ioport_write, NULL, 0x1fe001e0, 8);
-
         struct sigevent sev;
         sev.sigev_notify = SIGEV_SIGNAL;
         sev.sigev_signo = SIGRTMIN + 1;
@@ -1031,6 +1146,15 @@ int main(int argc, char** argv, char **envp) {
         its.it_interval.tv_sec = 0;
         its.it_interval.tv_nsec = 5000000;
         lsassert(timer_settime(serial_timerid, 0, &its, NULL) == 0);
+    }
+
+    qemu_log("kernel_addr: %lx-%lx\n", kernel_addr_low, kernel_addr_high);
+
+#if defined (TARGET_LOONGARCH64)
+    if (serial_plus) {
+        qemu_irq irq = qemu_allocate_irq(loongarch_cpu_set_irq, env_cpu(env), 7);
+        ss = simple_serial_init(0x1fe001e0, irq, 115200);
+        io_register_device(ss, serial_plus_ioport_read, serial_plus_ioport_write, NULL, 0x1fe001e0, 8);
     } else {
         io_register_device(NULL, serial_ioport_read, serial_ioport_write, NULL, 0x1fe001e0, 8);
     }
@@ -1093,6 +1217,47 @@ int main(int argc, char** argv, char **envp) {
         blk = simple_virtio_blk_init(irq, hda_filename);
         io_register_device(blk, virtio_blk_ioport_read, virtio_blk_ioport_write, simple_virtio_blk_fini, 0x1f000000, 0x1000);
     }
+#elif defined (TARGET_RISCV64)
+
+    {
+        extern char* create_spike_dtb(uint64_t memory_size, const char* append, int serial_int, int* dtb_size);
+        int dtb_size;
+        // char* dtb_buffer = readfile("spike_simple.dtb", &dtb_size);
+        if (!kernel_cmdline) {
+            kernel_cmdline = "swiotlb=64 dhash_entries=16384 ihash_entries=16384 nokaslr norandmaps console=ttyS0 earlycon";
+        }
+        qemu_log("kernel_cmdline:%s\n", kernel_cmdline);
+        char* dtb_buffer = create_spike_dtb(ram_size, kernel_cmdline, serial_plus, &dtb_size);
+        ram_copy_bytes(DTB_BLOB_ADDR, dtb_buffer, dtb_size);
+        free(dtb_buffer);
+        // a1
+        env->gpr[11] = DTB_BLOB_ADDR;
+    }
+
+    {
+        qemu_irq irq_m = qemu_allocate_irq(loongarch_cpu_set_irq, (void*)env_cpu(env), IRQ_M_EXT);
+        qemu_irq irq_s = qemu_allocate_irq(loongarch_cpu_set_irq, (void*)env_cpu(env), IRQ_S_EXT);
+        plic = riscv_plic_init(0, irq_m, irq_s, &plic_irq_rqeuest);
+        lsassert(plic);
+        io_register_device(plic, riscv_plic_ioport_read, riscv_plic_ioport_write, NULL, 0xc000000, 0x1000000);
+    }
+
+    if (serial_plus) {
+        qemu_irq irq = qemu_allocate_irq(plic_irq_rqeuest, (void*)plic, 1);
+        ss = simple_serial_init(0x10000000, irq, 115200);
+        io_register_device(ss, serial_plus_ioport_read, serial_plus_ioport_write, NULL, 0x10000000, 8);
+    } else {
+        io_register_device(NULL, serial_ioport_read, serial_ioport_write, NULL, 0x10000000, 8);
+    }
+
+    io_register_device(env, clint_ioport_read, clint_ioport_write, NULL, 0x2000000, 0xc000);
+    io_register_device(NULL, poweroff_ioport_read, poweroff_ioport_write, NULL, 0x100d0014, 8);
+
+    if (hda_filename) {
+        lsassert(0);
+    }
+#endif
+
 #endif
     env->pc = entry_addr;
 

@@ -92,7 +92,7 @@ uint64_t io_read(uint64_t addr, unsigned size) {
         }
     }
 
-    fprintf(stderr, "Warning: No IO device handles address 0x%lX\n", addr);
+    fprintf(stderr, "Warning: No IO device handles address 0x%lX, read\n", addr);
     return 0;
 }
 
@@ -110,7 +110,7 @@ void io_write(uint64_t addr, uint64_t val, unsigned size) {
         }
     }
 
-    fprintf(stderr, "Warning: No IO device handles address 0x%lX\n", addr);
+    fprintf(stderr, "Warning: No IO device handles address 0x%lX, write, %lx\n", addr, val);
 }
 
 // Cleans up all registered IO devices by calling their fini functions

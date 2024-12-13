@@ -13,7 +13,7 @@
 #include "cpu.h"
 // #include "internals.h"
 
-#if !defined(CONFIG_USER_ONLY)
+#if !defined(CONFIG_USER_ONLY) && defined (TARGET_LOONGARCH64)
 
 #define __4KB 0x1000
 #define PAGE_SIZE __4KB
