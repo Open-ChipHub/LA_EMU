@@ -577,7 +577,8 @@ void loongarch_cpu_do_interrupt(CPUState *cs)
 
 void loongarch_cpu_set_irq(void *opaque, int irq, int level)
 {
-    CPULoongArchState *env = opaque;
+    LoongArchCPU *cpu = opaque;
+    CPULoongArchState *env = &cpu->env;
 
     if (irq < 0 || irq >= N_IRQS) {
         lsassert(0);

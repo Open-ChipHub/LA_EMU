@@ -2330,7 +2330,7 @@ uint64_t helper_write_csr(CPULoongArchState *env, int csr_index, uint64_t new_v,
         case LOONGARCH_CSR_TICLR          :old_v = 0;
             if (new_v & mask & 1) {
                 env->timer_int = 0;
-                loongarch_cpu_set_irq(env, IRQ_TIMER, 0);
+                loongarch_cpu_set_irq(env_cpu(env), IRQ_TIMER, 0);
             }
         break;
         case LOONGARCH_CSR_LLBCTL         :old_v = env->CSR_LLBCTL;

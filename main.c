@@ -768,7 +768,7 @@ void loongarch_cpu_check_irq(CPUArchState *env) {
         env->timer_counter -= (env->CSR_TCFG & CONSTANT_TIMER_ENABLE);
         if (env->timer_counter == 0) {
             env->timer_counter = INT64_MAX;
-            loongarch_cpu_set_irq(env, IRQ_TIMER, 1);
+            loongarch_cpu_set_irq(env_cpu(env), IRQ_TIMER, 1);
             if (FIELD_EX64(env->CSR_TCFG, CSR_TCFG, PERIODIC)) {
                 env->timer_counter = (env->CSR_TCFG & CONSTANT_TIMER_TICK_MASK) / TIME_SCALE;
             } else {
@@ -778,7 +778,7 @@ void loongarch_cpu_check_irq(CPUArchState *env) {
     } else {
         if (unlikely(env->timer_int)) {
             env->timer_int = false;
-            loongarch_cpu_set_irq(env, IRQ_TIMER, 1);
+            loongarch_cpu_set_irq(env_cpu(env), IRQ_TIMER, 1);
             if (FIELD_EX64(env->CSR_TCFG, CSR_TCFG, PERIODIC)) {
                 cpu_settimer(env, env->CSR_TCFG & CONSTANT_TIMER_TICK_MASK);
             } else {
@@ -1007,7 +1007,7 @@ int main(int argc, char** argv, char **envp) {
 #ifndef CONFIG_USER_ONLY
     env->timerid = timerid;
     if (serial_plus) {
-        qemu_irq irq = qemu_allocate_irq(loongarch_cpu_set_irq, (void*)env, 7);
+        qemu_irq irq = qemu_allocate_irq(loongarch_cpu_set_irq, env_cpu(env), 7);
         ss = simple_serial_init(0x1fe001e0, irq, 115200);
 
         io_register_device(ss, serial_plus_ioport_read, serial_plus_ioport_write, NULL, 0x1fe001e0, 8);
@@ -1089,7 +1089,7 @@ int main(int argc, char** argv, char **envp) {
     }
 
     if (hda_filename) {
-        qemu_irq irq = qemu_allocate_irq(loongarch_cpu_set_irq, (void*)env, 8);
+        qemu_irq irq = qemu_allocate_irq(loongarch_cpu_set_irq, env_cpu(env), 8);
         blk = simple_virtio_blk_init(irq, hda_filename);
         io_register_device(blk, virtio_blk_ioport_read, virtio_blk_ioport_write, simple_virtio_blk_fini, 0x1f000000, 0x1000);
     }
