@@ -157,7 +157,7 @@ cleanup:
 /**
  * Example usage of compile_dts_to_dtb function.
  */
-char* create_spike_dtb(uint64_t memory_size, const char* append, int serial_int, int* dtb_size) {
+char* create_spike_dtb(uint64_t memory_size, const char* append, int serial_int, int virt_blk, int* dtb_size) {
 
     const char* dts_header =    "/dts-v1/;\n"
                                 "\n"
@@ -232,6 +232,13 @@ const char* dts_serial_tail =
                                 "      reg-shift = <0x0>;\n"
                                 "      reg-io-width = <0x1>;\n"
                                 "    };\n";
+const char* dts_virt_blk =
+                                "virtio_block@10001000 {\n"
+                                "    compatible = \"virtio,mmio\";\n"
+                                "    reg = <0 0x10001000 0 0x1000>;\n"
+                                "    interrupt-parent = <&PLIC>;\n"
+                                "    interrupts = <2>;\n"
+                                "};\n";
 const char* dts_soc_tail =
                                 "    pmc: power-management@100d0000 {\n"
                                 "            compatible = \"syscon\", \"simple-mfd\";\n"
@@ -277,6 +284,7 @@ const char* dts_tail =
     if (dts_serial_head) strcat(dts, dts_serial_head);
     if (serial_int) strcat(dts, dts_serial_int);
     if (dts_serial_tail) strcat(dts, dts_serial_tail);
+    if (virt_blk) strcat(dts, dts_virt_blk);
     if (dts_soc_tail) strcat(dts, dts_soc_tail);
 
     strcat(dts, dts_tail);

@@ -1218,14 +1218,14 @@ int main(int argc, char** argv, char **envp) {
 #elif defined (TARGET_RISCV64)
 
     {
-        extern char* create_spike_dtb(uint64_t memory_size, const char* append, int serial_int, int* dtb_size);
+        extern char* create_spike_dtb(uint64_t memory_size, const char* append, int serial_int, int virt_blk, int* dtb_size);
         int dtb_size;
         // char* dtb_buffer = readfile("spike_simple.dtb", &dtb_size);
         if (!kernel_cmdline) {
             kernel_cmdline = "swiotlb=64 dhash_entries=16384 ihash_entries=16384 nokaslr norandmaps console=ttyS0 earlycon";
         }
         qemu_log("kernel_cmdline:%s\n", kernel_cmdline);
-        char* dtb_buffer = create_spike_dtb(ram_size, kernel_cmdline, serial_plus, &dtb_size);
+        char* dtb_buffer = create_spike_dtb(ram_size, kernel_cmdline, serial_plus, hda_filename != NULL, &dtb_size);
         ram_copy_bytes(DTB_BLOB_ADDR, dtb_buffer, dtb_size);
         free(dtb_buffer);
         // a1
@@ -1252,7 +1252,9 @@ int main(int argc, char** argv, char **envp) {
     io_register_device(NULL, poweroff_ioport_read, poweroff_ioport_write, NULL, 0x100d0014, 8);
 
     if (hda_filename) {
-        lsassert(0);
+        qemu_irq irq = qemu_allocate_irq(plic_irq_rqeuest, (void*)plic, 2);
+        blk = simple_virtio_blk_init(irq, hda_filename);
+        io_register_device(blk, virtio_blk_ioport_read, virtio_blk_ioport_write, simple_virtio_blk_fini, 0x10001000, 0x1000);
     }
 #endif
 
