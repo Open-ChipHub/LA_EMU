@@ -1697,27 +1697,41 @@ static bool trans_lpad(DisasContext *ctx, arg_lpad *a) {__NOT_IMPLEMENTED_EXIT__
 static bool trans_lr_w(DisasContext *ctx, arg_lr_w *a) {
     target_ulong addr = get_address(ctx, a->rs1, 0);
     target_ulong dest = ld_w(env, addr);
+    env->load_res = addr;
+    env->load_val = dest;
     gen_set_gpr(ctx, a->rd, (int32_t)dest);
     return true;
 }
 static bool trans_lr_d(DisasContext *ctx, arg_lr_d *a) {
     target_ulong addr = get_address(ctx, a->rs1, 0);
     target_ulong dest = ld_d(env, addr);
+    env->load_res = addr;
+    env->load_val = dest;
     gen_set_gpr(ctx, a->rd, dest);
     return true;
 }
 static bool trans_sc_w(DisasContext *ctx, arg_sc_w *a) {
     target_ulong addr = get_address(ctx, a->rs1, 0);
     target_ulong data = get_gpr(ctx, a->rs2, EXT_NONE);
-    st_w(ctx, addr, data);
-    gen_set_gpr(ctx, a->rd, 0);
+    if (addr != env->load_res || ld_w(env, addr) != env->load_val) {
+        gen_set_gpr(ctx, a->rd, 1);
+    } else {
+        st_w(ctx, addr, data);
+        gen_set_gpr(ctx, a->rd, 0);
+    }
+    env->load_res = -1;
     return true;
 }
 static bool trans_sc_d(DisasContext *ctx, arg_sc_d *a) {
     target_ulong addr = get_address(ctx, a->rs1, 0);
     target_ulong data = get_gpr(ctx, a->rs2, EXT_NONE);
-    st_d(ctx, addr, data);
-    gen_set_gpr(ctx, a->rd, 0);
+    if (addr != env->load_res || ld_d(env, addr) != env->load_val) {
+        gen_set_gpr(ctx, a->rd, 1);
+    } else {
+        st_d(ctx, addr, data);
+        gen_set_gpr(ctx, a->rd, 0);
+    }
+    env->load_res = -1;
     return true;
 }
 static bool trans_lui(DisasContext *ctx, arg_lui *a) {
