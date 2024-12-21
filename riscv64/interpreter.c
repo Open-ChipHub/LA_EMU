@@ -222,6 +222,11 @@ static void gen_set_gpri(DisasContext *ctx, int reg_num, target_long imm)
     }
 }
 
+static uint64_t get_fpr_hs(DisasContext *ctx, int reg_num)
+{
+    return env->fpr[reg_num];
+}
+
 static uint64_t get_fpr_d(DisasContext *ctx, int reg_num)
 {
     return env->fpr[reg_num];
@@ -1333,10 +1338,17 @@ static bool trans_fcvt_d_lu(DisasContext *ctx, arg_fcvt_d_lu *a) {
     gen_set_fpr_d(ctx, a->rd, dest);
     return true;
 }
-static bool trans_fcvt_d_s(DisasContext *ctx, arg_fcvt_d_s *a) {__NOT_IMPLEMENTED_EXIT__}
+static bool trans_fcvt_d_s(DisasContext *ctx, arg_fcvt_d_s *a) {
+    REQUIRE_FPU;
+    TCGv src = get_fpr_hs(ctx, a->rs1);
+    gen_set_rm(ctx, a->rm);
+    int64_t dest = helper_fcvt_d_s(tcg_env, src);
+    gen_set_fpr_d(ctx, a->rd, dest);
+    return true;
+}
 static bool trans_fcvt_d_w(DisasContext *ctx, arg_fcvt_d_w *a) {
     REQUIRE_FPU;
-    TCGv src = get_gpr(ctx, a->rs1, EXT_ZERO);
+    TCGv src = get_gpr(ctx, a->rs1, EXT_SIGN);
     gen_set_rm(ctx, a->rm);
     int64_t dest = helper_fcvt_d_w(tcg_env, (int32_t)src);
     gen_set_fpr_d(ctx, a->rd, dest);
@@ -1365,7 +1377,14 @@ static bool trans_fcvt_l_d(DisasContext *ctx, arg_fcvt_l_d *a) {
     return true;
 }
 static bool trans_fcvt_l_h(DisasContext *ctx, arg_fcvt_l_h *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_fcvt_l_s(DisasContext *ctx, arg_fcvt_l_s *a) {__NOT_IMPLEMENTED_EXIT__}
+static bool trans_fcvt_l_s(DisasContext *ctx, arg_fcvt_l_s *a) {
+    REQUIRE_FPU;
+    int64_t src = get_fpr_hs(ctx, a->rs1);
+    gen_set_rm(ctx, a->rm);
+    int64_t dest = helper_fcvt_l_s(tcg_env, src);
+    gen_set_gpr(ctx, a->rd, dest);
+    return true;
+}
 static bool trans_fcvt_lu_d(DisasContext *ctx, arg_fcvt_lu_d *a) {
     REQUIRE_FPU;
     int64_t src = get_fpr_d(ctx, a->rs1);
@@ -1375,15 +1394,58 @@ static bool trans_fcvt_lu_d(DisasContext *ctx, arg_fcvt_lu_d *a) {
     return true;
 }
 static bool trans_fcvt_lu_h(DisasContext *ctx, arg_fcvt_lu_h *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_fcvt_lu_s(DisasContext *ctx, arg_fcvt_lu_s *a) {__NOT_IMPLEMENTED_EXIT__}
+static bool trans_fcvt_lu_s(DisasContext *ctx, arg_fcvt_lu_s *a) {
+    REQUIRE_FPU;
+    int64_t src = get_fpr_hs(ctx, a->rs1);
+    gen_set_rm(ctx, a->rm);
+    int64_t dest = helper_fcvt_lu_s(tcg_env, src);
+    gen_set_gpr(ctx, a->rd, dest);
+    return true;
+}
 static bool trans_fcvtmod_w_d(DisasContext *ctx, arg_fcvtmod_w_d *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fcvt_s_bf16(DisasContext *ctx, arg_fcvt_s_bf16 *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_fcvt_s_d(DisasContext *ctx, arg_fcvt_s_d *a) {__NOT_IMPLEMENTED_EXIT__}
+static bool trans_fcvt_s_d(DisasContext *ctx, arg_fcvt_s_d *a) {
+    REQUIRE_FPU;
+    TCGv_i64 dest;
+    TCGv src = get_gpr(ctx, a->rs1, EXT_ZERO);
+    dest = helper_fcvt_s_d(tcg_env, src);
+    gen_set_fpr_hs(ctx, a->rd, dest);
+    return true;
+}
 static bool trans_fcvt_s_h(DisasContext *ctx, arg_fcvt_s_h *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_fcvt_s_l(DisasContext *ctx, arg_fcvt_s_l *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_fcvt_s_lu(DisasContext *ctx, arg_fcvt_s_lu *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_fcvt_s_w(DisasContext *ctx, arg_fcvt_s_w *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_fcvt_s_wu(DisasContext *ctx, arg_fcvt_s_wu *a) {__NOT_IMPLEMENTED_EXIT__}
+static bool trans_fcvt_s_l(DisasContext *ctx, arg_fcvt_s_l *a) {
+    REQUIRE_FPU;
+    TCGv_i64 dest;
+    TCGv src = get_gpr(ctx, a->rs1, EXT_SIGN);
+    gen_set_rm(ctx, a->rm);
+    dest = helper_fcvt_s_l(tcg_env, src);
+    gen_set_fpr_hs(ctx, a->rd, dest);
+    return true;
+}
+static bool trans_fcvt_s_lu(DisasContext *ctx, arg_fcvt_s_lu *a) {
+    REQUIRE_FPU;
+    TCGv_i64 dest;
+    TCGv src = get_gpr(ctx, a->rs1, EXT_ZERO);
+    dest = helper_fcvt_s_lu(tcg_env, src);
+    gen_set_fpr_hs(ctx, a->rd, dest);
+    return true;
+}
+static bool trans_fcvt_s_w(DisasContext *ctx, arg_fcvt_s_w *a) {
+    REQUIRE_FPU;
+    TCGv_i64 dest;
+    TCGv src = get_gpr(ctx, a->rs1, EXT_SIGN);
+    dest = helper_fcvt_s_w(tcg_env, src);
+    gen_set_fpr_hs(ctx, a->rd, dest);
+    return true;
+}
+static bool trans_fcvt_s_wu(DisasContext *ctx, arg_fcvt_s_wu *a) {
+    REQUIRE_FPU;
+    TCGv_i64 dest;
+    TCGv src = get_gpr(ctx, a->rs1, EXT_ZERO);
+    dest = helper_fcvt_s_wu(tcg_env, src);
+    gen_set_fpr_hs(ctx, a->rd, dest);
+    return true;
+}
 static bool trans_fcvt_w_d(DisasContext *ctx, arg_fcvt_w_d *a) {
     REQUIRE_FPU;
     int64_t src = get_fpr_d(ctx, a->rs1);
@@ -1401,7 +1463,14 @@ static bool trans_fcvt_wu_d(DisasContext *ctx, arg_fcvt_wu_d *a) {
     return true;
 }
 static bool trans_fcvt_w_h(DisasContext *ctx, arg_fcvt_w_h *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_fcvt_w_s(DisasContext *ctx, arg_fcvt_w_s *a) {__NOT_IMPLEMENTED_EXIT__}
+static bool trans_fcvt_w_s(DisasContext *ctx, arg_fcvt_w_s *a) {
+    REQUIRE_FPU;
+    int64_t src = get_fpr_hs(ctx, a->rs1);
+    gen_set_rm(ctx, a->rm);
+    int64_t dest = helper_fcvt_w_s(tcg_env, src);
+    gen_set_gpr(ctx, a->rd, dest);
+    return true;
+}
 static bool trans_fcvt_wu_h(DisasContext *ctx, arg_fcvt_wu_h *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fcvt_wu_s(DisasContext *ctx, arg_fcvt_wu_s *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fadd_d(DisasContext *ctx, arg_fadd_d *a) {
@@ -1414,7 +1483,15 @@ static bool trans_fadd_d(DisasContext *ctx, arg_fadd_d *a) {
     return true;
 }
 static bool trans_fadd_h(DisasContext *ctx, arg_fadd_h *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_fadd_s(DisasContext *ctx, arg_fadd_s *a) {__NOT_IMPLEMENTED_EXIT__}
+static bool trans_fadd_s(DisasContext *ctx, arg_fadd_s *a) {
+    REQUIRE_FPU;
+    int64_t src1 = get_fpr_d(ctx, a->rs1);
+    int64_t src2 = get_fpr_d(ctx, a->rs2);
+    gen_set_rm(ctx, a->rm);
+    int64_t dest = helper_fadd_s(tcg_env, src1, src2);
+    gen_set_fpr_hs(ctx, a->rd, dest);
+    return true;
+}
 static bool trans_fsub_d(DisasContext *ctx, arg_fsub_d *a) {
     REQUIRE_FPU;
     int64_t src1 = get_fpr_d(ctx, a->rs1);
@@ -1425,7 +1502,15 @@ static bool trans_fsub_d(DisasContext *ctx, arg_fsub_d *a) {
     return true;
 }
 static bool trans_fsub_h(DisasContext *ctx, arg_fsub_h *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_fsub_s(DisasContext *ctx, arg_fsub_s *a) {__NOT_IMPLEMENTED_EXIT__}
+static bool trans_fsub_s(DisasContext *ctx, arg_fsub_s *a) {
+    REQUIRE_FPU;
+    int64_t src1 = get_fpr_d(ctx, a->rs1);
+    int64_t src2 = get_fpr_d(ctx, a->rs2);
+    gen_set_rm(ctx, a->rm);
+    int64_t dest = helper_fsub_s(tcg_env, src1, src2);
+    gen_set_fpr_hs(ctx, a->rd, dest);
+    return true;
+}
 static bool trans_fmul_d(DisasContext *ctx, arg_fmul_d *a) {
     REQUIRE_FPU;
     int64_t src1 = get_fpr_d(ctx, a->rs1);
@@ -1436,7 +1521,15 @@ static bool trans_fmul_d(DisasContext *ctx, arg_fmul_d *a) {
     return true;
 }
 static bool trans_fmul_h(DisasContext *ctx, arg_fmul_h *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_fmul_s(DisasContext *ctx, arg_fmul_s *a) {__NOT_IMPLEMENTED_EXIT__}
+static bool trans_fmul_s(DisasContext *ctx, arg_fmul_s *a) {
+    REQUIRE_FPU;
+    int64_t src1 = get_fpr_d(ctx, a->rs1);
+    int64_t src2 = get_fpr_d(ctx, a->rs2);
+    gen_set_rm(ctx, a->rm);
+    int64_t dest = helper_fmul_s(tcg_env, src1, src2);
+    gen_set_fpr_hs(ctx, a->rd, dest);
+    return true;
+}
 static bool trans_fdiv_d(DisasContext *ctx, arg_fdiv_d *a) {
     REQUIRE_FPU;
     int64_t src1 = get_fpr_d(ctx, a->rs1);
@@ -1447,7 +1540,15 @@ static bool trans_fdiv_d(DisasContext *ctx, arg_fdiv_d *a) {
     return true;
 }
 static bool trans_fdiv_h(DisasContext *ctx, arg_fdiv_h *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_fdiv_s(DisasContext *ctx, arg_fdiv_s *a) {__NOT_IMPLEMENTED_EXIT__}
+static bool trans_fdiv_s(DisasContext *ctx, arg_fdiv_s *a) {
+    REQUIRE_FPU;
+    int64_t src1 = get_fpr_d(ctx, a->rs1);
+    int64_t src2 = get_fpr_d(ctx, a->rs2);
+    gen_set_rm(ctx, a->rm);
+    int64_t dest = helper_fdiv_s(tcg_env, src1, src2);
+    gen_set_fpr_hs(ctx, a->rd, dest);
+    return true;
+}
 static bool trans_fence(DisasContext *ctx, arg_fence *a) {return true;}
 static bool trans_fence_i(DisasContext *ctx, arg_fence_i *a) {return true;}
 static bool trans_feq_d(DisasContext *ctx, arg_feq_d *a) {
@@ -1472,7 +1573,14 @@ static bool trans_fle_h(DisasContext *ctx, arg_fle_h *a) {__NOT_IMPLEMENTED_EXIT
 static bool trans_fleq_d(DisasContext *ctx, arg_fleq_d *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fleq_h(DisasContext *ctx, arg_fleq_h *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fleq_s(DisasContext *ctx, arg_fleq_s *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_fle_s(DisasContext *ctx, arg_fle_s *a) {__NOT_IMPLEMENTED_EXIT__}
+static bool trans_fle_s(DisasContext *ctx, arg_fle_s *a) {
+    REQUIRE_FPU;
+    int64_t src1 = get_fpr_hs(ctx, a->rs1);
+    int64_t src2 = get_fpr_hs(ctx, a->rs2);
+    int64_t dest = helper_fle_s(tcg_env, src1, src2);
+    gen_set_gpr(ctx, a->rd, dest);
+    return true;
+}
 static bool trans_flh(DisasContext *ctx, arg_flh *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fli_d(DisasContext *ctx, arg_fli_d *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fli_h(DisasContext *ctx, arg_fli_h *a) {__NOT_IMPLEMENTED_EXIT__}
@@ -1489,8 +1597,14 @@ static bool trans_flt_h(DisasContext *ctx, arg_flt_h *a) {__NOT_IMPLEMENTED_EXIT
 static bool trans_fltq_d(DisasContext *ctx, arg_fltq_d *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fltq_h(DisasContext *ctx, arg_fltq_h *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fltq_s(DisasContext *ctx, arg_fltq_s *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_flt_s(DisasContext *ctx, arg_flt_s *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_flw(DisasContext *ctx, arg_flw *a) {__NOT_IMPLEMENTED_EXIT__}
+static bool trans_flt_s(DisasContext *ctx, arg_flt_s *a) {
+    REQUIRE_FPU;
+    int64_t src1 = get_fpr_d(ctx, a->rs1);
+    int64_t src2 = get_fpr_d(ctx, a->rs2);
+    int64_t dest = helper_flt_s(tcg_env, src1, src2);
+    gen_set_gpr(ctx, a->rd, dest);
+    return true;
+}
 static bool trans_fmadd_d(DisasContext *ctx, arg_fmadd_d *a) {
     REQUIRE_FPU;
     int64_t src1 = get_fpr_d(ctx, a->rs1);
@@ -1563,6 +1677,14 @@ static bool trans_froundnx_d(DisasContext *ctx, arg_froundnx_d *a) {__NOT_IMPLEM
 static bool trans_froundnx_h(DisasContext *ctx, arg_froundnx_h *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_froundnx_s(DisasContext *ctx, arg_froundnx_s *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fround_s(DisasContext *ctx, arg_fround_s *a) {__NOT_IMPLEMENTED_EXIT__}
+static bool trans_flw(DisasContext *ctx, arg_flw *a) {
+    REQUIRE_FPU;
+    target_ulong addr = get_address(ctx, a->rs1, a->imm);
+    target_ulong dest = ld_w(env, addr);
+    gen_nanbox_s(dest, dest);
+    gen_set_fpr_d(ctx, a->rd, dest);
+    return true;
+}
 static bool trans_fld(DisasContext *ctx, arg_fld *a) {
     REQUIRE_FPU;
     target_ulong addr = get_address(ctx, a->rs1, a->imm);
@@ -1571,6 +1693,13 @@ static bool trans_fld(DisasContext *ctx, arg_fld *a) {
     return true;
 }
 
+static bool trans_fsw(DisasContext *ctx, arg_fsw *a) {
+    REQUIRE_FPU;
+    target_ulong addr = get_address(ctx, a->rs1, a->imm);
+    target_ulong data = get_fpr_d(ctx, a->rs2);
+    st_w(env, addr, data);
+    return true;
+}
 static bool trans_fsd(DisasContext *ctx, arg_fsd *a) {
     REQUIRE_FPU;
     target_ulong addr = get_address(ctx, a->rs1, a->imm);
@@ -1595,7 +1724,20 @@ static bool trans_fsgnj_h(DisasContext *ctx, arg_fsgnj_h *a) {__NOT_IMPLEMENTED_
 static bool trans_fsgnjn_d(DisasContext *ctx, arg_fsgnjn_d *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fsgnjn_h(DisasContext *ctx, arg_fsgnjn_h *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fsgnjn_s(DisasContext *ctx, arg_fsgnjn_s *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_fsgnj_s(DisasContext *ctx, arg_fsgnj_s *a) {__NOT_IMPLEMENTED_EXIT__}
+static bool trans_fsgnj_s(DisasContext *ctx, arg_fsgnj_s *a) {
+    REQUIRE_FPU;
+    int64_t src1 = get_fpr_d(ctx, a->rs1);
+    uint64_t dest;
+    if (a->rs1 == a->rs2) { /* FMOV */
+        // TODO:
+        dest = get_fpr_d(ctx, a->rs1);
+    } else {
+        int64_t src2 = get_fpr_d(ctx, a->rs2);
+        dest = deposit64(src2, 0, 31, src1);
+    }
+    gen_set_fpr_d(ctx, a->rd, dest);
+    return true;
+}
 static bool trans_fsgnjx_d(DisasContext *ctx, arg_fsgnjx_d *a) {
     REQUIRE_FPU;
     int64_t src1 = get_fpr_d(ctx, a->rs1);
@@ -1615,7 +1757,6 @@ static bool trans_fsh(DisasContext *ctx, arg_fsh *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fsqrt_d(DisasContext *ctx, arg_fsqrt_d *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fsqrt_h(DisasContext *ctx, arg_fsqrt_h *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fsqrt_s(DisasContext *ctx, arg_fsqrt_s *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_fsw(DisasContext *ctx, arg_fsw *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_hfence_gvma(DisasContext *ctx, arg_hfence_gvma *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_hfence_vvma(DisasContext *ctx, arg_hfence_vvma *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_hinval_gvma(DisasContext *ctx, arg_hinval_gvma *a) {__NOT_IMPLEMENTED_EXIT__}

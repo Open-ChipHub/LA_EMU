@@ -16,31 +16,31 @@ uint64_t helper_fnmadd_d(CPURISCVState*, uint64_t, uint64_t, uint64_t);
 uint64_t helper_fnmadd_h(CPURISCVState*, uint64_t, uint64_t, uint64_t);
 
 // /* Floating Point - Single Precision */
-// DEF_HELPER_FLAGS_3(fadd_s, TCG_CALL_NO_RWG, i64, env, i64, i64)
-// DEF_HELPER_FLAGS_3(fsub_s, TCG_CALL_NO_RWG, i64, env, i64, i64)
-// DEF_HELPER_FLAGS_3(fmul_s, TCG_CALL_NO_RWG, i64, env, i64, i64)
-// DEF_HELPER_FLAGS_3(fdiv_s, TCG_CALL_NO_RWG, i64, env, i64, i64)
-// DEF_HELPER_FLAGS_3(fmin_s, TCG_CALL_NO_RWG, i64, env, i64, i64)
-// DEF_HELPER_FLAGS_3(fminm_s, TCG_CALL_NO_RWG, i64, env, i64, i64)
-// DEF_HELPER_FLAGS_3(fmax_s, TCG_CALL_NO_RWG, i64, env, i64, i64)
-// DEF_HELPER_FLAGS_3(fmaxm_s, TCG_CALL_NO_RWG, i64, env, i64, i64)
-// DEF_HELPER_FLAGS_2(fsqrt_s, TCG_CALL_NO_RWG, i64, env, i64)
-// DEF_HELPER_FLAGS_3(fle_s, TCG_CALL_NO_RWG, tl, env, i64, i64)
-// DEF_HELPER_FLAGS_3(fleq_s, TCG_CALL_NO_RWG, tl, env, i64, i64)
-// DEF_HELPER_FLAGS_3(flt_s, TCG_CALL_NO_RWG, tl, env, i64, i64)
-// DEF_HELPER_FLAGS_3(fltq_s, TCG_CALL_NO_RWG, tl, env, i64, i64)
-// DEF_HELPER_FLAGS_3(feq_s, TCG_CALL_NO_RWG, tl, env, i64, i64)
-// DEF_HELPER_FLAGS_2(fcvt_w_s, TCG_CALL_NO_RWG, tl, env, i64)
-// DEF_HELPER_FLAGS_2(fcvt_wu_s, TCG_CALL_NO_RWG, tl, env, i64)
-// DEF_HELPER_FLAGS_2(fcvt_l_s, TCG_CALL_NO_RWG, tl, env, i64)
-// DEF_HELPER_FLAGS_2(fcvt_lu_s, TCG_CALL_NO_RWG, tl, env, i64)
-// DEF_HELPER_FLAGS_2(fcvt_s_w, TCG_CALL_NO_RWG, i64, env, tl)
-// DEF_HELPER_FLAGS_2(fcvt_s_wu, TCG_CALL_NO_RWG, i64, env, tl)
-// DEF_HELPER_FLAGS_2(fcvt_s_l, TCG_CALL_NO_RWG, i64, env, tl)
-// DEF_HELPER_FLAGS_2(fcvt_s_lu, TCG_CALL_NO_RWG, i64, env, tl)
-// DEF_HELPER_FLAGS_2(fclass_s, TCG_CALL_NO_RWG_SE, tl, env, i64)
-// DEF_HELPER_FLAGS_2(fround_s, TCG_CALL_NO_RWG_SE, i64, env, i64)
-// DEF_HELPER_FLAGS_2(froundnx_s, TCG_CALL_NO_RWG_SE, i64, env, i64)
+uint64_t helper_fadd_s(CPURISCVState*, uint64_t, uint64_t);
+uint64_t helper_fsub_s(CPURISCVState*, uint64_t, uint64_t);
+uint64_t helper_fmul_s(CPURISCVState*, uint64_t, uint64_t);
+uint64_t helper_fdiv_s(CPURISCVState*, uint64_t, uint64_t);
+uint64_t helper_fmin_s(CPURISCVState*, uint64_t, uint64_t);
+uint64_t helper_fminm_s(CPURISCVState*, uint64_t, uint64_t);
+uint64_t helper_fmax_s(CPURISCVState*, uint64_t, uint64_t);
+uint64_t helper_fmaxm_s(CPURISCVState*, uint64_t, uint64_t);
+uint64_t helper_fsqrt_s(CPURISCVState*, uint64_t);
+target_ulong helper_fle_s(CPURISCVState*, uint64_t, uint64_t);
+target_ulong helper_fleq_s(CPURISCVState*, uint64_t, uint64_t);
+target_ulong helper_flt_s(CPURISCVState*, uint64_t, uint64_t);
+target_ulong helper_fltq_s(CPURISCVState*, uint64_t, uint64_t);
+target_ulong helper_feq_s(CPURISCVState*, uint64_t, uint64_t);
+target_ulong helper_fcvt_w_s(CPURISCVState*, uint64_t);
+target_ulong helper_fcvt_wu_s(CPURISCVState*, uint64_t);
+target_ulong helper_fcvt_l_s(CPURISCVState*, uint64_t);
+target_ulong helper_fcvt_lu_s(CPURISCVState*, uint64_t);
+uint64_t helper_fcvt_s_w(CPURISCVState*, target_ulong);
+uint64_t helper_fcvt_s_wu(CPURISCVState*, target_ulong);
+uint64_t helper_fcvt_s_l(CPURISCVState*, target_ulong);
+uint64_t helper_fcvt_s_lu(CPURISCVState*, target_ulong);
+target_ulong helper_fclass_s(CPURISCVState*, uint64_t);
+uint64_t helper_fround_s(CPURISCVState*, uint64_t);
+uint64_t helper_froundnx_s(CPURISCVState*, uint64_t);
 
 // /* Floating Point - Double Precision */
 uint64_t helper_fadd_d(CPURISCVState *env, uint64_t, uint64_t);
