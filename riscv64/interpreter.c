@@ -1366,7 +1366,14 @@ static bool trans_fcvt_l_d(DisasContext *ctx, arg_fcvt_l_d *a) {
 }
 static bool trans_fcvt_l_h(DisasContext *ctx, arg_fcvt_l_h *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fcvt_l_s(DisasContext *ctx, arg_fcvt_l_s *a) {__NOT_IMPLEMENTED_EXIT__}
-static bool trans_fcvt_lu_d(DisasContext *ctx, arg_fcvt_lu_d *a) {__NOT_IMPLEMENTED_EXIT__}
+static bool trans_fcvt_lu_d(DisasContext *ctx, arg_fcvt_lu_d *a) {
+    REQUIRE_FPU;
+    int64_t src = get_fpr_d(ctx, a->rs1);
+    gen_set_rm(ctx, a->rm);
+    int64_t dest = helper_fcvt_lu_d(tcg_env, src);
+    gen_set_gpr(ctx, a->rd, dest);
+    return true;
+}
 static bool trans_fcvt_lu_h(DisasContext *ctx, arg_fcvt_lu_h *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fcvt_lu_s(DisasContext *ctx, arg_fcvt_lu_s *a) {__NOT_IMPLEMENTED_EXIT__}
 static bool trans_fcvtmod_w_d(DisasContext *ctx, arg_fcvtmod_w_d *a) {__NOT_IMPLEMENTED_EXIT__}
