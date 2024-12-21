@@ -119,11 +119,13 @@ $(BUILD_DIR)/trans_la.c.inc: ${TARGET_CPU}/insns.decode
 
 $(BUILD_DIR)/trans_rv16.c.inc: ${TARGET_CPU}/insn16.decode
 	@mkdir -p $(BUILD_DIR)
-	python3 ./scripts/decodetree.py --static-decode=decode_insn16 --insnwidth=16 $< -o $@
+	python3 ./scripts/decodetree.py --static-decode=decode_insn16 --insnwidth=16 ${TARGET_CPU}/insn16.decode -o $(BUILD_DIR)/trans_rv16_tmp.c.inc
+	python3 ./scripts/emu_cpu_put_ic.py $(BUILD_DIR)/trans_rv16_tmp.c.inc > $(BUILD_DIR)/trans_rv16.c.inc
 
 $(BUILD_DIR)/trans_rv32.c.inc: ${TARGET_CPU}/insn32.decode
 	@mkdir -p $(BUILD_DIR)
-	python3 ./scripts/decodetree.py --static-decode=decode_insn32 $< -o $@
+	python3 ./scripts/decodetree.py --static-decode=decode_insn32 ${TARGET_CPU}/insn32.decode -o $(BUILD_DIR)/trans_rv32_tmp.c.inc
+	python3 ./scripts/emu_cpu_put_ic.py $(BUILD_DIR)/trans_rv32_tmp.c.inc > $(BUILD_DIR)/trans_rv32.c.inc
 
 $(BUILD_DIR)/$(TARGET_ABBR)_emu_user : ${USER_OBJS}
 	$(CC) $(USER_OBJS) -o $@ $(LDFLAGS)

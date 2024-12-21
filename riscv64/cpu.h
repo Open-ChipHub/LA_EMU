@@ -52,14 +52,14 @@ typedef struct CPUArchState CPURISCVState;
 
 typedef struct INSCache {
     bool (*trans_func)(void*, void*);
-    int arg[4];
-    int insn;
+    int arg[5];
+    uint32_t insn;
 } INSCache;
 
-#define IC_BITS 14
+#define IC_BITS 20
 #define IC_NUM (1 << IC_BITS)
 #define IC_MASK (((target_long)1 << IC_BITS) - 1)
-#define IC_INDEX(va) ((va >> 2) & IC_MASK)
+#define IC_INDEX(va) ((va >> 1) & IC_MASK)
 
 #define TC_BITS 8
 #define TC_NUM (1 << 8)
@@ -801,7 +801,7 @@ void G_NORETURN do_raise_exception(CPURISCVState *env, uint32_t exception, uintp
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
 #endif
-static inline void cpu_put_ic(CPURISCVState *env, bool (*trans_func)(void*, void*), void* arg, int insn) {
+static inline void cpu_put_ic(CPURISCVState *env, bool (*trans_func)(void*, void*), void* arg, uint32_t insn) {
     INSCache* ic = &env->inscache[IC_INDEX(env->pc)];
     ic->trans_func = trans_func;
     int* args = (int*)arg;
@@ -809,6 +809,7 @@ static inline void cpu_put_ic(CPURISCVState *env, bool (*trans_func)(void*, void
     ic->arg[1] = args[1];
     ic->arg[2] = args[2];
     ic->arg[3] = args[3];
+    ic->arg[4] = args[4];
     ic->insn = insn;
     // fprintf(stderr, "put %p %lx %08x %d %d %d %d\n", ic->trans_func, env->pc, ic->insn, ic->arg[0], ic->arg[1], ic->arg[2], ic->arg[3]);
 }

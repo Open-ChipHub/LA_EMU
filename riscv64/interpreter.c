@@ -2503,7 +2503,7 @@ static bool trans_illegal(DisasContext *ctx, arg_illegal *a) {__NOT_IMPLEMENTED_
 
 bool interpreter(CPURISCVState *env, uint32_t insn, INSCache* ic) {
     ctx->ol = MXL_RV64;
-    if (ic) {
+    if (likely(ic)) {
         ic->trans_func(env, ic->arg);
     } else {
         if (env->cur_insn_len == 2) {

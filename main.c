@@ -527,8 +527,7 @@ static uint32_t fetch(CPUArchState *env, INSCache** ic) {
         } else {
             env->cur_insn_len = 2;
         }
-        // *ic = cpu_get_ic(env, insn);
-        *ic = NULL;
+        *ic = cpu_get_ic(env, insn);
         return insn;
 #else
     #error "unknown arch"
@@ -570,8 +569,7 @@ static uint32_t fetch(CPUArchState *env, INSCache** ic) {
     } else {
         env->cur_insn_len = 2;
     }
-    // *ic = cpu_get_ic(env, insn);
-    *ic = NULL;
+    *ic = cpu_get_ic(env, insn);
     return insn;
 #else
     #error "unknown arch"
