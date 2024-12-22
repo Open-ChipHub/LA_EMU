@@ -731,9 +731,8 @@ static bool trans_bstrpick_d(CPULoongArchState *env, arg_bstrpick_d *restrict a)
 }
 
 bool is_one_page(uint64_t addr, int bytes) {
-    target_ulong pgsz = 0x4000;
-    target_ulong pgmsk = pgsz - 1;
-    return (addr & ~pgmsk) == ((addr + bytes - 1) & ~pgmsk);
+    target_ulong pgmsk = TARGET_PAGE_MASK;
+    return (addr & pgmsk) == ((addr + bytes - 1) & pgmsk);
 }
 
 bool is_two_page(uint64_t addr, int bytes) {
