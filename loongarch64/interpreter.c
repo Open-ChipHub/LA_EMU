@@ -418,7 +418,7 @@ static bool trans_pcaddu12i(CPULoongArchState *env, arg_pcaddu12i *restrict a) {
     return true;
 }
 static bool trans_pcaddu18i(CPULoongArchState *env, arg_pcaddu18i *restrict a) {
-    env->gpr[a->rd] = env->pc + (a->imm << 18);
+    env->gpr[a->rd] = env->pc + ((int64_t)a->imm << 18);
     cpu_set_pc(env, env->pc + 4);
     return true;
 }
