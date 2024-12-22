@@ -700,7 +700,7 @@ int probe_get_physical_address(CPULoongArchState *env, hwaddr *physical,
 bool interpreter(CPULoongArchState *env, uint32_t insn, INSCache* ic);
 
 #ifdef CONFIG_USER_ONLY
-static char* const ram;
+#define ram (char*)0
 #else
 extern char* ram;
 #endif
