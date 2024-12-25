@@ -1223,7 +1223,7 @@ static inline bool tlb_get_addr(CPUState *cpu, vaddr addr, hwaddr *paddr, MMUAcc
     }
 }
 
-static inline hwaddr trans_pa(CPURISCVState *env, uint64_t addr, MMUAccessType access_type) {
+static inline __attribute__((always_inline)) hwaddr trans_pa(CPURISCVState *env, uint64_t addr, MMUAccessType access_type) {
     hwaddr ha;
     CPUState *cs = env_cpu(env);
     int mmu_idx = riscv_env_mmu_index(env, access_type == MMU_INST_FETCH);

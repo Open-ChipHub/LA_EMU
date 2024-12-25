@@ -337,7 +337,7 @@ bool is_unaligned(uint64_t addr, int bytes) {
     return !is_aligned(addr, bytes);
 }
 
-static hwaddr load_pa(DisasContext *env, uint64_t addr) {
+static inline __attribute__((always_inline)) hwaddr load_pa(DisasContext *env, uint64_t addr) {
     PERF_INC(COUNTER_INST_LOAD);
 #ifdef CONFIG_USER_ONLY
     return addr;
@@ -345,7 +345,7 @@ static hwaddr load_pa(DisasContext *env, uint64_t addr) {
     return trans_pa(env, addr, MMU_DATA_LOAD);
 #endif
 }
-static hwaddr store_pa(DisasContext *env, uint64_t addr) {
+static inline __attribute__((always_inline)) hwaddr store_pa(DisasContext *env, uint64_t addr) {
     PERF_INC(COUNTER_INST_STORE);
 #ifdef CONFIG_USER_ONLY
     return addr;
