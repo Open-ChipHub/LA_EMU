@@ -838,7 +838,7 @@ uint64_t do_io_ld(hwaddr ha, int size) {
 }
 
 #if defined(TARGET_LOONGARCH64)
-void loongarch_cpu_check_irq(CPUArchState *env) {
+inline void loongarch_cpu_check_irq(CPUArchState *env) {
     if (determined) {
         env->timer_counter -= (env->CSR_TCFG & CONSTANT_TIMER_ENABLE);
         if (env->timer_counter == 0) {
@@ -868,7 +868,7 @@ void loongarch_cpu_check_irq(CPUArchState *env) {
     }
 }
 
-bool loongarch_cpu_has_irq(CPUArchState *env) {
+inline bool loongarch_cpu_has_irq(CPUArchState *env) {
     return FIELD_EX64(env->CSR_CRMD, CSR_CRMD, IE) && (FIELD_EX64(env->CSR_ESTAT, CSR_ESTAT, IS) & FIELD_EX64(env->CSR_ECFG, CSR_ECFG, LIE));
 }
 #elif defined (TARGET_RISCV64)
