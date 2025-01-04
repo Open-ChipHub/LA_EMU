@@ -47,7 +47,7 @@ typedef struct INSCache {
     int insn;
 } INSCache;
 
-#define IC_BITS 14
+#define IC_BITS 20
 #define IC_NUM (1 << IC_BITS)
 #define IC_MASK (((target_long)1 << IC_BITS) - 1)
 #define IC_INDEX(va) ((va >> 2) & IC_MASK)
