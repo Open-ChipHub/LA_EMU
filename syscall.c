@@ -59,6 +59,7 @@
 #define TARGET_NR_prlimit64 261
 #define TARGET_NR_renameat2 276
 #define TARGET_NR_getrandom 278
+#define TARGET_NR_statx 291
 
 
 static abi_ulong target_brk, initial_target_brk;
@@ -517,6 +518,8 @@ static abi_long do_syscall1(CPUArchState *cpu_env, int num, abi_long arg1,
             return -host_to_target_errno(ENOSYS);
         case TARGET_NR_getrandom:
             return get_errno(getrandom((void*)arg1, arg2, arg3));
+        case TARGET_NR_statx:
+            return get_errno(statx(arg1, (void*)arg2, arg3, arg4, (void*)arg5));
         default:
             lsassertm(0, "unimplement syscall %d\n", num);
     }
