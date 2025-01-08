@@ -67,12 +67,10 @@ static uint64_t xor_sum(const void* buf, uint64_t size) {
 static uint64_t simple_compress(const char* filename, const void* buf, uint64_t size) {
     FILE* f = fopen_nofail(filename, "wb");
     lsassert(size % __4KB == 0);
-    uint64_t present_cnt = 0;
     int64_t present = 0;
     for(uint64_t addr = 0; addr < size; addr += __4KB) {
         if (memcmp((char*)buf + addr, zero4k, __4KB)) {
             present = 1;
-            ++ present_cnt;
             lsassert(fwrite(&present, sizeof(present), 1, f) == 1);
             lsassert(fwrite((char*)buf + addr, __4KB, 1, f) == 1);
         } else {
