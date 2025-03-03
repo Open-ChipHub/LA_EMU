@@ -193,14 +193,15 @@ static target_ulong user_setup_stack() {
 #define elf_phdr Elf64_Phdr
 #if !defined (CONFIG_USER_ONLY) && !defined (CONFIG_DIFF)
 static char* alloc_ram(uint64_t ram_size) {
-    void* start = mmap(NULL, ram_size + SZ_2G, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    lsassert(start != MAP_FAILED);
-    void* part1 = mmap(start, SZ_256M, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
-    lsassert(part1 != MAP_FAILED);
-    void* part2 = mmap(start + SZ_2G + SZ_256M, ram_size - SZ_256M, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
-    lsassert(part2 != MAP_FAILED);
-    void* part3 = mmap(start + 0x1c000000, SZ_32M, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
-    lsassert(part3 != MAP_FAILED);
+//    void* start = mmap(NULL, ram_size + SZ_2G, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+//    lsassert(start != MAP_FAILED);
+//    void* part1 = mmap(start, SZ_256M, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+//    lsassert(part1 != MAP_FAILED);
+//    void* part2 = mmap(start + SZ_2G + SZ_256M, ram_size - SZ_256M, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+//    lsassert(part2 != MAP_FAILED);
+//    void* part3 = mmap(start + 0x1c000000, SZ_32M, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
+//    lsassert(part3 != MAP_FAILED);
+    void* part1 = mmap(NULL, SZ_4G, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     return part1;
 }
 
@@ -266,7 +267,7 @@ bool load_elf(const char* filename, uint64_t* entry_addr) {
                     goto fail;
                 }
                 // ram_writen(ph->p_paddr & 0xfffffff, data, file_size);
-                memcpy(ram + (ph->p_paddr & 0xffffffffffff), data, file_size);
+                memcpy(ram + (ph->p_paddr & 0xffffffff), data, file_size);
                 qemu_log_mask(CPU_LOG_PAGE, "%lx, file_size:%lx mem_size:%lx, \n", ph->p_paddr, file_size, mem_size);
             }
             free((void*)data);
@@ -697,7 +698,14 @@ static uint32_t fetch(CPULoongArchState *env, INSCache** ic) {
 #endif
 }
 
-int val;
+extern uint64_t check_point_pc;
+extern bool emu_cpu_check_point;
+extern uint64_t check_point_hit_num;
+extern uint64_t fetch_num;
+extern long debug_print_pc;
+extern FILE* CKP_DP_PC;
+uint64_t pre_pc = 0;
+void checkpoint_context(CPULoongArchState *env);
 
 int exec_env(CPULoongArchState *env) {
     INSCache* ic;
@@ -749,6 +757,18 @@ int exec_env(CPULoongArchState *env) {
                         show_register_fpr(env);
                     }
                 }
+#ifndef CONFIG_USER_ONLY
+                if (emu_cpu_check_point && (env->pc == check_point_pc)){
+                    fetch_num++;
+                    // the first trigger do_page_fault, the second run real elf
+                    if (fetch_num == check_point_hit_num) {
+                        checkpoint_context(env);
+                        CKP_DP_PC = fopen("checkpoint_pc.txt", "w");
+                        debug_print_pc = 1;
+                        printf("\033[1m\033[33mHit CheckPoint : %ld\n", fetch_num);
+                    } 
+                }
+#endif
                 insn = fetch(env, &ic);
 #ifdef CONFIG_DIFF
                 env->insn = insn;
@@ -760,6 +780,13 @@ int exec_env(CPULoongArchState *env) {
             }
 #endif
                 int r = interpreter(env, insn, ic);
+                if (debug_print_pc) {
+                    if (pre_pc != env->pc) {
+                        fprintf(CKP_DP_PC, "%lx\n", env->pc);
+                        pre_pc = env->pc;
+                    }
+                }
+
                 if(unlikely(!r)) {
                     qemu_log("ill instruction, pc:%lx insn:%08x\n", env->pc, insn);
                 }
@@ -947,6 +974,15 @@ void do_io_st(hwaddr ha, uint64_t data, int size) {
             serial_ioport_write(NULL, ha - UART_BASE, data, size);
         }
         break;
+
+    case 0x1FF10000 ... 0x1FF11000:
+        if (serial_plus) {
+            serial_plus_ioport_write(ss, ha, data, size);
+        } else {
+            serial_ioport_write(NULL, ha, data, size);
+        }
+        break;
+    
     case 0x1fe002e0:
             fprintf(stderr, "%c", (char)(data));
             fflush(stdout);
@@ -978,9 +1014,19 @@ uint64_t do_io_ld(hwaddr ha, int size) {
             data = serial_ioport_read(NULL, ha - UART_BASE, size);
         }
         break;
-    case 0x1fe00120:
-            data = 'a';
+    
+    case 0x1FF10000 ... 0x1FF11000:
+        if (serial_plus) {
+            data = serial_plus_ioport_read(ss, ha, size);
+        } else {
+            data = serial_ioport_read(NULL, ha, size);
+        }
         break;
+    
+    case 0x1fe00120:
+        data = 'a';
+        break;
+    
     case 0x100d0014:
         data = 0;
         break;
@@ -1034,7 +1080,7 @@ int main(int argc, char** argv, char **envp) {
         usage();
     }
     int c;
-    while ((c = getopt(argc, argv, "+m:nk:d:c:D:gzwsp:")) != -1) {
+    while ((c = getopt(argc, argv, "+m:nk:d:c:D:C:gzwsp:")) != -1) {
         switch (c) {
             case 'm':
                 ram_size = atol(optarg) << 30;
@@ -1053,6 +1099,10 @@ int main(int argc, char** argv, char **envp) {
                 break;
             case 'D':
                 handle_logfile(optarg);
+                break;
+            case 'C':
+                sscanf(optarg, "%lx", &check_point_pc);
+                emu_cpu_check_point = true;
                 break;
             case 'g':
 #if !defined (CONFIG_GDB)
@@ -1134,7 +1184,7 @@ int main(int argc, char** argv, char **envp) {
 
     term.c_lflag &= ~ECHO;
     term.c_lflag &= ~ICANON;
-    term.c_lflag &= ~ISIG;
+    // term.c_lflag &= ~ISIG;
     tcsetattr(STDIN_FILENO, 0, &term);
 
     fcntl(STDIN_FILENO, F_SETFL, fcntl(STDIN_FILENO, F_GETFL) | O_NONBLOCK);
@@ -1163,7 +1213,9 @@ int main(int argc, char** argv, char **envp) {
     env->timerid = timerid;
     if (serial_plus) {
         qemu_irq irq = qemu_allocate_irq(loongarch_cpu_set_irq, (void*)env, 7);
-        ss = simple_serial_init(0x1fe001e0, irq, 115200);
+
+        // ss = simple_serial_init(0x1fe001e0, irq, 115200);
+        ss = simple_serial_init(0x1FF10000, irq, 115200);
 
         struct sigevent sev;
         sev.sigev_notify = SIGEV_SIGNAL;

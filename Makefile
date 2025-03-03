@@ -23,6 +23,8 @@ ifeq (${PERF},1)
 	CFLAGS += -DCONFIG_PERF
 endif
 
+CORE := openc910
+
 ifeq (${CORE},)
 	CFLAGS += -D__CORE__=la464
 else
@@ -98,6 +100,19 @@ $(BUILD_DIR)/la_emu_ref.so : ${DIFF_OBJS}
 $(BUILD_DIR)/%_diff.o : %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c -o $@ $<
+
+
+# the follow use run and checkpoint 
+KERNEL_DIR    := /home/airxs/user/cpu/dev/system/linux/linux-6.13-labcore-emu-dbg
+
+CHECKPOINT_PC := 0x90000000009fcd68
+
+run:
+	./build/la_emu_kernel -s -m 16 -k $(KERNEL_DIR)/vmlinux 
+
+ckp:
+	./build/la_emu_kernel -s -m 16 -C $(CHECKPOINT_PC) -k $(KERNEL_DIR)/vmlinux 
+
 
 clean:
 	rm -rf build

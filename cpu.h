@@ -814,6 +814,7 @@ bool loongarch_cpu_has_irq(CPULoongArchState *env);
 
 void loongarch_la464_initfn(CPULoongArchState* env);
 void loongarch_centaur320_initfn(CPULoongArchState* env);
+void loongarch_openc910_initfn(CPULoongArchState* env);
 
 static inline bool enable_hw_ptw(CPULoongArchState* env) {
     return hw_ptw ||
