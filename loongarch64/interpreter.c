@@ -2515,6 +2515,7 @@ static bool trans_idle(CPULoongArchState *env, arg_idle *restrict a) {
 #ifndef CONFIG_DIFF
     if (FIELD_EX64(env->CSR_CRMD, CSR_CRMD, IE) == 0) {
         fprintf(stderr, "idle while CRMD.IE is disabled\n");
+        dump_exec_info(env, stderr);
         laemu_exit(0);
     }
     // fprintf(stderr, "NOT CORRECTED IMPLEMENTED %s, pc:%lx\n", __func__, env->pc);
