@@ -715,12 +715,36 @@ static inline uint64_t ram_lduw(hwaddr addr) {return *(uint32_t*)(ram + addr);}
 static inline uint64_t ram_ldud(hwaddr addr) {return *(uint64_t*)(ram + addr);}
 // static inline Int128  ram_ld128(hwaddr addr) {return *(Int128*)(ram + addr);}
 // static inline VReg    ram_ld256(hwaddr addr) {return *(VReg*)(ram + addr);}
+static inline void ram_ld128(hwaddr addr, uint64_t *data) {
+    uint64_t* ram_addr = (uint64_t*)(ram + addr);
+    data[0] = ram_addr[0];
+    data[1] = ram_addr[1];
+}
+static inline void ram_ld256(hwaddr addr, uint64_t *data) {
+    uint64_t* ram_addr = (uint64_t*)(ram + addr);
+    data[0] = ram_addr[0];
+    data[1] = ram_addr[1];
+    data[2] = ram_addr[2];
+    data[3] = ram_addr[3];
+}
 static inline void ram_stb(hwaddr addr, uint64_t data) {*(uint8_t*)(ram + addr) = data;}
 static inline void ram_sth(hwaddr addr, uint64_t data) {*(uint16_t*)(ram + addr) = data;}
 static inline void ram_stw(hwaddr addr, uint64_t data) {*(uint32_t*)(ram + addr) = data;}
 static inline void ram_std(hwaddr addr, uint64_t data) {*(uint64_t*)(ram + addr) = data;}
 // static inline void ram_st128(hwaddr addr, Int128 data) {*(Int128*)(ram + addr) = data;}
 // static inline void ram_st256(hwaddr addr, VReg data) {*(VReg*)(ram + addr) = data;}
+static inline void ram_st128(hwaddr addr, uint64_t *data) {
+    uint64_t* ram_addr = (uint64_t*)(ram + addr);
+    ram_addr[0] = data[0];
+    ram_addr[1] = data[1];
+}
+static inline void ram_st256(hwaddr addr, uint64_t *data) {
+    uint64_t* ram_addr = (uint64_t*)(ram + addr);
+    ram_addr[0] = data[0];
+    ram_addr[1] = data[1];
+    ram_addr[2] = data[2];
+    ram_addr[3] = data[3];
+}
 #ifndef CONFIG_USER_ONLY
 bool addr_in_ram(hwaddr pa);
 static inline bool ram_ldub_check(hwaddr addr, uint8_t *data) {if (!addr_in_ram(addr)){*data = 0xff; return false;} *data = *(uint8_t*)(ram + addr); return true;}
