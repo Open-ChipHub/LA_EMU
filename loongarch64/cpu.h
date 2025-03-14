@@ -42,9 +42,9 @@ typedef struct TLBCache {
 #define TC_INDEX(va) ((va >> TARGET_PAGE_BITS) & TC_MASK)
 
 typedef struct INSCache {
+    int insn;
     bool (*trans_func)(void*, void*);
     int arg[4];
-    int insn;
 } INSCache;
 
 #define IC_BITS 20
