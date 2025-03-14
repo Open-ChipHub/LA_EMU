@@ -5515,36 +5515,42 @@ static bool trans_jiscr1(DisasContext *ctx, arg_jiscr1 *a) {
 
 // lbt x86 x87 fp
 static bool trans_x86clrtm(DisasContext *env, arg_x86clrtm *a) {
+    CHECK_FPE(8);
     CHECK_BTE;
     env->fcsr0 &=~(1<<21);
     cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_x86settm(DisasContext *env, arg_x86settm *a) {
+    CHECK_FPE(8);
     CHECK_BTE;
     env->fcsr0 |=  1<<21;
     cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_x86dectop(DisasContext *env, arg_x86dectop *a) {
+    CHECK_FPE(8);
     CHECK_BTE;
     env->x86_top = (env->x86_top + 8 - 1) % 8;
     cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_x86inctop(DisasContext *env, arg_x86inctop *a) {
+    CHECK_FPE(8);
     CHECK_BTE;
     env->x86_top = (env->x86_top + 1) % 8;
     cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_x86mftop(DisasContext *env, arg_x86mftop *a) {
+    CHECK_FPE(8);
     CHECK_BTE;
     env->gpr[a->rd] = env->x86_top;
     cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_x86mttop(DisasContext *env, arg_x86mttop *a) {
+    CHECK_FPE(8);
     CHECK_BTE;
     env->x86_top = a->ptr;
     cpu_set_pc(env, env->pc + 4);
