@@ -538,6 +538,15 @@ static uint32_t fetch(CPUArchState *env, INSCache** ic) {
 #if defined(TARGET_LOONGARCH64)
     int insn;
     hwaddr ha;
+    if ((env->pc & TARGET_PAGE_MASK) == env->prev_pc_vpage) {
+        uint32_t disp = (env->pc & ~TARGET_PAGE_MASK);
+        ha = env->prev_pc_ppage_host_addr | disp;
+        // ++ env->page_pc_hit_count;
+        insn = *(uint32_t*)ha;
+        if (*ic) {++ (*ic);if ((*ic)->insn == insn) {++ env->ic_hit_count; return insn;}}
+        *ic = cpu_get_ic(env, insn);
+        return insn;
+    }
     int prot;
     uint64_t addr = env->pc;
     int tc_index = TC_INDEX(addr);
@@ -551,6 +560,10 @@ static uint32_t fetch(CPUArchState *env, INSCache** ic) {
         // fprintf(stderr, "va:%lx,pa:%lx\n", addr, ha);
         tc->va = page_addr;
         tc->pa = ha & TARGET_PAGE_MASK;
+    }
+    {
+        env->prev_pc_vpage = env->pc & TARGET_PAGE_MASK;
+        env->prev_pc_ppage_host_addr = (ha & TARGET_PAGE_MASK) + (uintptr_t)ram;
     }
     insn = ram_lduw(ha);
     // fast next ic path

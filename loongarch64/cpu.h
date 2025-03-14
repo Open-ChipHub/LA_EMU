@@ -516,6 +516,9 @@ typedef struct CPUArchState {
 #endif
 
     // struct CPUArchState* env;
+
+    uint64_t prev_pc_vpage;
+    uint64_t prev_pc_ppage_host_addr;
     TLBCache tc_load[TC_NUM];
     TLBCache tc_store[TC_NUM];
     TLBCache tc_fetch[TC_NUM];
@@ -785,6 +788,8 @@ static inline void cpu_clear_tc(CPULoongArchState *env) {
     memset(env->tc_load, -1, sizeof(env->tc_load));
     memset(env->tc_store, -1, sizeof(env->tc_store));
     memset(env->tc_fetch, -1, sizeof(env->tc_fetch));
+    env->prev_pc_vpage = -1;
+    env->prev_pc_ppage_host_addr = -1;
     // memset(env->inscache, 0, sizeof(env->inscache));
 }
 #if defined(__GNUC__) && !defined(__clang__)
