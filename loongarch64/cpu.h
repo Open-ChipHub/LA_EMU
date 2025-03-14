@@ -520,6 +520,8 @@ typedef struct CPUArchState {
     TLBCache tc_store[TC_NUM];
     TLBCache tc_fetch[TC_NUM];
     INSCache inscache[IC_NUM];
+    // invalid INSCache, used for next ic check
+    INSCache dummy_inscache;
     uint64_t icount;
     uint64_t ecount;
     uint64_t syscall_count;

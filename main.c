@@ -516,6 +516,8 @@ static uint32_t fetch(CPUArchState *env, INSCache** ic) {
 #if defined(CONFIG_USER_ONLY)
 #if defined(TARGET_LOONGARCH64)
         uint32_t insn = ram_lduw(env->pc);
+        // fast next ic path
+        if (*ic) {++ (*ic);if ((*ic)->insn == insn) {++ env->ic_hit_count; return insn;}}
         *ic = cpu_get_ic(env, insn);
         return insn;
 
@@ -551,6 +553,8 @@ static uint32_t fetch(CPUArchState *env, INSCache** ic) {
         tc->pa = ha & TARGET_PAGE_MASK;
     }
     insn = ram_lduw(ha);
+    // fast next ic path
+    if (*ic) {++ (*ic);if ((*ic)->insn == insn) {++ env->ic_hit_count; return insn;}}
     *ic = cpu_get_ic(env, insn);
     return insn;
 #elif defined(TARGET_RISCV64)
@@ -581,7 +585,7 @@ static uint32_t fetch(CPUArchState *env, INSCache** ic) {
 int val;
 
 int exec_env(CPUArchState *env) {
-    INSCache* ic;
+    INSCache* ic = NULL;
     current_env = env;
     CPUState* cs = env_cpu(env);
     while (1) {
