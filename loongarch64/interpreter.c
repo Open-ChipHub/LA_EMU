@@ -162,13 +162,13 @@ static inline void gen_set_gpr(CPULoongArchState *env, int reg_num, int64_t t, D
     }
 }
 static inline int64_t get_fpr(CPULoongArchState *env, int reg_num) {
-    if ((reg_num< 8) && ((env->fcsr0 >> 21) & 0x1)) {
+    if ((reg_num< 8) && ((env->fcsr0 >> 6) & 0x1)) {
         reg_num = (reg_num + env->x86_top) % 8;
     }
     return env->fpr[reg_num].vreg.D[0];
 }
 static inline void set_fpr(CPULoongArchState *env, int reg_num, int64_t val) {
-    if ((reg_num< 8) && ((env->fcsr0 >> 21) & 0x1)) {
+    if ((reg_num< 8) && ((env->fcsr0 >> 6) & 0x1)) {
         reg_num = (reg_num + env->x86_top) % 8;
     }
     env->fpr[reg_num].vreg.D[0] = val;
@@ -5547,14 +5547,14 @@ static bool trans_jiscr1(DisasContext *ctx, arg_jiscr1 *a) {
 static bool trans_x86clrtm(DisasContext *env, arg_x86clrtm *a) {
     CHECK_FPE(8);
     CHECK_BTE;
-    env->fcsr0 &=~(1<<21);
+    env->fcsr0 &=~(1<<6);
     cpu_set_pc(env, env->pc + 4);
     return true;
 }
 static bool trans_x86settm(DisasContext *env, arg_x86settm *a) {
     CHECK_FPE(8);
     CHECK_BTE;
-    env->fcsr0 |=  1<<21;
+    env->fcsr0 |=  1<<6;
     cpu_set_pc(env, env->pc + 4);
     return true;
 }
