@@ -33,5 +33,19 @@ static inline uint64_t la_emu_get_fprd(void* env, size_t handle_fpr, int index, 
     return ((uint64_t*)((char*)env + handle_fpr))[index * 4 + element_index];
 }
 
+typedef enum Plugin_MMUAccessType {
+    PLUGIN_MMU_DATA_LOAD  = 0,
+    PLUGIN_MMU_DATA_STORE = 1,
+    PLUGIN_MMU_INST_FETCH = 2
+#define Plugin_MMU_ACCESS_COUNT 3
+} Plugin_MMUAccessType;
+
+// give address and access_type
+// set physical and prot
+// return 0 ok, -1 tlb miss
+int la_emu_probe_get_physical_address(uint64_t *physical, int *prot, uint64_t address, Plugin_MMUAccessType access_type);
+
+// return 0 means success
+int la_emu_ram_read(uint64_t addr, uint64_t size, void* data);
 
 #endif /* PLUGIN_H */

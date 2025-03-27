@@ -1405,3 +1405,24 @@ int main(int argc, char** argv, char **envp) {
 }
 
 #endif
+
+#if defined (CONFIG_PLUGIN)
+#if defined(CONFIG_USER_ONLY)
+int la_emu_probe_get_physical_address(uint64_t *physical, int *prot, uint64_t address, Plugin_MMUAccessType access_type) {
+    *physical = address;
+    *prot = PLUGIN_MMU_DATA_LOAD;
+    return 0;
+}
+#else
+#if defined(TARGET_LOONGARCH64)
+int la_emu_probe_get_physical_address(uint64_t *physical, int *prot, uint64_t address, Plugin_MMUAccessType access_type) {
+    return probe_get_physical_address(current_env, physical, prot, address, (MMUAccessType)access_type);
+}
+#endif
+#endif
+
+int la_emu_ram_read(uint64_t addr, uint64_t size, void* data) {
+    memcpy(data, ram + addr, size);
+    return 0;
+}
+#endif
