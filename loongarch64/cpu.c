@@ -292,7 +292,7 @@ void loongarch_centaur320_initfn(CPULoongArchState* env) {
     data = FIELD_DP32(data, CPUCFG2, FP_SP, 1);
     data = FIELD_DP32(data, CPUCFG2, FP_DP, 1);
     data = FIELD_DP32(data, CPUCFG2, FP_VER, 1);
-    data = FIELD_DP32(data, CPUCFG2, LSX, 0);
+    data = FIELD_DP32(data, CPUCFG2, LSX, 1);
     data = FIELD_DP32(data, CPUCFG2, LASX, 0);
     data = FIELD_DP32(data, CPUCFG2, LVZ_VER, 1);
     data = FIELD_DP32(data, CPUCFG2, LLFTP, 1);
