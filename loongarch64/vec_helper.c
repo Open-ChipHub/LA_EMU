@@ -2958,7 +2958,7 @@ void HELPER(NAME)(void *vd, void *vj,                               \
                   CPULoongArchState *env, uint32_t desc)            \
 {                                                                   \
     int i, j, ofs;                                                  \
-    VReg temp;                                                      \
+    VReg temp = {};                                                      \
     VReg *Vd = (VReg *)vd;                                          \
     VReg *Vj = (VReg *)vj;                                          \
     int oprsz = simd_oprsz(desc);                                   \
@@ -3160,7 +3160,7 @@ void HELPER(NAME)(CPULoongArchState *env, uint32_t oprsz,                \
                   uint32_t vd, uint32_t vj, uint32_t vk, uint32_t flags) \
 {                                                                        \
     int i;                                                               \
-    VReg t;                                                              \
+    VReg t = {};                                                              \
     VReg *Vd = &(env->fpr[vd].vreg);                                     \
     VReg *Vj = &(env->fpr[vj].vreg);                                     \
     VReg *Vk = &(env->fpr[vk].vreg);                                     \
