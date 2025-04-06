@@ -258,6 +258,8 @@ static int debug_handle_info(const char* str) {
         show_register(current_env);
     } else if (strcmp(buf, "fpr") == 0) {
         show_register_fpr(current_env);
+    } else if (strcmp(buf, "lsx") == 0) {
+        show_register_lsx(current_env);
     } else if (strcmp(buf, "csr") == 0) {
         show_csr(current_env);
     } else if (strcmp(buf, "b") == 0) {
