@@ -688,7 +688,7 @@ static bool trans_bytepick_w(CPULoongArchState *env, arg_bytepick_w *restrict a)
 }
 static bool trans_bytepick_d(CPULoongArchState *env, arg_bytepick_d *restrict a) {
     uint64_t high = env->gpr[a->rk] << (a->sa * 8);
-    uint64_t low  = env->gpr[a->rj] >> (64 - a->sa * 8);
+    uint64_t low  = a->sa ? env->gpr[a->rj] >> (64 - a->sa * 8) : 0;
     env->gpr[a->rd] = high | low;
     cpu_set_pc(env, env->pc + 4);
     return true;
