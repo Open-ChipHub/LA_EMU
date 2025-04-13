@@ -12,7 +12,7 @@
 
 #include <stdalign.h>
 
-#ifndef CONFIG_DIFF
+#if !defined (CONFIG_DIFF) || defined (CONFIG_COSIM)
 static inline long long la_get_tval(CPULoongArchState *env){
     if (determined) {
         return current_env->icount / TIME_SCALE + current_env->CSR_CNTC;
@@ -76,7 +76,7 @@ static inline long long la_get_tval(CPULoongArchState *env){
 #define CHECK_LAMCAS      do {   if (!FIELD_EX32(env->cpucfg[2], CPUCFG2, LAMCAS))      {return false;};} while (0)
 #define CHECK_LLACQ_SCREL do {   if (!FIELD_EX32(env->cpucfg[2], CPUCFG2, LLACQ_SCREL)) {return false;};} while (0)
 #define CHECK_SCQ         do {   if (!FIELD_EX32(env->cpucfg[2], CPUCFG2, SCQ))         {return false;};} while (0)
-#ifdef CONFIG_DIFF
+#if !defined (CONFIG_DIFF) || defined (CONFIG_COSIM)
 #define __NOT_IMPLEMENTED__ __NOT_IMPLEMENTED_EXIT__
 #else
 #define __NOT_IMPLEMENTED__ do {fprintf(stderr, "LA_EMU NOT IMPLEMENTED %s, pc:%lx\n", __func__, env->pc); cpu_set_pc(env, env->pc + 4); return false;} while(0);
@@ -751,7 +751,7 @@ bool is_unaligned(uint64_t addr, int bytes) {
     return !is_aligned(addr, bytes);
 }
 
-#if defined(CONFIG_USER_ONLY) || defined(CONFIG_DIFF)
+#if defined(CONFIG_USER_ONLY) || (defined(CONFIG_DIFF) && !defined (CONFIG_COSIM))
 #define is_io(...) false
 #else
 // exclude 32MB bios
@@ -1254,7 +1254,7 @@ static bool trans_dbar(CPULoongArchState *env, arg_dbar *restrict a) {
     return true;
 }
 static bool trans_ibar(CPULoongArchState *env, arg_ibar *restrict a) {
-#ifndef CONFIG_DIFF
+#if !defined (CONFIG_DIFF) || defined (CONFIG_COSIM)
     static double begin_timestamp;
     if (a->imm == 64) {
         begin_timestamp = second();
@@ -1742,7 +1742,7 @@ static bool trans_asrtgt_d(CPULoongArchState *env, arg_asrtgt_d *restrict a) {
     return true;
 }
 static bool trans_rdtimel_w(CPULoongArchState *env, arg_rdtimel_w *restrict a) {
-#ifndef CONFIG_DIFF
+#if !defined (CONFIG_DIFF) || defined (CONFIG_COSIM)
     long long tval = la_get_tval(env);
     gen_set_gpr(env, a->rd, tval, EXT_SIGN);
     env->gpr[a->rj] = 0;
@@ -1751,7 +1751,7 @@ static bool trans_rdtimel_w(CPULoongArchState *env, arg_rdtimel_w *restrict a) {
     return true;
 }
 static bool trans_rdtimeh_w(CPULoongArchState *env, arg_rdtimeh_w *restrict a) {
-#ifndef CONFIG_DIFF
+#if !defined (CONFIG_DIFF) || defined (CONFIG_COSIM)
     long long tval = la_get_tval(env);
     gen_set_gpr(env, a->rd, tval >> 32, EXT_SIGN);
     env->gpr[a->rj] = 0;
@@ -1760,7 +1760,7 @@ static bool trans_rdtimeh_w(CPULoongArchState *env, arg_rdtimeh_w *restrict a) {
     return true;
 }
 static bool trans_rdtime_d(CPULoongArchState *env, arg_rdtime_d *restrict a) {
-#ifndef CONFIG_DIFF
+#if !defined (CONFIG_DIFF) || defined (CONFIG_COSIM)
     env->gpr[a->rd] = la_get_tval(env);
     env->gpr[a->rj] = 0;
 #endif
@@ -2165,7 +2165,7 @@ static bool trans_jirl(CPULoongArchState *env, arg_jirl *restrict a) {
 }
 static bool trans_b(CPULoongArchState *env, arg_b *restrict a) {
     PERF_INC(COUNTER_INST_BRANCH);
-#ifndef CONFIG_DIFF
+#if !defined (CONFIG_DIFF) || defined (CONFIG_COSIM)
     if (!a->offs) {
         laemu_exit(EXIT_SUCCESS);
     }
@@ -2411,7 +2411,7 @@ uint64_t helper_write_csr(CPULoongArchState *env, int csr_index, uint64_t new_v,
         case LOONGARCH_CSR_SAVE(7)        :old_v = env->CSR_SAVE[7]; env->CSR_SAVE[7] = mask_write(env->CSR_SAVE[7], new_v, mask); break;
         case LOONGARCH_CSR_TID            :old_v = sextract64(env->CSR_TID, 0, 32); env->CSR_TID = mask_write(env->CSR_TID, new_v, mask & LOONGARCH_CSR_TID_WMASK); break;
         case LOONGARCH_CSR_TCFG           :old_v = env->CSR_TCFG; env->CSR_TCFG = mask_write(env->CSR_TCFG, new_v, mask);
-#ifndef CONFIG_DIFF
+#if !defined (CONFIG_DIFF) || defined (CONFIG_COSIM)
             if (env->CSR_TCFG & 1) {
                 if (determined) {
                     env->timer_counter = (env->CSR_TCFG & CONSTANT_TIMER_TICK_MASK) / TIME_SCALE;
@@ -2614,7 +2614,7 @@ static bool trans_ertn(CPULoongArchState *env, arg_ertn *restrict a) {
 }
 static bool trans_idle(CPULoongArchState *env, arg_idle *restrict a) {
     CHECK_PLV(0);
-#ifndef CONFIG_DIFF
+#if !defined (CONFIG_DIFF) || defined (CONFIG_COSIM)
     if (FIELD_EX64(env->CSR_CRMD, CSR_CRMD, IE) == 0) {
         fprintf(stderr, "idle while CRMD.IE is disabled\n");
         dump_exec_info(env, stderr);
