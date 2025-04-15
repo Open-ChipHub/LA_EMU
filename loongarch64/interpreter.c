@@ -507,7 +507,7 @@ static bool trans_slli_d(CPULoongArchState *env, arg_slli_d *restrict a) {
     return true;
 }
 static bool trans_srli_w(CPULoongArchState *env, arg_srli_w *restrict a) {
-    env->gpr[a->rd] = (int64_t)((uint32_t)env->gpr[a->rj] >> a->imm);
+    env->gpr[a->rd] = (int64_t)(int32_t)((uint32_t)env->gpr[a->rj] >> a->imm);
     cpu_set_pc(env, env->pc + 4);
     return true;
 }
