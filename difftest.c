@@ -13,6 +13,8 @@
 #include "sizes.h"
 #include "cpu.h"
 #include "internals.h"
+#include "difftest.h"
+#include "device_io.h"
 
 #define DUT_TO_REF 0
 #define REF_TO_DUT 1
@@ -20,13 +22,21 @@
 
 extern int64_t singlestep;
 extern int check_level;
+extern bool determined;
 
 extern int exec_env(CPULoongArchState *env);
 extern void cpu_reset(CPUState* cs);
 extern uint64_t helper_read_csr(CPULoongArchState *env, int csr_index);
+extern char* alloc_ram(uint64_t ram_size);
+extern bool load_elf(const char* filename, uint64_t* entry_addr);
+extern void restore_checkpoint(CPULoongArchState *env, char* image_dir);
+extern void restore_checkpoint_qemu_format(CPULoongArchState *env, char* mem_path, char* cpu_path);
+extern void parse_cpu_option(CPUArchState* env, char* cpu_option);
+extern uint64_t debugcon_ioport_read(void *opaque, hwaddr addr, unsigned size);
+extern void debugcon_ioport_write(void* opaque, uint64_t addr, uint64_t val, unsigned size);
 
 extern const char* const csrnames[];
-
+extern FILE* logfile;
 
 static inline uint8_t* guest_to_host(uint64_t guest_paddr)
 {
@@ -42,9 +52,45 @@ static void difftest_init_ram(size_t size)
 
 }
 
+void difftest_config_init(DiffConfig* config)
+{
+    logfile = stderr;
+
+    LoongArchCPU* cpu = aligned_alloc(64, sizeof(LoongArchCPU));
+    memset(cpu, 0, sizeof(LoongArchCPU));
+    CPUState *cs = CPU(cpu);
+    CPULoongArchState* env = &cpu->env;
+    cs->env = env;
+    cpu_reset(cs);
+    loongarch_core_initfn(env);
+    cpu_clear_tc(env);
+    env->timer_counter = INT64_MAX;
+
+    current_env = env;
+
+    ram = alloc_ram(config->ram_size << 30);
+    if (config->prog_type == DIFF_PROG_TYPE_ELF) {
+        load_elf(config->elf_path, &(env->pc));
+    } else if (config->prog_type == DIFF_PROG_TYPE_CKPT) {
+        restore_checkpoint(env, config->ckpt_dir);
+    } else if (config->prog_type == DIFF_PROG_TYPE_QCKPT) {
+        restore_checkpoint_qemu_format(env, config->qckpt_mem_path, config->qckpt_cpu_path);
+    }
+
+    if (config->cpu_option) {
+        parse_cpu_option(env, config->cpu_option);
+    }
+
+    determined = 1;
+
+    if (config->has_debugcon) {
+        io_register_device(NULL, debugcon_ioport_read, debugcon_ioport_write, NULL, config->debugcon_base_addr, 8);
+    }
+}
+
 void difftest_init(size_t ram_size_bytes)
 {
-
+    logfile = stderr;
     // TODO : Don't repeat yourself(DRY)
     LoongArchCPU* cpu = aligned_alloc(64, sizeof(LoongArchCPU));
     memset(cpu, 0, sizeof(LoongArchCPU));

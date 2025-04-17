@@ -30,6 +30,10 @@ ifeq (${DIFF},1)
 	CFLAGS += -DCONFIG_DIFF -fPIC
 endif
 
+ifeq (${COSIM},1)
+	CFLAGS += -DCONFIG_DIFF -DCONFIG_COSIM -fPIC
+endif
+
 ifeq (${PERF},1)
 	CFLAGS += -DCONFIG_PERF
 endif
@@ -49,7 +53,7 @@ arch := $(shell gcc -dumpmachine)
 ifeq ($(arch),loongarch64-linux-gnu)
    LDFLAGS+=-Wl,-Tlink_script/loongarch64.lds
 endif
-ifeq (${DIFF},1)
+ifeq ($(filter 1,$(DIFF) $(COSIM)),1)
 	LDFLAGS += -shared -fPIC -Wl,--no-undefined
 endif
 
@@ -88,7 +92,7 @@ $(info $$DIFF_SOURCES is [${DIFF_SOURCES}])
 $(info $$DIFF_OBJS is [${DIFF_OBJS}])
 $(info $$DIFF_DEPS is [${DIFF_DEPS}])
 
-ifeq (${DIFF},1)
+ifeq ($(filter 1,$(DIFF) $(COSIM)),1)
 	TARGETS = $(BUILD_DIR)/$(TARGET_ABBR)_emu_ref.so
 else
 	TARGETS = $(BUILD_DIR)/$(TARGET_ABBR)_emu_user $(BUILD_DIR)/$(TARGET_ABBR)_emu_kernel

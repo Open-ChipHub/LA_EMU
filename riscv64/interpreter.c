@@ -354,7 +354,7 @@ static inline __attribute__((always_inline)) hwaddr store_pa(DisasContext *env, 
 #endif
 }
 
-#if defined(CONFIG_USER_ONLY) || defined(CONFIG_DIFF)
+#if defined(CONFIG_USER_ONLY) || (defined(CONFIG_DIFF) && !defined (CONFIG_COSIM))
 #define is_io(...) false
 #else
 static bool is_io(hwaddr ha) {

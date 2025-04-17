@@ -292,7 +292,7 @@ void loongarch_centaur320_initfn(CPULoongArchState* env) {
     data = FIELD_DP32(data, CPUCFG2, FP_SP, 1);
     data = FIELD_DP32(data, CPUCFG2, FP_DP, 1);
     data = FIELD_DP32(data, CPUCFG2, FP_VER, 1);
-    data = FIELD_DP32(data, CPUCFG2, LSX, 0);
+    data = FIELD_DP32(data, CPUCFG2, LSX, 1);
     data = FIELD_DP32(data, CPUCFG2, LASX, 0);
     data = FIELD_DP32(data, CPUCFG2, LVZ_VER, 1);
     data = FIELD_DP32(data, CPUCFG2, LLFTP, 1);
@@ -688,4 +688,11 @@ __attribute__((noinline)) void show_register_fpr(CPULoongArchState *env) {
     fprintf(stderr, "\n");
     fprintf(stderr, "fcsr:%08x\n", env->fcsr0);
     dump_fcsr(env->fcsr0);
+}
+
+__attribute__((noinline)) void show_register_lsx(CPULoongArchState *env) {
+    for (int i = 0; i < 32; i++) {
+        fprintf(stderr, "f%02d  0x%08x 0x%08x 0x%08x 0x%08x\n", i,
+            env->fpr[i].vreg.W[3], env->fpr[i].vreg.W[2], env->fpr[i].vreg.W[1], env->fpr[i].vreg.W[0]);
+    }
 }

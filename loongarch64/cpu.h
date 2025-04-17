@@ -911,6 +911,7 @@ const char *loongarch_exception_name(int32_t exception);
 
 void show_register(CPUArchState *env);
 void show_register_fpr(CPUArchState *env);
+void show_register_lsx(CPUArchState *env);
 
 static inline void cpu_set_sp(CPUArchState *env, target_ulong sp) {
     env->gpr[3] = sp;

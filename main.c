@@ -159,6 +159,30 @@ char* ckpt_mem_filename;
 char* ckpt_cpu_filename;
 char* cpu_option;
 
+void parse_cpu_option(CPUArchState* env, char* cpu_option) {
+    // "la464,+aaa,-bbb,+lsx,-alsx";
+    char* dot = strchr(cpu_option, ',');
+    if (dot) {
+        if (strncmp(cpu_option, "la464", dot - cpu_option) == 0) {
+            // loongarch_la464_initfn(env);
+        } else if (strncmp(cpu_option, "la664", dot - cpu_option) == 0) {
+            // loongarch_la664_initfn(env);
+        }
+        qemu_log("CPU:%s\n", cpu_option);
+        dot ++;
+        char* nextdot;
+        do {
+            nextdot = strchr(dot, ',');
+            cpu_set_feature(env, dot + 1, *dot == '+');
+            dot = nextdot + 1;
+        } while (nextdot);
+        fprintf(stderr, "lxy: %s:%d %s \n", __FILE__,__LINE__,__func__);
+    } else {
+        qemu_log("CPU:%s\n", cpu_option);
+        fprintf(stderr, "lxy: %s:%d %s \n", __FILE__,__LINE__,__func__);
+    }
+}
+
 #if !defined (CONFIG_USER_ONLY) && !defined (CONFIG_DIFF)
 __attribute__((unused)) static char* readfile(const char* filename, uint64_t* length) {
     // int r;
@@ -205,9 +229,9 @@ static target_ulong user_setup_stack() {
 #define elfhdr Elf64_Ehdr
 #define elf_shdr Elf64_Shdr
 #define elf_phdr Elf64_Phdr
-#if !defined (CONFIG_USER_ONLY) && !defined (CONFIG_DIFF)
+#if !defined (CONFIG_USER_ONLY)
 #if defined(TARGET_LOONGARCH64)
-static char* alloc_ram(uint64_t ram_size) {
+char* alloc_ram(uint64_t ram_size) {
     void* start = mmap(NULL, ram_size + SZ_2G, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     lsassert(start != MAP_FAILED);
     void* part1 = mmap(start, SZ_256M, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
@@ -234,7 +258,7 @@ bool addr_range_in_ram(hwaddr begin, hwaddr end) {
 }
 #elif defined(TARGET_RISCV64)
 #define DTB_BLOB_ADDR SZ_1G
-static char* alloc_ram(uint64_t ram_size) {
+char* alloc_ram(uint64_t ram_size) {
     void* start = mmap(NULL, ram_size + SZ_2G, PROT_NONE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
     lsassert(start != MAP_FAILED);
     void* part1 = mmap(start + SZ_1G, SZ_1G, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS | MAP_FIXED, -1, 0);
@@ -617,7 +641,7 @@ int exec_env(CPUArchState *env) {
 #endif
 
 #if !defined (CONFIG_USER_ONLY)
-#if !defined (CONFIG_DIFF)
+#if !defined (CONFIG_DIFF) || defined (CONFIG_COSIM)
                 loongarch_cpu_check_irq(env);
 #endif
                 if (unlikely(loongarch_cpu_has_irq(env))) {
@@ -1113,27 +1137,7 @@ int main(int argc, char** argv, char **envp) {
     loongarch_core_initfn(env);
 #endif
     if (cpu_option) {
-        // "la464,+aaa,-bbb,+lsx,-alsx";
-        char* dot = strchr(cpu_option, ',');
-        if (dot) {
-            if (strncmp(cpu_option, "la464", dot - cpu_option) == 0) {
-                // loongarch_la464_initfn(env);
-            } else if (strncmp(cpu_option, "la664", dot - cpu_option) == 0) {
-                // loongarch_la664_initfn(env);
-            }
-            qemu_log("CPU:%s\n", cpu_option);
-            dot ++;
-            char* nextdot;
-            do {
-                nextdot = strchr(dot, ',');
-                cpu_set_feature(env, dot + 1, *dot == '+');
-                dot = nextdot + 1;
-            } while (nextdot);
-            fprintf(stderr, "lxy: %s:%d %s \n", __FILE__,__LINE__,__func__);
-        } else {
-            qemu_log("CPU:%s\n", cpu_option);
-            fprintf(stderr, "lxy: %s:%d %s \n", __FILE__,__LINE__,__func__);
-        }
+        parse_cpu_option(env, cpu_option);
     }
     cpu_clear_tc(env);
     env->timer_counter = INT64_MAX;
