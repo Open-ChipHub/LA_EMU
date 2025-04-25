@@ -346,6 +346,7 @@ bool load_elf(const char* filename, uint64_t* entry_addr) {
                 qemu_log_mask(CPU_LOG_PAGE, "%lx, file_size:%lx mem_size:%lx, \n", ph->p_paddr, file_size, mem_size);
             }
             free((void*)data);
+            ret = 0;
         }
     }
 
@@ -1101,7 +1102,10 @@ int main(int argc, char** argv, char **envp) {
     }
 #else
     if (kernel_filename && !is_directory(kernel_filename)) {
-        load_elf(kernel_filename, &entry_addr);
+        if (load_elf(kernel_filename, &entry_addr)) {
+            printf("load kernel %s failed\n", kernel_filename);
+            laemu_exit(EXIT_FAILURE);
+        }
     }
 
 #if !defined (CONFIG_CLI) && !defined (CONFIG_PLUGIN)
