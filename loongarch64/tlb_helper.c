@@ -17,7 +17,10 @@
 // #include "exec/log.h"
 // #include "cpu-csr.h"
 
-#define tlb_flush(...) ;
+void tlb_flush(CPUState *cpu)
+{
+    cpu_clear_tc(cpu_env(cpu));
+}
 
 bool check_ps(CPULoongArchState *env, uint8_t tlb_ps)
 {
