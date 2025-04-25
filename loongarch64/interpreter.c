@@ -715,7 +715,7 @@ static bool trans_bstrpick_w(CPULoongArchState *env, arg_bstrpick_w *restrict a)
     if (a->ls > a->ms) {
         return false;
     }
-    env->gpr[a->rd] = (int64_t)extract32(env->gpr[a->rj], a->ls, a->ms - a->ls + 1);
+    env->gpr[a->rd] = (int64_t)(int32_t)extract32(env->gpr[a->rj], a->ls, a->ms - a->ls + 1);
     cpu_set_pc(env, env->pc + 4);
     return true;
 }
