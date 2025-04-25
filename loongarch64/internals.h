@@ -47,6 +47,8 @@ enum {
     TLBRET_PTW_SET_D = 8,
 };
 
+bool check_ps(CPULoongArchState *env, uint8_t ps);
+
 bool loongarch_tlb_search(CPULoongArchState *env, target_ulong vaddr,
                           int *index);
 

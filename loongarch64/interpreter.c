@@ -2396,9 +2396,9 @@ uint64_t helper_write_csr(CPULoongArchState *env, int csr_index, uint64_t new_v,
         case LOONGARCH_CSR_PGDL           :old_v = env->CSR_PGDL; env->CSR_PGDL = mask_write(env->CSR_PGDL, new_v, mask & LOONGARCH_CSR_PGDL_WMASK); break;
         case LOONGARCH_CSR_PGDH           :old_v = env->CSR_PGDH; env->CSR_PGDH = mask_write(env->CSR_PGDH, new_v, mask & LOONGARCH_CSR_PGDH_WMASK); break;
         case LOONGARCH_CSR_PGD            :old_v = helper_csrrd_pgd(env); break;
-        case LOONGARCH_CSR_PWCL           :old_v = sextract64(env->CSR_PWCL, 0, 32); env->CSR_PWCL = mask_write(env->CSR_PWCL, new_v, mask & LOONGARCH_CSR_PWCL_WMASK); break;
+        case LOONGARCH_CSR_PWCL           :old_v = sextract64(env->CSR_PWCL, 0, 32); if (!check_ps(env, FIELD_EX64(new_v, CSR_PWCL, PTBASE))) {qemu_log_mask(LOG_GUEST_ERROR, "Attrmpted set ptbase 2^%d\n", new_v); break;} env->CSR_PWCL = mask_write(env->CSR_PWCL, new_v, mask & LOONGARCH_CSR_PWCL_WMASK); break;
         case LOONGARCH_CSR_PWCH           :old_v = env->CSR_PWCH; env->CSR_PWCH = mask_write(env->CSR_PWCH, new_v, mask & LOONGARCH_CSR_PWCH_WMASK); break;
-        case LOONGARCH_CSR_STLBPS         :old_v = env->CSR_STLBPS; env->CSR_STLBPS = mask_write(env->CSR_STLBPS, new_v, mask & LOONGARCH_CSR_STLBPS_WMASK); cpu_clear_tc(env); break;
+        case LOONGARCH_CSR_STLBPS         :old_v = env->CSR_STLBPS; env->CSR_STLBPS = mask_write(env->CSR_STLBPS, new_v, mask & LOONGARCH_CSR_STLBPS_WMASK); if (!check_ps(env, FIELD_EX64(env->CSR_STLBPS, CSR_STLBPS, PS))) {qemu_log_mask(LOG_GUEST_ERROR, "Attrmpted set ptbase %d\n", FIELD_EX64(env->CSR_STLBPS, CSR_STLBPS, PS));}cpu_clear_tc(env); break;
         case LOONGARCH_CSR_RVACFG         :old_v = env->CSR_RVACFG; env->CSR_RVACFG = mask_write(env->CSR_RVACFG, new_v, mask & LOONGARCH_CSR_RVACFG_WMASK); break;
         case LOONGARCH_CSR_CPUID          :old_v = env->CSR_CPUID; break;
         case LOONGARCH_CSR_PRCFG1         :old_v = env->CSR_PRCFG1; break;
