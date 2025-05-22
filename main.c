@@ -769,6 +769,11 @@ int exec_env(CPULoongArchState *env) {
                     }
                 }
 
+                /// only for debug
+                if (env->pc == 0x1200004b8) {
+                    debug = 1;
+                }
+
                 if (env->pc == 0x900000000046cca8) {
                     debug = 1;
                     hit_num++;
@@ -810,6 +815,8 @@ int exec_env(CPULoongArchState *env) {
         } else {
             loongarch_cpu_do_interrupt(cs);
             env->ecount ++;
+            /// when raise a non-interrupt exception, has executed one instruction
+            -- singlestep;
         }
     }
 }
