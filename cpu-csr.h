@@ -213,6 +213,9 @@ FIELD(CSR_DBG, ECODE, 16, 6)
 #define LOONGARCH_CSR_DERA           0x501 /* Debug era */
 #define LOONGARCH_CSR_DSAVE          0x502 /* Debug save */
 
+#define LOONGARCH_CSR_CPRS           0x133 /* Debug save */
+#define LOONGARCH_CSR_CPRS_CRMD      0x12f /* Debug save */
+
 // write mask defination
 #define LOONGARCH_CSR_CRMD_WMASK            0x3ff
 #define LOONGARCH_CSR_PRMD_WMASK            0xf

@@ -23,7 +23,7 @@
 // used for determined emulation time scaling
 #define TIME_SCALE 1
 // increase this, vm time slower, real 1s, vm see 1 / MUL second
-#define TIME_MUL 1
+#define TIME_MUL 10
 // increase this, vm time faster, real 1s, vm see 1 * DIV second
 #define TIME_DIV 1
 
@@ -76,7 +76,7 @@ typedef enum MMUAccessType {
 #define PAGE_VALID     0x0008
 
 #define TARGET_LONG_BITS 64
-#define TARGET_PHYS_ADDR_SPACE_BITS 48
+#define TARGET_PHYS_ADDR_SPACE_BITS 36
 #define TARGET_VIRT_ADDR_SPACE_BITS 48
 
 
@@ -466,6 +466,10 @@ typedef struct CPUArchState {
     uint64_t CSR_DERA;
     uint64_t CSR_DSAVE;
 
+    uint64_t CSR_CPRS;
+    uint64_t CSR_CPRS_CRMD;
+    uint64_t CSR_CPRS_TCFG;
+
 #ifndef CONFIG_USER_ONLY
     LoongArchTLB  tlb[LOONGARCH_TLB_MAX];
     bool load_elf;
@@ -814,6 +818,7 @@ bool loongarch_cpu_has_irq(CPULoongArchState *env);
 
 void loongarch_la464_initfn(CPULoongArchState* env);
 void loongarch_centaur320_initfn(CPULoongArchState* env);
+void loongarch_openc910_initfn(CPULoongArchState* env);
 
 static inline bool enable_hw_ptw(CPULoongArchState* env) {
     return hw_ptw ||

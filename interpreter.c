@@ -724,6 +724,7 @@ static hwaddr load_pa(CPULoongArchState *env, uint64_t addr) {
     tc->pa = ha & TARGET_PAGE_MASK;
     return ha;
 }
+
 static hwaddr store_pa(CPULoongArchState *env, uint64_t addr) {
     PERF_INC(COUNTER_INST_STORE);
 #ifdef CONFIG_USER_ONLY
@@ -751,12 +752,16 @@ static hwaddr store_pa(CPULoongArchState *env, uint64_t addr) {
 // exclude 32MB bios
 static bool is_io(hwaddr ha) {
     return (ha >= 0x10000000 && ha < 0x1c000000)
-            || (ha > 0x1e000000 && ha < 0x90000000);
+            || (ha > 0x1e000000 && ha < 0x20000000)
+            || (ha >=0x100000000 && ha < 0x120000000);
 }
+// static bool is_io(hwaddr ha) {
+//     return false;
+// }
 #endif
-
 static uint64_t add_addr(int64_t base, int64_t disp) {
-    return (uint64_t)(base + disp);
+    uint64_t addr = base + disp;
+    return (uint64_t)addr;
 }
 
 static int8_t ld_b(CPULoongArchState *env, uint64_t va) {
@@ -2267,6 +2272,8 @@ uint64_t helper_write_csr(CPULoongArchState *env, int csr_index, uint64_t new_v,
         case LOONGARCH_CSR_DBG            :old_v = env->CSR_DBG; break;
         case LOONGARCH_CSR_DERA           :old_v = env->CSR_DERA; env->CSR_DERA = mask_write(env->CSR_DERA, new_v, mask); break;
         case LOONGARCH_CSR_DSAVE          :old_v = env->CSR_DSAVE; env->CSR_DSAVE = mask_write(env->CSR_DSAVE, new_v, mask); break;
+        case LOONGARCH_CSR_CPRS           :old_v = env->CSR_CPRS; env->CSR_CPRS = mask_write(env->CSR_CPRS, new_v, mask); break;
+        case LOONGARCH_CSR_CPRS_CRMD      :old_v = env->CSR_CPRS_CRMD; env->CSR_CPRS_CRMD = mask_write(env->CSR_CPRS_CRMD, new_v, mask); break;
         default:
             fprintf(stderr, "NOT IMPLEMENTED %s %x\n", __func__, csr_index);
     }
@@ -4928,6 +4935,13 @@ gen_trans_vvvd(xvsubwod_w_hu, 32, vsubwod_w_hu)
 
 
 bool interpreter(CPULoongArchState *env, uint32_t insn, INSCache* ic) {
+
+    /// custom instruction
+    if (insn == 0x06490000) {
+        env->CSR_CRMD = env->CSR_CPRS_CRMD;
+        env->pc = env->CSR_CPRS;
+        return true;
+    }
     if (ic) {
         ic->trans_func(env, ic->arg);
         env->gpr[0] = 0;

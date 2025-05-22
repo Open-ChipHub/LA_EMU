@@ -1,10 +1,13 @@
 CC=gcc
-OPT_FLAG = -O2 -flto=auto
+OPT_FLAG = -O0 -g -flto=auto
+
+DIFF := 1
+
 ifeq (${DEBUG},1)
 	OPT_FLAG = -Og
 endif
 # CFLAGS ?= -g -O3 -flto=auto -march=native -mtune=native -MMD -MP -I. -Iinclude -DCONFIG_INT128
-CFLAGS ?= -g ${OPT_FLAG} -MMD -MP -I. -Iinclude -Wall -Werror
+CFLAGS ?= ${OPT_FLAG} -MMD -MP -I. -Iinclude -Wall -Werror
 LDFLAGS ?= -lm -lrt -rdynamic ${OPT_FLAG}
 ifeq (${GDB},1)
 	CFLAGS += -DCONFIG_GDB
@@ -22,6 +25,8 @@ endif
 ifeq (${PERF},1)
 	CFLAGS += -DCONFIG_PERF
 endif
+
+CORE := openc910
 
 ifeq (${CORE},)
 	CFLAGS += -D__CORE__=la464
@@ -72,7 +77,8 @@ $(info $$DIFF_DEPS is [${DIFF_DEPS}])
 ifeq (${DIFF},1)
 	TARGETS = $(BUILD_DIR)/la_emu_ref.so
 else
-	TARGETS = $(BUILD_DIR)/la_emu_user $(BUILD_DIR)/la_emu_kernel
+# 	TARGETS = $(BUILD_DIR)/la_emu_user $(BUILD_DIR)/la_emu_kernel
+	TARGETS = $(BUILD_DIR)/la_emu_kernel
 endif
 
 all: $(TARGETS)
@@ -99,9 +105,38 @@ $(BUILD_DIR)/%_diff.o : %.c
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c -o $@ $<
 
+
+KERNEL_DIR    := /home/airxs/user/cpu/system/linux/linux-6.10-labcore164-emu-rc1
+
+
+CHECKPOINT_PC := 0x90000000009fcd68
+# CHECKPOINT_PC := 0x1200000e8
+CHECKPOINT_PC := 0x1201d8ed0
+CHECKPOINT_PC := 0x9000000000229d40
+CHECKPOINT_PC := 0x9000000000be2f50
+CHECKPOINT_PC := 0x9000000000be52ac
+CHECKPOINT_PC := 0x9000000000be0d70
+CHECKPOINT_PC := 0x9000000000bc23f0
+CHECKPOINT_PC := 0x9000000000c01a68
+CHECKPOINT_PC := 0x1200004ac
+CHECKPOINT_PC := 0x9000000000bc1ec8
+
+CHECKPOINT_PC := 0x9000000000c017c8
+
+
+run:
+	./build/la_emu_kernel -s -m 16 -k $(KERNEL_DIR)/vmlinux 
+
+ckp:
+	./build/la_emu_kernel -z -s -m 16 -C $(CHECKPOINT_PC) -k $(KERNEL_DIR)/vmlinux 
+
+
 clean:
 	rm -rf build
 
 .EXTRA_PREREQS = Makefile
 -include $(USER_DEPS)
 -include $(KERNEL_DEPS)
+
+
+
