@@ -515,6 +515,7 @@ typedef struct CPUArchState {
 #define PERF_INC(event) ;
 #endif
     int64_t timer_counter;
+    uint64_t timer;
     timer_t timerid;
     volatile sig_atomic_t timer_int;
 } CPULoongArchState;

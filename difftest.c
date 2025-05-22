@@ -110,8 +110,22 @@ void loong64_isa_reg_display() {
 
 }
 
-void loong64_difftest_timercpy(void* dut_buf) {
 
+struct la64_timer {
+    // for stable_counter
+    uint64_t counter_id;
+    uint64_t stable_timer;
+    // for TVAL csr
+    uint64_t time_val;
+};
+
+void loong64_difftest_timercpy(void* dut_buf) {
+    CPULoongArchState *env =  current_env;
+    struct la64_timer *timer = dut_buf;
+
+    env->timer = timer->stable_timer;
+    env->CSR_TVAL = timer->time_val;
+    env->CSR_TID = timer->counter_id;
 }
 
 uint64_t loong64_difftest_get_cur_pc(void) {

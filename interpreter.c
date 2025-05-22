@@ -1583,6 +1583,9 @@ static bool trans_rdtimel_w(CPULoongArchState *env, arg_rdtimel_w *restrict a) {
     long long tval = la_get_tval(env);
     gen_set_gpr(env, a->rd, tval, EXT_SIGN);
     env->gpr[a->rj] = 0;
+#else
+    gen_set_gpr(env, a->rd, env->timer, EXT_ZERO);
+    env->gpr[a->rj] = 0;
 #endif
     env->pc += 4;
     return true;
@@ -1592,6 +1595,9 @@ static bool trans_rdtimeh_w(CPULoongArchState *env, arg_rdtimeh_w *restrict a) {
     long long tval = la_get_tval(env);
     gen_set_gpr(env, a->rd, tval >> 32, EXT_SIGN);
     env->gpr[a->rj] = 0;
+#else
+    gen_set_gpr(env, a->rd, env->timer >> 32, EXT_ZERO);
+    env->gpr[a->rj] = 0;
 #endif
     env->pc += 4;
     return true;
@@ -1599,6 +1605,9 @@ static bool trans_rdtimeh_w(CPULoongArchState *env, arg_rdtimeh_w *restrict a) {
 static bool trans_rdtime_d(CPULoongArchState *env, arg_rdtime_d *restrict a) {
 #ifndef CONFIG_DIFF
     env->gpr[a->rd] = la_get_tval(env);
+    env->gpr[a->rj] = 0;
+#else
+    gen_set_gpr(env, a->rd, env->timer, EXT_ZERO);
     env->gpr[a->rj] = 0;
 #endif
     env->pc += 4;
