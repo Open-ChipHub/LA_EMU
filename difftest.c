@@ -23,6 +23,7 @@
 extern int64_t singlestep;
 extern int check_level;
 extern bool determined;
+extern bool reach_end_of_exec;
 
 extern int exec_env(CPULoongArchState *env);
 extern void cpu_reset(CPUState* cs);
@@ -52,7 +53,7 @@ static void difftest_init_ram(size_t size)
 
 }
 
-void difftest_config_init(DiffConfig* config)
+DiffInitInfo difftest_config_init(DiffConfig* config)
 {
     logfile = stderr;
 
@@ -86,6 +87,11 @@ void difftest_config_init(DiffConfig* config)
     if (config->has_debugcon) {
         io_register_device(NULL, debugcon_ioport_read, debugcon_ioport_write, NULL, config->debugcon_base_addr, 8);
     }
+
+    DiffInitInfo info;
+    info.start_pc = current_env->pc;
+    return info;
+
 }
 
 void difftest_init(size_t ram_size_bytes)
@@ -110,10 +116,18 @@ void difftest_init(size_t ram_size_bytes)
 
 }
 
-void difftest_exec(uint64_t n)
+int difftest_exec(uint64_t n)
 {
+    if (reach_end_of_exec) {
+        return -1;
+    }
     singlestep = n;
     exec_env(current_env);
+    if (reach_end_of_exec) {
+        return -1;
+    } else {
+        return 0;
+    }
 }
 
 static inline void difftest_cpy_helper(void* ref_buf, void* dut_buf, size_t n, bool direction)

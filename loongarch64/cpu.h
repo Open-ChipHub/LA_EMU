@@ -897,10 +897,14 @@ extern la_emu_plugin_ops plugin_ops;
     #define PLUGIN_CALL(func, ...) do {} while(0)
 #endif
 
+extern bool reach_end_of_exec;
 
 static inline void laemu_exit(int64_t status) {
     PLUGIN_CALL(emu_stop);
+    reach_end_of_exec = true;
+#if !defined (CONFIG_COSIM)
     exit(status);
+#endif
 }
 
 void cpu_reset(CPUState* cs);
