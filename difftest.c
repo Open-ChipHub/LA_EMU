@@ -53,7 +53,7 @@ static void difftest_init_ram(size_t size)
 
 }
 
-DiffInitInfo difftest_config_init(DiffConfig* config)
+void difftest_config_init(DiffConfig* config)
 {
     logfile = stderr;
 
@@ -87,10 +87,6 @@ DiffInitInfo difftest_config_init(DiffConfig* config)
     if (config->has_debugcon) {
         io_register_device(NULL, debugcon_ioport_read, debugcon_ioport_write, NULL, config->debugcon_base_addr, 8);
     }
-
-    DiffInitInfo info;
-    info.start_pc = current_env->pc;
-    return info;
 
 }
 
@@ -162,6 +158,10 @@ void difftest_gprcpy_idx(int gpr_idx, uint64_t* dut_buf, bool direction)
     } else {
         *dut_buf = current_env->gpr[gpr_idx];
     }
+}
+
+void difftest_npccpy(uint64_t* dut_buf){
+    *dut_buf = current_env->pc;
 }
 
 void difftest_pccpy(uint64_t* dut_buf, bool direction)

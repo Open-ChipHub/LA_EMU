@@ -21,8 +21,4 @@ typedef struct DiffConfig {
     uint64_t debugcon_base_addr;
 } DiffConfig;
 
-typedef struct DiffInitInfo {
-    uint64_t start_pc;
-} DiffInitInfo;
-
 #endif
