@@ -13,23 +13,38 @@ extern "C" {
 static FILE* log_file;
 int cur_block_inst_num = 0;
 uint64_t cur_block_pc_s;
+uint64_t prev_pc;
+uint32_t prev_insn;
 bool has_exec_first_inst;
 
 void my_emu_insn_before(void* env, uint64_t pc, uint32_t insn) {
     if (!has_exec_first_inst) {
         cur_block_pc_s = pc;
-        has_exec_first_inst = true;
     }
 }
 
 void my_emu_insn_after(void* env, uint64_t pc, uint32_t insn, uint64_t next_pc) {
-    cur_block_inst_num++;
-    if (cur_block_inst_num == FETCH_NUM || next_pc != pc + 4) {
-        fprintf(log_file, "pc_s=%#lx,pc_e=%#lx,pc_t=%#lx,pc_e_insn=%#x\n",
-            cur_block_pc_s, pc, next_pc, insn);
-        cur_block_inst_num = 0;
-        cur_block_pc_s = next_pc;
+    if (!has_exec_first_inst) {
+        has_exec_first_inst = true;
+        prev_pc = pc;
+        prev_insn = insn;
+        cur_block_inst_num = 1;
+        return;
     }
+    if (cur_block_inst_num == FETCH_NUM || pc != prev_pc + 4) {
+        lsassert(cur_block_pc_s <= prev_pc);
+        fprintf(log_file, "pc_s=%#lx,pc_e=%#lx,pc_t=%#lx,pc_e_insn=%#x\n",
+            cur_block_pc_s, prev_pc, pc, prev_insn);
+        prev_pc = pc;
+        prev_insn = insn;
+        cur_block_inst_num = 1;
+        cur_block_pc_s = pc;
+        return;
+    }
+
+    cur_block_inst_num++;
+    prev_pc = pc;
+    prev_insn = insn;
 }
 
 la_emu_plugin_ops my_op = {
