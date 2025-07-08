@@ -573,20 +573,7 @@ static uint32_t fetch(CPUArchState *env, INSCache** ic) {
         *ic = cpu_get_ic(env, insn);
         return insn;
     }
-    int prot;
-    uint64_t addr = env->pc;
-    int tc_index = TC_INDEX(addr);
-    TLBCache* tc = env->tc_fetch + tc_index;
-    uint64_t page_addr = addr & TARGET_PAGE_MASK;
-    if (likely(page_addr == tc->va)) {
-        ha = (addr & (TARGET_PAGE_SIZE - 1)) | tc->pa;
-    } else {
-        int mmu_idx = FIELD_EX64(env->CSR_CRMD, CSR_CRMD, PLV) == 0 ? MMU_KERNEL_IDX : MMU_USER_IDX;
-        check_get_physical_address(env, &ha, &prot, addr, MMU_INST_FETCH, mmu_idx);
-        // fprintf(stderr, "va:%lx,pa:%lx\n", addr, ha);
-        tc->va = page_addr;
-        tc->pa = ha & TARGET_PAGE_MASK;
-    }
+    ha = fetch_pa(env, env->pc);
     {
         env->prev_pc_vpage = env->pc & TARGET_PAGE_MASK;
         env->prev_pc_ppage_host_addr = (ha & TARGET_PAGE_MASK) + (uintptr_t)ram;
