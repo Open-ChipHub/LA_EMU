@@ -752,7 +752,7 @@ static inline CPUArchState *cpu_env(CPUState *cpu)
 
 int check_get_physical_address(CPURISCVState *env, hwaddr *physical,
                                 int *prot, target_ulong address,
-                                MMUAccessType access_type, int mmu_idx);
+                                MMUAccessType access_type, int mmu_idx, bool* record_excp);
 
 int probe_get_physical_address(CPURISCVState *env, hwaddr *physical,
                                 int *prot, target_ulong address,

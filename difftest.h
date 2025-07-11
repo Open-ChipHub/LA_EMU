@@ -21,4 +21,10 @@ typedef struct DiffConfig {
     uint64_t debugcon_base_addr;
 } DiffConfig;
 
+typedef enum DiffAddrTransType {
+    DIFF_ADDR_TRANS_FETCH,
+    DIFF_ADDR_TRANS_LOAD,
+    DIFF_ADDR_TRANS_STORE,
+} DiffAddrTransType;
+
 #endif

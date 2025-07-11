@@ -193,8 +193,9 @@ static int loongarch_map_address(CPULoongArchState *env, hwaddr *physical,
                                  MMUAccessType access_type, int mmu_idx)
 {
     int index, match, tlbret;
-
+    int counter = 2;
 again:
+    counter--;
     match = loongarch_tlb_search(env, address, &index);
     if (match) {
         tlbret = loongarch_map_tlb_entry(env, physical, prot,
@@ -202,6 +203,9 @@ again:
         if (tlbret != TLBRET_PTW_SET_D) {
             return tlbret;
         }
+    }
+    if (counter == 0) {
+        return TLBRET_NOMATCH;
     }
 
     if (enable_hw_ptw(env) && (!match || (match && tlbret == TLBRET_PTW_SET_D)))

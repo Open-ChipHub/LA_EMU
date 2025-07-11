@@ -764,7 +764,7 @@ static bool is_io(hwaddr ha) {
 }
 #endif
 
-hwaddr fetch_pa(CPULoongArchState *env, uint64_t addr) {
+hwaddr fetch_pa(CPULoongArchState *env, uint64_t addr, bool *record_excp) {
 #ifdef CONFIG_USER_ONLY
     return addr;
 #endif
@@ -778,15 +778,19 @@ hwaddr fetch_pa(CPULoongArchState *env, uint64_t addr) {
         ha = (addr & (TARGET_PAGE_SIZE - 1)) | tc->pa;
     } else {
         int mmu_idx = FIELD_EX64(env->CSR_CRMD, CSR_CRMD, PLV) == 0 ? MMU_KERNEL_IDX : MMU_USER_IDX;
-        check_get_physical_address(env, &ha, &prot, addr, MMU_INST_FETCH, mmu_idx);
+        bool trans_success = check_get_physical_address(env, &ha, &prot, addr, MMU_INST_FETCH, mmu_idx, record_excp);
+        if (!trans_success) {
+            return addr;
+        }
         // fprintf(stderr, "va:%lx,pa:%lx\n", addr, ha);
         tc->va = page_addr;
         tc->pa = ha & TARGET_PAGE_MASK;
+        
     }
     return ha;
 }
 
-static hwaddr load_pa(CPULoongArchState *env, uint64_t addr, int *ha_is_io) {
+hwaddr load_pa(CPULoongArchState *env, uint64_t addr, int *ha_is_io, bool *record_excp) {
     PERF_INC(COUNTER_INST_LOAD);
 #ifdef CONFIG_USER_ONLY
         if (ha_is_io) *ha_is_io = 0;
@@ -804,7 +808,10 @@ static hwaddr load_pa(CPULoongArchState *env, uint64_t addr, int *ha_is_io) {
         return ha;
     }
     int mmu_idx = FIELD_EX64(env->CSR_CRMD, CSR_CRMD, PLV) == 0 ? MMU_KERNEL_IDX : MMU_USER_IDX;
-    check_get_physical_address(env, &ha, &prot, addr, MMU_DATA_LOAD, mmu_idx);
+    bool trans_success = check_get_physical_address(env, &ha, &prot, addr, MMU_DATA_LOAD, mmu_idx, record_excp);
+    if (!trans_success) {
+        return addr;
+    }
     if (is_io(ha)) {
         if (ha_is_io) *ha_is_io = 1;
     } else {
@@ -814,7 +821,7 @@ static hwaddr load_pa(CPULoongArchState *env, uint64_t addr, int *ha_is_io) {
     }
     return ha;
 }
-static hwaddr store_pa(CPULoongArchState *env, uint64_t addr, int *ha_is_io) {
+hwaddr store_pa(CPULoongArchState *env, uint64_t addr, int *ha_is_io, bool *record_excp) {
     PERF_INC(COUNTER_INST_STORE);
 #ifdef CONFIG_USER_ONLY
         if (ha_is_io) *ha_is_io = 0;
@@ -831,7 +838,10 @@ static hwaddr store_pa(CPULoongArchState *env, uint64_t addr, int *ha_is_io) {
         if (ha_is_io) *ha_is_io = 0;
     } else {
         int mmu_idx = FIELD_EX64(env->CSR_CRMD, CSR_CRMD, PLV) == 0 ? MMU_KERNEL_IDX : MMU_USER_IDX;
-        check_get_physical_address(env, &ha, &prot, addr, MMU_DATA_STORE, mmu_idx);
+        bool trans_success = check_get_physical_address(env, &ha, &prot, addr, MMU_DATA_STORE, mmu_idx, record_excp);
+        if (!trans_success) {
+            return addr;
+        }
         if (is_io(ha)) {
             if (ha_is_io) *ha_is_io = 1;
         } else {
@@ -849,7 +859,7 @@ static uint64_t add_addr(int64_t base, int64_t disp) {
 
 static int8_t ld_b(CPULoongArchState *env, uint64_t va) {
     int ha_is_io;
-    hwaddr ha = load_pa(env, va, &ha_is_io);
+    hwaddr ha = load_pa(env, va, &ha_is_io,NULL);
     int8_t data;
 #if defined(CONFIG_USER_ONLY)
     data = ram_ldb(ha);
@@ -864,7 +874,7 @@ static int16_t ld_h(CPULoongArchState *env, uint64_t va) {
     uint64_t data;
     const int data_size = 2;
     int ha_is_io;
-    hwaddr ha = load_pa(env, va, &ha_is_io);
+    hwaddr ha = load_pa(env, va, &ha_is_io,NULL);
 #if !defined(CONFIG_USER_ONLY)
     if (ha_is_io) {
         data = do_io_ld(ha, data_size);
@@ -889,7 +899,7 @@ static int32_t ld_w(CPULoongArchState *env, uint64_t va) {
     uint64_t data;
     const int data_size = 4;
     int ha_is_io;
-    hwaddr ha = load_pa(env, va, &ha_is_io);
+    hwaddr ha = load_pa(env, va, &ha_is_io, NULL);
 #if !defined(CONFIG_USER_ONLY)
     if (ha_is_io) {
         data = do_io_ld(ha, data_size);
@@ -914,7 +924,7 @@ static int64_t ld_d(CPULoongArchState *env, uint64_t va) {
     uint64_t data;
     const int data_size = 8;
     int ha_is_io;
-    hwaddr ha = load_pa(env, va, &ha_is_io);
+    hwaddr ha = load_pa(env, va, &ha_is_io, NULL);
 #if !defined(CONFIG_USER_ONLY)
     if (ha_is_io) {
         data = do_io_ld(ha, data_size);
@@ -938,7 +948,7 @@ static int64_t ld_d(CPULoongArchState *env, uint64_t va) {
 static void ld_128(CPULoongArchState *env, uint64_t va, uint64_t* data) {
     const int data_size = 16;
     int ha_is_io;
-    hwaddr ha = load_pa(env, va, &ha_is_io);
+    hwaddr ha = load_pa(env, va, &ha_is_io, NULL);
     if (ha_is_io) {
         lsassert(0);
     } else {
@@ -956,7 +966,7 @@ static void ld_128(CPULoongArchState *env, uint64_t va, uint64_t* data) {
 static void ld_256(CPULoongArchState *env, uint64_t va, uint64_t* data) {
     const int data_size = 32;
     int ha_is_io;
-    hwaddr ha = load_pa(env, va, &ha_is_io);
+    hwaddr ha = load_pa(env, va, &ha_is_io, NULL);
     if (ha_is_io) {
         lsassert(0);
     } else {
@@ -1012,7 +1022,7 @@ static void ld_256(CPULoongArchState *env, uint64_t va, uint64_t* data) {
 
 static void st_b(CPULoongArchState *env, uint64_t va, uint8_t data) {
     int ha_is_io;
-    hwaddr ha = store_pa(env, va, &ha_is_io);
+    hwaddr ha = store_pa(env, va, &ha_is_io, NULL);
 #if defined(CONFIG_USER_ONLY)
     ram_stb(ha, data);
 #else
@@ -1024,7 +1034,7 @@ static void st_b(CPULoongArchState *env, uint64_t va, uint8_t data) {
 static void st_h(CPULoongArchState *env, uint64_t va, uint16_t data) {
     const int data_size = 2;
     int ha_is_io;
-    hwaddr ha = store_pa(env, va, &ha_is_io);
+    hwaddr ha = store_pa(env, va, &ha_is_io, NULL);
     if (ha_is_io) {
 #if !defined(CONFIG_USER_ONLY)
         do_io_st(ha, data, data_size);
@@ -1045,7 +1055,7 @@ static void st_h(CPULoongArchState *env, uint64_t va, uint16_t data) {
 static void st_w(CPULoongArchState *env, uint64_t va, uint32_t data) {
     const int data_size = 4;
     int ha_is_io;
-    hwaddr ha = store_pa(env, va, &ha_is_io);
+    hwaddr ha = store_pa(env, va, &ha_is_io, NULL);
     if (ha_is_io) {
 #if !defined(CONFIG_USER_ONLY)
         do_io_st(ha, data, data_size);
@@ -1066,7 +1076,7 @@ static void st_w(CPULoongArchState *env, uint64_t va, uint32_t data) {
 static void st_d(CPULoongArchState *env, uint64_t va, uint64_t data) {
     const int data_size = 8;
     int ha_is_io;
-    hwaddr ha = store_pa(env, va, &ha_is_io);
+    hwaddr ha = store_pa(env, va, &ha_is_io, NULL);
     if (ha_is_io) {
 #if !defined(CONFIG_USER_ONLY)
         do_io_st(ha, data, data_size);
@@ -1087,7 +1097,7 @@ static void st_d(CPULoongArchState *env, uint64_t va, uint64_t data) {
 static void st_128(CPULoongArchState *env, uint64_t va, uint64_t *data) {
     const int data_size = 16;
     int ha_is_io;
-    hwaddr ha = store_pa(env, va, &ha_is_io);
+    hwaddr ha = store_pa(env, va, &ha_is_io, NULL);
     if (ha_is_io) {
         lsassert(0);
     } else {
@@ -1105,7 +1115,7 @@ static void st_128(CPULoongArchState *env, uint64_t va, uint64_t *data) {
 static void st_256(CPULoongArchState *env, uint64_t va, uint64_t *data) {
     const int data_size = 32;
     int ha_is_io;
-    hwaddr ha = store_pa(env, va, &ha_is_io);
+    hwaddr ha = store_pa(env, va, &ha_is_io, NULL);
     if (ha_is_io) {
         lsassert(0);
     } else {
@@ -1330,7 +1340,7 @@ static bool trans_stle_h(CPULoongArchState *env, arg_stle_h *restrict a) {__NOT_
 static bool trans_stle_w(CPULoongArchState *env, arg_stle_w *restrict a) {__NOT_IMPLEMENTED__}
 static bool trans_stle_d(CPULoongArchState *env, arg_stle_d *restrict a) {__NOT_IMPLEMENTED__}
 static bool trans_ll_w(CPULoongArchState *env, arg_ll_w *restrict a) {
-    hwaddr ha = load_pa(env, env->gpr[a->rj] + a->imm, NULL);
+    hwaddr ha = load_pa(env, env->gpr[a->rj] + a->imm, NULL, NULL);
     env->gpr[a->rd] = ram_ldw(ha);
         // sc_q
         hwaddr ha_aligned = ROUND_DOWN(ha, 16);
@@ -1343,7 +1353,7 @@ static bool trans_ll_w(CPULoongArchState *env, arg_ll_w *restrict a) {
     return true;
 }
 static bool trans_sc_w(CPULoongArchState *env, arg_sc_w *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj] + a->imm, NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj] + a->imm, NULL, NULL);
     if (FIELD_EX64(env->CSR_LLBCTL, CSR_LLBCTL, ROLLB) &&
         env->lladdr == ha && env->llval == ram_ldw(ha)) {
         ram_stw(ha, env->gpr[a->rd]);
@@ -1355,7 +1365,7 @@ static bool trans_sc_w(CPULoongArchState *env, arg_sc_w *restrict a) {
     return true;
 }
 static bool trans_ll_d(CPULoongArchState *env, arg_ll_d *restrict a) {
-    hwaddr ha = load_pa(env, env->gpr[a->rj] + a->imm, NULL);
+    hwaddr ha = load_pa(env, env->gpr[a->rj] + a->imm, NULL, NULL);
     env->gpr[a->rd] = ram_ldd(ha);
         // sc_q
         hwaddr ha_aligned = ROUND_DOWN(ha, 16);
@@ -1368,7 +1378,7 @@ static bool trans_ll_d(CPULoongArchState *env, arg_ll_d *restrict a) {
     return true;
 }
 static bool trans_sc_d(CPULoongArchState *env, arg_sc_d *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj] + a->imm, NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj] + a->imm, NULL, NULL);
     if (FIELD_EX64(env->CSR_LLBCTL, CSR_LLBCTL, ROLLB) &&
         env->lladdr == ha && env->llval == ram_ldd(ha)) {
         ram_std(ha, env->gpr[a->rd]);
@@ -1398,7 +1408,7 @@ static bool trans_ammax_du(CPULoongArchState *env, arg_ammax_du *restrict a) {re
 static bool trans_ammin_wu(CPULoongArchState *env, arg_ammin_wu *restrict a) {return trans_ammin_db_wu(env, a);}
 static bool trans_ammin_du(CPULoongArchState *env, arg_ammin_du *restrict a) {return trans_ammin_db_du(env, a);}
 static bool trans_amswap_db_w(CPULoongArchState *env, arg_amswap_db_w *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int32_t old_v = ram_ldw(ha);
     ram_stw(ha, env->gpr[a->rk]);
     env->gpr[a->rd] = (int64_t)old_v;
@@ -1406,7 +1416,7 @@ static bool trans_amswap_db_w(CPULoongArchState *env, arg_amswap_db_w *restrict 
     return true;
 }
 static bool trans_amswap_db_d(CPULoongArchState *env, arg_amswap_db_d *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int64_t old_v = ram_ldd(ha);
     ram_std(ha, env->gpr[a->rk]);
     env->gpr[a->rd] = old_v;
@@ -1414,7 +1424,7 @@ static bool trans_amswap_db_d(CPULoongArchState *env, arg_amswap_db_d *restrict 
     return true;
 }
 static bool trans_amadd_db_w(CPULoongArchState *env, arg_amadd_db_w *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = env->gpr[a->rk] + old_v;
     ram_stw(ha, new_v);
@@ -1423,7 +1433,7 @@ static bool trans_amadd_db_w(CPULoongArchState *env, arg_amadd_db_w *restrict a)
     return true;
 }
 static bool trans_amadd_db_d(CPULoongArchState *env, arg_amadd_db_d *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = env->gpr[a->rk] + old_v;
     ram_std(ha, new_v);
@@ -1432,7 +1442,7 @@ static bool trans_amadd_db_d(CPULoongArchState *env, arg_amadd_db_d *restrict a)
     return true;
 }
 static bool trans_amand_db_w(CPULoongArchState *env, arg_amand_db_w *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = env->gpr[a->rk] & old_v;
     ram_stw(ha, new_v);
@@ -1441,7 +1451,7 @@ static bool trans_amand_db_w(CPULoongArchState *env, arg_amand_db_w *restrict a)
     return true;
 }
 static bool trans_amand_db_d(CPULoongArchState *env, arg_amand_db_d *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = env->gpr[a->rk] & old_v;
     ram_std(ha, new_v);
@@ -1450,7 +1460,7 @@ static bool trans_amand_db_d(CPULoongArchState *env, arg_amand_db_d *restrict a)
     return true;
 }
 static bool trans_amor_db_w(CPULoongArchState *env, arg_amor_db_w *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = env->gpr[a->rk] | old_v;
     ram_stw(ha, new_v);
@@ -1459,7 +1469,7 @@ static bool trans_amor_db_w(CPULoongArchState *env, arg_amor_db_w *restrict a) {
     return true;
 }
 static bool trans_amor_db_d(CPULoongArchState *env, arg_amor_db_d *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = env->gpr[a->rk] | old_v;
     ram_std(ha, new_v);
@@ -1468,7 +1478,7 @@ static bool trans_amor_db_d(CPULoongArchState *env, arg_amor_db_d *restrict a) {
     return true;
 }
 static bool trans_amxor_db_w(CPULoongArchState *env, arg_amxor_db_w *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = env->gpr[a->rk] ^ old_v;
     ram_stw(ha, new_v);
@@ -1477,7 +1487,7 @@ static bool trans_amxor_db_w(CPULoongArchState *env, arg_amxor_db_w *restrict a)
     return true;
 }
 static bool trans_amxor_db_d(CPULoongArchState *env, arg_amxor_db_d *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = env->gpr[a->rk] ^ old_v;
     ram_std(ha, new_v);
@@ -1486,7 +1496,7 @@ static bool trans_amxor_db_d(CPULoongArchState *env, arg_amxor_db_d *restrict a)
     return true;
 }
 static bool trans_ammax_db_w(CPULoongArchState *env, arg_ammax_db_w *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = MAX((int32_t)env->gpr[a->rk], old_v);
     ram_stw(ha, new_v);
@@ -1495,7 +1505,7 @@ static bool trans_ammax_db_w(CPULoongArchState *env, arg_ammax_db_w *restrict a)
     return true;
 }
 static bool trans_ammax_db_d(CPULoongArchState *env, arg_ammax_db_d *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = MAX((int64_t)env->gpr[a->rk], old_v);
     ram_stw(ha, new_v);
@@ -1504,7 +1514,7 @@ static bool trans_ammax_db_d(CPULoongArchState *env, arg_ammax_db_d *restrict a)
     return true;
 }
 static bool trans_ammin_db_w(CPULoongArchState *env, arg_ammin_db_w *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = MIN((int32_t)env->gpr[a->rk], old_v);
     ram_stw(ha, new_v);
@@ -1513,7 +1523,7 @@ static bool trans_ammin_db_w(CPULoongArchState *env, arg_ammin_db_w *restrict a)
     return true;
 }
 static bool trans_ammin_db_d(CPULoongArchState *env, arg_ammin_db_d *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = MIN((int64_t)env->gpr[a->rk], old_v);
     ram_stw(ha, new_v);
@@ -1522,7 +1532,7 @@ static bool trans_ammin_db_d(CPULoongArchState *env, arg_ammin_db_d *restrict a)
     return true;
 }
 static bool trans_ammax_db_wu(CPULoongArchState *env, arg_ammax_db_wu *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = MAX((uint32_t)env->gpr[a->rk], (uint32_t)old_v);
     ram_stw(ha, new_v);
@@ -1531,7 +1541,7 @@ static bool trans_ammax_db_wu(CPULoongArchState *env, arg_ammax_db_wu *restrict 
     return true;
 }
 static bool trans_ammax_db_du(CPULoongArchState *env, arg_ammax_db_du *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = MAX((uint64_t)env->gpr[a->rk], (uint64_t)old_v);
     ram_stw(ha, new_v);
@@ -1540,7 +1550,7 @@ static bool trans_ammax_db_du(CPULoongArchState *env, arg_ammax_db_du *restrict 
     return true;
 }
 static bool trans_ammin_db_wu(CPULoongArchState *env, arg_ammin_db_wu *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = MIN((uint32_t)env->gpr[a->rk], (uint32_t)old_v);
     ram_stw(ha, new_v);
@@ -1549,7 +1559,7 @@ static bool trans_ammin_db_wu(CPULoongArchState *env, arg_ammin_db_wu *restrict 
     return true;
 }
 static bool trans_ammin_db_du(CPULoongArchState *env, arg_ammin_db_du *restrict a) {
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = MIN((uint64_t)env->gpr[a->rk], (uint64_t)old_v);
     ram_stw(ha, new_v);
@@ -4405,7 +4415,7 @@ static bool trans_vst(CPULoongArchState *env, arg_vst *restrict a) {
 static bool trans_vldx(CPULoongArchState *env, arg_vldx *restrict a) {
     CHECK_FPE(16);
     uint64_t va = add_addr(env->gpr[a->rj], env->gpr[a->rk]);
-    lsassert(!is_io(load_pa(env, va, NULL)));
+    lsassert(!is_io(load_pa(env, va, NULL, NULL)));
     env->fpr[a->vd].vreg.D[0] = ld_d(env, va);
     env->fpr[a->vd].vreg.D[1] = ld_d(env, va + 8);
     cpu_set_pc(env, env->pc + 4);
@@ -4414,7 +4424,7 @@ static bool trans_vldx(CPULoongArchState *env, arg_vldx *restrict a) {
 static bool trans_vstx(CPULoongArchState *env, arg_vstx *restrict a) {
     CHECK_FPE(16);
     uint64_t va = add_addr(env->gpr[a->rj], env->gpr[a->rk]);
-    lsassert(!is_io(store_pa(env, va, NULL)));
+    lsassert(!is_io(store_pa(env, va, NULL, NULL)));
     st_d(env, va, env->fpr[a->vd].vreg.D[0]);
     st_d(env, va + 8, env->fpr[a->vd].vreg.D[1]);
     cpu_set_pc(env, env->pc + 4);
@@ -5171,7 +5181,7 @@ static bool trans_xvfrsqrte_s(DisasContext *env, arg_xvfrsqrte_s *a) {CHECK_FREC
 
 static bool trans_amadd_db_b(DisasContext *env, arg_amadd_db_b *a) {
     CHECK_LAM_BH;
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int32_t old_v = ram_ldb(ha);
     int32_t new_v = env->gpr[a->rk] + old_v;
     ram_stb(ha, new_v);
@@ -5181,7 +5191,7 @@ static bool trans_amadd_db_b(DisasContext *env, arg_amadd_db_b *a) {
 }
 static bool trans_amadd_db_h(DisasContext *env, arg_amadd_db_h *a) {
     CHECK_LAM_BH;
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int32_t old_v = ram_ldh(ha);
     int32_t new_v = env->gpr[a->rk] + old_v;
     ram_sth(ha, new_v);
@@ -5191,7 +5201,7 @@ static bool trans_amadd_db_h(DisasContext *env, arg_amadd_db_h *a) {
 }
 static bool trans_amswap_db_b(DisasContext *env, arg_amswap_db_b *a) {
     CHECK_LAM_BH;
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int32_t old_v = ram_ldb(ha);
     ram_stb(ha, env->gpr[a->rk]);
     env->gpr[a->rd] = (int64_t)old_v;
@@ -5200,7 +5210,7 @@ static bool trans_amswap_db_b(DisasContext *env, arg_amswap_db_b *a) {
 }
 static bool trans_amswap_db_h(DisasContext *env, arg_amswap_db_h *a) {
     CHECK_LAM_BH;
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     int32_t old_v = ram_ldh(ha);
     ram_sth(ha, env->gpr[a->rk]);
     env->gpr[a->rd] = (int64_t)old_v;
@@ -5214,7 +5224,7 @@ static bool trans_amswap_h(DisasContext *env, arg_amswap_h *a) {return trans_ams
 
 static bool trans_amcas_db_b(DisasContext *env, arg_amcas_db_b *a) {
     CHECK_LAMCAS;
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     uint64_t old_v = ram_ldb(ha);
     if ((int8_t)old_v == (int8_t)env->gpr[a->rd]) {
         ram_stb(ha, env->gpr[a->rk]);
@@ -5225,7 +5235,7 @@ static bool trans_amcas_db_b(DisasContext *env, arg_amcas_db_b *a) {
 }
 static bool trans_amcas_db_h(DisasContext *env, arg_amcas_db_h *a) {
     CHECK_LAMCAS;
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     uint64_t old_v = ram_ldh(ha);
     if ((int16_t)old_v == (int16_t)env->gpr[a->rd]) {
         ram_sth(ha, env->gpr[a->rk]);
@@ -5236,7 +5246,7 @@ static bool trans_amcas_db_h(DisasContext *env, arg_amcas_db_h *a) {
 }
 static bool trans_amcas_db_w(DisasContext *env, arg_amcas_db_w *a) {
     CHECK_LAMCAS;
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     uint64_t old_v = ram_ldw(ha);
     if ((int32_t)old_v == (int32_t)env->gpr[a->rd]) {
         ram_stw(ha, env->gpr[a->rk]);
@@ -5247,7 +5257,7 @@ static bool trans_amcas_db_w(DisasContext *env, arg_amcas_db_w *a) {
 }
 static bool trans_amcas_db_d(DisasContext *env, arg_amcas_db_d *a) {
     CHECK_LAMCAS;
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     uint64_t old_v = ram_ldd(ha);
     if ((int64_t)old_v == (int64_t)env->gpr[a->rd]) {
         ram_std(ha, env->gpr[a->rk]);
@@ -5292,7 +5302,7 @@ static bool trans_screl_d(DisasContext *env, arg_screl_d *a) {
 
 static bool trans_sc_q(DisasContext *env , arg_sc_q *a) {
     CHECK_SCQ;
-    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL);
+    hwaddr ha = store_pa(env, env->gpr[a->rj], NULL, NULL);
     if (FIELD_EX64(env->CSR_LLBCTL, CSR_LLBCTL, ROLLB) &&
         ROUND_DOWN(env->lladdr, 16) == ha && env->llval_lo == ram_ldd(ha) &&
         env->llval_hi == ram_ldd(ha + 8)) {

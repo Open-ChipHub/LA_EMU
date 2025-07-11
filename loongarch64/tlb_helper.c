@@ -696,7 +696,7 @@ target_ulong helper_csrrd_pgd(CPULoongArchState *env)
 
 int check_get_physical_address(CPULoongArchState *env, hwaddr *physical,
                                 int *prot, target_ulong address,
-                                MMUAccessType access_type, int mmu_idx) {
+                                MMUAccessType access_type, int mmu_idx, bool* record_excp) {
     int ret = get_physical_address(env, physical, prot, address, access_type, mmu_idx);
     if (ret == TLBRET_MATCH) {
         // tlb_set_page(cs, address & TARGET_PAGE_MASK,
@@ -706,6 +706,9 @@ int check_get_physical_address(CPULoongArchState *env, hwaddr *physical,
         //               "%s address=%" VADDR_PRIx " physical " HWADDR_FMT_plx
         //               " prot %d\n", __func__, address, physical, prot);
         return true;
+    } else if (record_excp) {
+        *record_excp = true;
+        return false;
     } else {
         // qemu_log_mask(CPU_LOG_MMU,
         //               "%s address=%" VADDR_PRIx " ret %d\n", __func__, address,

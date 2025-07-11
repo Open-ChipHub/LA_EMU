@@ -573,7 +573,7 @@ static uint32_t fetch(CPUArchState *env, INSCache** ic) {
         *ic = cpu_get_ic(env, insn);
         return insn;
     }
-    ha = fetch_pa(env, env->pc);
+    ha = fetch_pa(env, env->pc,NULL);
     {
         env->prev_pc_vpage = env->pc & TARGET_PAGE_MASK;
         env->prev_pc_ppage_host_addr = (ha & TARGET_PAGE_MASK) + (uintptr_t)ram;

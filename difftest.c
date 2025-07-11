@@ -88,6 +88,9 @@ void difftest_config_init(DiffConfig* config)
         io_register_device(NULL, debugcon_ioport_read, debugcon_ioport_write, NULL, config->debugcon_base_addr, 8);
     }
 
+    hw_ptw = 1;
+    ptw_hw_setVD = false;
+
 }
 
 void difftest_init(size_t ram_size_bytes)
@@ -307,3 +310,18 @@ void difftest_tlbcpy()
 {
     // TODO
 }
+
+uint64_t difftest_trans_va(DiffAddrTransType type, uint64_t vaddr, bool* has_excp)
+{
+    switch (type) {
+        case DIFF_ADDR_TRANS_FETCH:
+            return fetch_pa(current_env, vaddr, has_excp);
+        case DIFF_ADDR_TRANS_LOAD:
+            return load_pa(current_env, vaddr, NULL, has_excp);
+        case DIFF_ADDR_TRANS_STORE:
+            return store_pa(current_env, vaddr, NULL, has_excp);
+    }
+    lsassert(false);
+    return 0;
+}
+

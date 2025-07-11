@@ -692,14 +692,16 @@ static inline void cpu_get_tb_cpu_state(CPULoongArchState *env, vaddr *pc,
     *flags |= is_va32(env) * HW_FLAGS_VA32;
 }
 
-hwaddr fetch_pa(CPULoongArchState *env, uint64_t addr);
+hwaddr fetch_pa(CPULoongArchState *env, uint64_t addr, bool *record_excp);
+hwaddr load_pa(CPULoongArchState *env, uint64_t addr, int *ha_is_io, bool *record_excp);
+hwaddr store_pa(CPULoongArchState *env, uint64_t addr, int *ha_is_io, bool *record_excp);
 
 int get_physical_address(CPULoongArchState *env, hwaddr *physical,
                                 int *prot, target_ulong address,
                                 MMUAccessType access_type, int mmu_idx);
 int check_get_physical_address(CPULoongArchState *env, hwaddr *physical,
                                 int *prot, target_ulong address,
-                                MMUAccessType access_type, int mmu_idx);
+                                MMUAccessType access_type, int mmu_idx,bool* record_excp);
 
 int probe_get_physical_address(CPULoongArchState *env, hwaddr *physical,
                                 int *prot, target_ulong address,
