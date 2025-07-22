@@ -436,8 +436,11 @@ void cpu_reset(CPUState* cs) {
     cs->exception_index = -1;
 }
 
+extern bool enter_excp_or_intr;
+
 void loongarch_cpu_do_interrupt(CPUState *cs)
 {
+    enter_excp_or_intr = true;
     LoongArchCPU *cpu = LOONGARCH_CPU(cs);
     CPULoongArchState *env = &cpu->env;
     bool update_badinstr = 1;

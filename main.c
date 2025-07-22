@@ -62,6 +62,7 @@ int gdbserver = 0;
 extern int check_signal;
 int64_t singlestep = -1;
 bool reach_end_of_exec;
+bool enter_excp_or_intr;
 
 extern void handle_debug_cli(CPUArchState *env);
 extern void set_fetch_breakpoint(int idx, target_long pc);

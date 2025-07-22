@@ -24,6 +24,7 @@ extern int64_t singlestep;
 extern int check_level;
 extern bool determined;
 extern bool reach_end_of_exec;
+extern bool enter_excp_or_intr;
 
 extern int exec_env(CPULoongArchState *env);
 extern void cpu_reset(CPUState* cs);
@@ -121,6 +122,7 @@ int difftest_exec(uint64_t n)
         return -1;
     }
     singlestep = n;
+    enter_excp_or_intr = false;
     exec_env(current_env);
     if (reach_end_of_exec) {
         return -1;
@@ -325,3 +327,7 @@ uint64_t difftest_trans_va(DiffAddrTransType type, uint64_t vaddr, bool* has_exc
     return 0;
 }
 
+uint8_t difftest_enter_excp_or_intr()
+{
+    return enter_excp_or_intr;
+}
