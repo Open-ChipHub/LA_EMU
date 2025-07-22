@@ -7,7 +7,7 @@ LIBS = $(patsubst %.cc,lib%.so,$(SRCS))
 all: $(LIBS)
 
 lib%.so: %.cc
-	$(CXX) $(CXXFLAGS) -shared -o $@ $<
+	$(CXX) $(CXXFLAGS) -shared -o $@ $< -lz
 
 clean:
 	rm -f *.so

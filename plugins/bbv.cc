@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <string>
 #include <set>
+#include <zlib.h>
 
 extern "C" {
 #include "../plugin.h"
@@ -14,6 +15,8 @@ using namespace std;
 bool begin_after_ibar0x40;
 static uint64_t interval_size = 1000000;
 static FILE* bbv_file;
+static gzFile gz_bbv_file;
+bool is_gziped;
 
 struct bbv_info {
     uint64_t id;
@@ -30,6 +33,20 @@ map<uint64_t, bbv_info> startpc2bbv;
 set<uint64_t> cur_interval_start_pc;
 
 bool begin_collect;
+
+static void bbv_printf(const char* format, ...) {
+    va_list args;
+    va_start(args, format);
+
+    if (is_gziped) {
+        gzvprintf(gz_bbv_file, format, args);
+    } else {
+        vfprintf(bbv_file, format, args);
+    }
+
+    va_end(args);
+}
+
 
 void my_emu_insn_before(void* env, uint64_t pc, uint32_t insn) {
     // begin collect bbv after exec ibar 0x40
@@ -50,13 +67,13 @@ void my_emu_insn_before(void* env, uint64_t pc, uint32_t insn) {
 
     if (cur_interval_count == interval_size) {
         interval_num++;
-        fprintf(bbv_file, "T");
+        bbv_printf("T");
         for (auto start_pc : cur_interval_start_pc) {
             auto cur_bblk = startpc2bbv[start_pc];
-            fprintf(bbv_file, ":%ld:%ld ", cur_bblk.id, cur_bblk.enter_num * cur_bblk.icount);
+            bbv_printf(":%ld:%ld ", cur_bblk.id, cur_bblk.enter_num * cur_bblk.icount);
             startpc2bbv[start_pc].enter_num = 0;
         }
-        fprintf(bbv_file, "\n");
+        bbv_printf("\n");
         cur_interval_start_pc.clear();
         cur_interval_count = 0;
     }
@@ -69,7 +86,11 @@ void my_emu_stop() {
                         "in order for the clustering algorithm to be\n"
                         "able to find a good partition of the intervals.\n", interval_num);
     }
-    fflush(bbv_file);
+    if (is_gziped) {
+        gzclose(gz_bbv_file);
+    } else {
+        fclose(bbv_file);
+    }
 }
 
 la_emu_plugin_ops my_op = {
@@ -79,6 +100,7 @@ la_emu_plugin_ops my_op = {
 
 extern "C" la_emu_plugin_ops* la_emu_plugin_install(const char* arg) {
     string bbv_file_name("bbv.txt");
+    string gz_bbv_file_name("bbv.gz");
     string bblk_file_name("bblk.txt");
     if (arg[0]) {
         auto options = split(arg, ",");
@@ -92,12 +114,18 @@ extern "C" la_emu_plugin_ops* la_emu_plugin_install(const char* arg) {
                 bblk_file_name = sp[1];
             } else if (sp[0] == "ibar0x40") {
                 begin_after_ibar0x40 = stol(sp[1]);
-            } else {
+            } else if (sp[0] == "gz") {
+                is_gziped = stol(sp[1]);
+            }  else {
                 printf("unknown option:%s\n", option.c_str());
             }
         }
     }
-    bbv_file = fopen_nofail(bbv_file_name.c_str(), "w");
+    if (is_gziped) {
+        gz_bbv_file = gzopen(gz_bbv_file_name.c_str(), "wb");
+    } else {
+        bbv_file = fopen_nofail(bbv_file_name.c_str(), "w");
+    }
     FILE* bblk_file = fopen_nofail(bblk_file_name.c_str(), "r");
     char buffer[1024];
     while (fgets(buffer, 1024, bblk_file)) {
