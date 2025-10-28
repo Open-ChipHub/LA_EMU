@@ -23,7 +23,7 @@ ifeq (${PERF},1)
 	CFLAGS += -DCONFIG_PERF
 endif
 
-CORE := openc910
+CORE := loongchipx
 
 ifeq (${CORE},)
 	CFLAGS += -D__CORE__=la464

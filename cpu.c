@@ -354,7 +354,7 @@ void loongarch_centaur320_initfn(CPULoongArchState* env) {
     fprintf(stderr, "warn:auto set ptw_hw_setVD=0\n");
 }
 
-void loongarch_openc910_initfn(CPULoongArchState* env) {
+void loongarch_loongchipx_initfn(CPULoongArchState* env) {
 
     int i;
 
