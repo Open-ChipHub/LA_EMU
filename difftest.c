@@ -89,7 +89,7 @@ uint32_t loong64_difftest_get_inst_by_pc(uint64_t pc) {
     CPULoongArchState *env =  current_env;
 
     if (probe_get_physical_address(env, &ha, &prot, pc, MMU_INST_FETCH)== -1) {
-        printf("EMU: Fetch Instruction Address Error!\n");
+        // printf("EMU: Fetch Instruction Address Error!\n");
         return 0;
     }
     insn = ram_lduw(ha);
@@ -138,6 +138,10 @@ uint64_t loong64_difftest_get_prev_pc(void) {
 
 void loong64_difftest_estat_sync(uint64_t index, uint64_t mask) {
 
+}
+
+void loong64_difftest_set_reset_pc(uint64_t reset_pc) {
+    current_env->pc = reset_pc;
 }
 
 void loongarch_cpu_do_interrupt(CPUState *cs);
