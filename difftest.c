@@ -106,8 +106,37 @@ void loong64_difftest_store_commit(uint64_t addr, uint64_t data) {
 
 }
 
-void loong64_isa_reg_display() {
+static const char* reg_name[] = {
+        "r0",      "ra",     "tp",      "sp",      "a0",      "a1",     "a2",        "a3",        "a4",      "a5",
+        "a6",      "a7",     "t0",      "t1",      "t2",      "t3",     "t4",        "t5",        "t6",      "t7",
+        "t8",      " x",     "fp",      "s0",      "s1",      "s2",     "s3",        "s4",        "s5",      "s6",
+        "s7",      "s8",
+        "crmd",    "prmd",   "euen",    "ecfg",    "era",     "badv",   "eentry",    "tlbidx",    "tlbehi",  "tlbelo0",
+        "tlbelo1", "asid",   "pgdl",    "pgdh",    "save0",   "save1",  "save2",     "save3",     "tid",     "tcfg",
+        "tval",    "llbctl", "tlbrentry", "dmw0",  "dmw1",    "estat",   "cur_pc"
+};
 
+
+void loong64_isa_reg_display() {
+    CPULoongArchState *env = current_env;
+    int i;
+
+    // Display general purpose registers
+    for (i = 0; i < 32; i++) {
+        printf("%s(r%2d): 0x%016lx ", reg_name[i], i, env->gpr[i]);
+        if (i % 4 == 3) printf("\n");
+    }
+
+    // Display PC
+    printf("pc: 0x%016lx\n", env->pc);
+    printf("prev_pc : 0x%016lx\n", env->prev_pc);
+    printf("CRMD: 0x%016lx,    PRMD: 0x%016lx,   EUEN: 0x%016lx\n", env->CSR_CRMD, env->CSR_PRMD, env->CSR_EUEN);
+    printf("ECFG: 0x%016lx,   ESTAT: 0x%016lx,    ERA: 0x%016lx\n", env->CSR_ECFG, env->CSR_ESTAT, env->CSR_ERA);
+    printf("Badv: 0x%016lx,  EEntry: 0x%016lx, LLBCTL: 0x%016lx\n", env->CSR_BADV, env->CSR_EENTRY, env->CSR_LLBCTL);
+    printf("cpu.ll_bit: %lu\n", env->CSR_LLBCTL & 0x1);
+    printf("INDEX: 0x%016lx, TLBEHI: 0x%016lx, TLBELO0: 0x%08lx, TLBELO1: 0x%08lx\n", env->CSR_TLBIDX, env->CSR_TLBEHI, env->CSR_TLBELO0, env->CSR_TLBELO1);
+    printf("ASID: 0x%016lx, TLBRENTRY: 0x%016lx, DMW0: 0x%08lx, DMW1: 0x%08lx\n", env->CSR_ASID, env->CSR_TLBRENTRY, env->CSR_DMW[0], env->CSR_DMW[1]);
+    printf("*******************************************************************************\n");
 }
 
 

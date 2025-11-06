@@ -1,5 +1,5 @@
 CC=gcc
-OPT_FLAG = -O0 -g -flto=auto
+OPT_FLAG = -O2 -g -flto=auto
 
 DIFF := 1
 
