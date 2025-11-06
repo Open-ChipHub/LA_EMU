@@ -2313,35 +2313,35 @@ static bool trans_csrxchg(CPULoongArchState *env, arg_csrxchg *restrict a) {
 }
 static bool trans_iocsrrd_b(CPULoongArchState *env, arg_iocsrrd_b *restrict a) {
     CHECK_PLV(0);
+    env->gpr[a->rd] = 0;
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
     env->pc += 4;
     return true;
 }
 static bool trans_iocsrrd_h(CPULoongArchState *env, arg_iocsrrd_h *restrict a) {
     CHECK_PLV(0);
+    env->gpr[a->rd] = 0;
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
-    a->rd = 0;
     env->pc += 4;
     return true;
 }
 static bool trans_iocsrrd_w(CPULoongArchState *env, arg_iocsrrd_w *restrict a) {
     CHECK_PLV(0);
+    env->gpr[a->rd] = 0;
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
-    a->rd = 0;
     env->pc += 4;
     return true;
 }
 static bool trans_iocsrrd_d(CPULoongArchState *env, arg_iocsrrd_d *restrict a) {
     CHECK_PLV(0);
+    env->gpr[a->rd] = 0;
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
-    a->rd = 0;
     env->pc += 4;
     return true;
 }
 static bool trans_iocsrwr_b(CPULoongArchState *env, arg_iocsrwr_b *restrict a) {
     CHECK_PLV(0);
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
-    a->rd = 0;
     env->pc += 4;
     return true;
 }
