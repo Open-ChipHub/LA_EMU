@@ -610,11 +610,14 @@ void loongarch_cpu_do_interrupt(CPUState *cs)
                                    FIELD_EX64(env->CSR_CRMD, CSR_CRMD, PLV));
         env->CSR_PRMD = FIELD_DP64(env->CSR_PRMD, CSR_PRMD, PIE,
                                    FIELD_EX64(env->CSR_CRMD, CSR_CRMD, IE));
+        env->CSR_PRMD = FIELD_DP64(env->CSR_PRMD, CSR_PRMD, PWE,
+                                   FIELD_EX64(env->CSR_CRMD, CSR_CRMD, WE));
         env->CSR_ERA = env->pc;
     }
 
     env->CSR_CRMD = FIELD_DP64(env->CSR_CRMD, CSR_CRMD, PLV, 0);
     env->CSR_CRMD = FIELD_DP64(env->CSR_CRMD, CSR_CRMD, IE, 0);
+    env->CSR_CRMD = FIELD_DP64(env->CSR_CRMD, CSR_CRMD, WE, 0);
 
     if (vec_size) {
         vec_size = (1 << vec_size) * 4;
@@ -758,7 +761,6 @@ int exec_env(CPULoongArchState *env) {
                     }
                 }
 #endif
-
                 if (unlikely(qemu_loglevel_mask(CPU_LOG_EXEC))) {
                     qemu_log("pc:%lx\n", env->pc);
                 }
@@ -782,7 +784,6 @@ int exec_env(CPULoongArchState *env) {
                 if ((env->pc == 0x900000000046cca8) && (hit_num == 8)) {
                     debug = 1;
                 }
-
                 insn = fetch(env, &ic);
 #ifdef CONFIG_DIFF
                 env->insn = insn;

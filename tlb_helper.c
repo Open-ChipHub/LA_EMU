@@ -696,10 +696,11 @@ int probe_get_physical_address(CPULoongArchState *env, hwaddr *physical,
 }
 void helper_ertn(CPULoongArchState *env)
 {
-    uint64_t csr_pplv, csr_pie;
+    uint64_t csr_pplv, csr_pie, csr_pwe;
     if (FIELD_EX64(env->CSR_TLBRERA, CSR_TLBRERA, ISTLBR)) {
         csr_pplv = FIELD_EX64(env->CSR_TLBRPRMD, CSR_TLBRPRMD, PPLV);
         csr_pie = FIELD_EX64(env->CSR_TLBRPRMD, CSR_TLBRPRMD, PIE);
+        csr_pwe = FIELD_EX64(env->CSR_TLBRPRMD, CSR_TLBRPRMD, PWE);
 
         env->CSR_TLBRERA = FIELD_DP64(env->CSR_TLBRERA, CSR_TLBRERA, ISTLBR, 0);
         env->CSR_CRMD = FIELD_DP64(env->CSR_CRMD, CSR_CRMD, DA, 0);
@@ -710,6 +711,7 @@ void helper_ertn(CPULoongArchState *env)
     } else {
         csr_pplv = FIELD_EX64(env->CSR_PRMD, CSR_PRMD, PPLV);
         csr_pie = FIELD_EX64(env->CSR_PRMD, CSR_PRMD, PIE);
+        csr_pwe = FIELD_EX64(env->CSR_PRMD, CSR_PRMD, PWE);
 
         set_pc(env, env->CSR_ERA);
         qemu_log_mask(CPU_LOG_INT, "%s: ERA " TARGET_FMT_lx "\n",
@@ -717,6 +719,8 @@ void helper_ertn(CPULoongArchState *env)
     }
     env->CSR_CRMD = FIELD_DP64(env->CSR_CRMD, CSR_CRMD, PLV, csr_pplv);
     env->CSR_CRMD = FIELD_DP64(env->CSR_CRMD, CSR_CRMD, IE, csr_pie);
+    env->CSR_CRMD = FIELD_DP64(env->CSR_CRMD, CSR_CRMD, WE, csr_pwe);
+    env->CSR_PRMD = env->CSR_PRMD & 0xfffffffffffffff0;
 
     if (FIELD_EX64(env->CSR_LLBCTL, CSR_LLBCTL, KLO) != 1) {
         env->CSR_LLBCTL = FIELD_DP64(env->CSR_LLBCTL, CSR_LLBCTL, ROLLB, 0);

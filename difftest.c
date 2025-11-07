@@ -177,8 +177,11 @@ void loongarch_cpu_do_interrupt(CPUState *cs);
 void loong64_difftest_raise_trap(int is_interrupt, uint64_t is, uint64_t ecode) {
     CPULoongArchState *env =  current_env;
     CPUState* cs = env_cpu(env);
-    if (is_interrupt)
+    if (is_interrupt) {
         env->CSR_ESTAT = FIELD_DP64(env->CSR_ESTAT, CSR_ESTAT, IS, (is & 0x1FFF));
+        env->CSR_ESTAT = FIELD_DP64(env->CSR_ESTAT, CSR_ESTAT, ECODE, ecode & 0x3f);
+        env->CSR_ESTAT = FIELD_DP64(env->CSR_ESTAT, CSR_ESTAT, ESUBCODE, (ecode >> 6) & 0x1ff);
+    }
     if (unlikely(loongarch_cpu_has_irq(env))) {
         cs->exception_index = EXCCODE_INT;
         loongarch_cpu_do_interrupt(cs);
@@ -558,7 +561,7 @@ void loong64_difftest_set_fcsr0(uint32_t* dut_buf)
 #define CSR_CPY_HELPER(CSR)             \
     case LOONGARCH_CSR_ ## CSR : csr_base_addr = &(current_env->CSR_ ## CSR); break;
 
-static inline void loong64_difftest_csrcpy_idx(int csr_idx, uint64_t* dut_buf, uint64_t mask, bool direction)
+void loong64_difftest_csrcpy_idx(int csr_idx, uint64_t* dut_buf, uint64_t mask, bool direction)
 {
     uint64_t csr_value;
 
