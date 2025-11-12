@@ -746,7 +746,7 @@ static hwaddr store_pa(CPULoongArchState *env, uint64_t addr) {
     }
     return ha;
 }
-#if defined(CONFIG_USER_ONLY) || defined(CONFIG_DIFF)
+#if defined(CONFIG_USER_ONLY)
 #define is_io(...) false
 #else
 // exclude 32MB bios
