@@ -8,7 +8,7 @@
 
 #include <fcntl.h>
 // #include "util.h"
-
+extern bool fastforward;
 
 #define UART_LCR_DLAB   0x80    /* Divisor latch access bit */
 
@@ -194,10 +194,10 @@ void serial_ioport_write(void* opaque, long addr, uint64_t val, unsigned size) {
         if (s.lcr & UART_LCR_DLAB) {
             s.divider = (s.divider & 0xff00) | (val & 0xff);
         } else {
-#ifndef CONFIG_DIFF
-            fprintf(stderr, "%c", (char)val);
-            fflush(stderr);
-#endif
+            if (fastforward) {
+                fprintf(stderr, "%c", (char)val);
+                fflush(stderr);
+            }
             s.lsr |= (UART_LSR_TEMT | UART_LSR_THRE);
             if (input_vaild) {
                 s.iir |= UART_IIR_RDI;

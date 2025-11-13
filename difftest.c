@@ -20,13 +20,20 @@
 extern char* ram;
 
 extern int64_t singlestep;
+extern bool fastforward;
 extern int check_level;
+extern bool determined;
+extern bool ptw_hw_setVD;
+extern bool hw_ptw;
 
 extern int exec_env(CPULoongArchState *env);
 extern void cpu_reset(CPUState* cs);
 extern uint64_t helper_read_csr(CPULoongArchState *env, int csr_index);
 
 extern const char* const csrnames[];
+
+
+CPULoongArchState *inst_env;
 
 
 static inline uint8_t* guest_to_host(uint64_t guest_paddr)
@@ -49,6 +56,7 @@ void loong64_difftest_init(void *host_ram)
     memset(cpu, 0, sizeof(LoongArchCPU));
     CPUState *cs = CPU(cpu);
     CPULoongArchState* env = &cpu->env;
+    inst_env = aligned_alloc(64, sizeof(CPULoongArchState));
     cs->env = env;
     cpu_reset(cs);
     loongarch_core_initfn(env);
@@ -63,14 +71,17 @@ void loong64_difftest_init(void *host_ram)
     difftest_init_ram(host_ram);
 
     check_level |= CPU_CHECK_TLB_MHIT;
+    determined = true;
 
     helper_invtlb_all(env);
-
+    ptw_hw_setVD = false;
+    hw_ptw = true;
 }
 
-void loong64_difftest_exec(uint64_t n)
+void loong64_difftest_exec(uint64_t n, bool fast)
 {
     singlestep = n;
+    fastforward = fast;
     exec_env(current_env);
 }
 
@@ -86,9 +97,11 @@ uint32_t loong64_difftest_get_inst_by_pc(uint64_t pc) {
     uint32_t insn;
     hwaddr ha;
     int prot;
-    CPULoongArchState *env =  current_env;
+    // fetch will change current_env
+    memcpy(inst_env, current_env, sizeof(CPULoongArchState));
+    // CPULoongArchState *env =  current_env;
 
-    if (probe_get_physical_address(env, &ha, &prot, pc, MMU_INST_FETCH)== -1) {
+    if (probe_get_physical_address(inst_env, &ha, &prot, pc, MMU_INST_FETCH)== -1) {
         // printf("EMU: Fetch Instruction Address Error!\n");
         return 0;
     }
@@ -148,13 +161,19 @@ struct la64_timer {
     uint64_t time_val;
 };
 
-void loong64_difftest_timercpy(void* dut_buf) {
+void loong64_difftest_timercpy(void* dut_buf, bool direction) {
     CPULoongArchState *env =  current_env;
     struct la64_timer *timer = dut_buf;
 
-    env->timer = timer->stable_timer;
-    env->CSR_TVAL = timer->time_val;
-    env->CSR_TID = timer->counter_id;
+    if (direction == DUT_TO_REF) {
+        env->timer = timer->stable_timer;
+        env->CSR_TVAL = timer->time_val;
+        env->CSR_TID = timer->counter_id;
+    } else {
+        timer->stable_timer = env->icount;
+        timer->time_val = env->CSR_TVAL;
+        timer->counter_id = env->CSR_TID;
+    }
 }
 
 uint64_t loong64_difftest_get_cur_pc(void) {

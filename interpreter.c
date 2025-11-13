@@ -12,7 +12,8 @@
 
 #include <stdalign.h>
 
-#ifndef CONFIG_DIFF
+extern bool fastforward;
+
 static inline long long la_get_tval(CPULoongArchState *env){
     if (determined) {
         return current_env->icount / TIME_SCALE;
@@ -20,7 +21,6 @@ static inline long long la_get_tval(CPULoongArchState *env){
         return nano_second() / TIMER_PERIOD;
     }
 }
-#endif
 
 #ifndef CONFIG_USER_ONLY
 
@@ -1579,37 +1579,37 @@ static bool trans_asrtgt_d(CPULoongArchState *env, arg_asrtgt_d *restrict a) {
     return true;
 }
 static bool trans_rdtimel_w(CPULoongArchState *env, arg_rdtimel_w *restrict a) {
-#ifndef CONFIG_DIFF
-    long long tval = la_get_tval(env);
-    gen_set_gpr(env, a->rd, tval, EXT_SIGN);
-    env->gpr[a->rj] = 0;
-#else
-    gen_set_gpr(env, a->rd, env->timer, EXT_ZERO);
-    env->gpr[a->rj] = 0;
-#endif
+    if (fastforward) {
+        long long tval = la_get_tval(env);
+        gen_set_gpr(env, a->rd, tval, EXT_SIGN);
+        env->gpr[a->rj] = 0;
+    } else {
+        gen_set_gpr(env, a->rd, env->timer, EXT_ZERO);
+        env->gpr[a->rj] = 0;
+    }
     env->pc += 4;
     return true;
 }
 static bool trans_rdtimeh_w(CPULoongArchState *env, arg_rdtimeh_w *restrict a) {
-#ifndef CONFIG_DIFF
-    long long tval = la_get_tval(env);
-    gen_set_gpr(env, a->rd, tval >> 32, EXT_SIGN);
-    env->gpr[a->rj] = 0;
-#else
-    gen_set_gpr(env, a->rd, env->timer >> 32, EXT_ZERO);
-    env->gpr[a->rj] = 0;
-#endif
+    if (fastforward) {
+        long long tval = la_get_tval(env);
+        gen_set_gpr(env, a->rd, tval >> 32, EXT_SIGN);
+        env->gpr[a->rj] = 0;
+    } else {
+        gen_set_gpr(env, a->rd, env->timer >> 32, EXT_ZERO);
+        env->gpr[a->rj] = 0;
+    }
     env->pc += 4;
     return true;
 }
 static bool trans_rdtime_d(CPULoongArchState *env, arg_rdtime_d *restrict a) {
-#ifndef CONFIG_DIFF
-    env->gpr[a->rd] = la_get_tval(env);
-    env->gpr[a->rj] = 0;
-#else
-    gen_set_gpr(env, a->rd, env->timer, EXT_ZERO);
-    env->gpr[a->rj] = 0;
-#endif
+    if (fastforward) {
+        env->gpr[a->rd] = la_get_tval(env);
+        env->gpr[a->rj] = 0;
+    } else {
+        gen_set_gpr(env, a->rd, env->timer, EXT_NONE);
+        env->gpr[a->rj] = 0;
+    }
     env->pc += 4;
     return true;
 }
@@ -2225,21 +2225,21 @@ uint64_t helper_write_csr(CPULoongArchState *env, int csr_index, uint64_t new_v,
         case LOONGARCH_CSR_SAVE(7)        :old_v = env->CSR_SAVE[7]; env->CSR_SAVE[7] = mask_write(env->CSR_SAVE[7], new_v, mask); break;
         case LOONGARCH_CSR_TID            :old_v = extract64(env->CSR_TID, 0, 32); env->CSR_TID = mask_write(env->CSR_TID, new_v, mask & LOONGARCH_CSR_TID_WMASK); break;
         case LOONGARCH_CSR_TCFG           :old_v = env->CSR_TCFG; env->CSR_TCFG = mask_write(env->CSR_TCFG, new_v, mask);
-#ifndef CONFIG_DIFF
-            if (env->CSR_TCFG & 1) {
-                if (determined) {
-                    env->timer_counter = (env->CSR_TCFG & CONSTANT_TIMER_TICK_MASK) / TIME_SCALE;
+            if (fastforward) {
+                if (env->CSR_TCFG & 1) {
+                    if (determined) {
+                        env->timer_counter = (env->CSR_TCFG & CONSTANT_TIMER_TICK_MASK) / TIME_SCALE;
+                    } else {
+                        cpu_settimer(env, env->CSR_TCFG & CONSTANT_TIMER_TICK_MASK);
+                    }
                 } else {
-                    cpu_settimer(env, env->CSR_TCFG & CONSTANT_TIMER_TICK_MASK);
-                }
-            } else {
-                if (determined) {
-                    env->timer_counter = -1;
-                } else {
-                    cpu_disable_timer(env);
+                    if (determined) {
+                        env->timer_counter = -1;
+                    } else {
+                        cpu_disable_timer(env);
+                    }
                 }
             }
-#endif
             break;
         case LOONGARCH_CSR_TVAL           :old_v = env->CSR_TVAL; break;
         case LOONGARCH_CSR_CNTC           :old_v = env->CSR_CNTC; env->CSR_CNTC = mask_write(env->CSR_CNTC, new_v, mask); break;

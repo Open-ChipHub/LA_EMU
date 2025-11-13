@@ -73,9 +73,9 @@ static int loongarch_map_tlb_entry(CPULoongArchState *env, hwaddr *physical,
     if ((access_type == MMU_DATA_STORE) && !tlb_d) {
         return TLBRET_DIRTY;
     }
-
     *physical = (tlb_ppn << R_TLBENTRY_64_PPN_SHIFT) |
                 (address & MAKE_64BIT_MASK(0, tlb_ps));
+    
     *prot = PAGE_READ;
     if (tlb_d) {
         *prot |= PAGE_WRITE;
@@ -187,14 +187,14 @@ static void hw_ptw_setVD(uint64_t* csr_tlbrelo,
 
     ram_std(pte_addr & TARGET_PHYS_MASK, pte);
 }
-
 static int loongarch_map_address(CPULoongArchState *env, hwaddr *physical,
                                  int *prot, target_ulong address,
                                  MMUAccessType access_type, int mmu_idx)
 {
     int index, match, tlbret;
-
+    int counter = 2;
 again:
+    counter--;
     match = loongarch_tlb_search(env, address, &index);
     if (match) {
         tlbret = loongarch_map_tlb_entry(env, physical, prot,
@@ -203,7 +203,7 @@ again:
             return tlbret;
         }
     }
-
+    if (counter == 0) return TLBRET_NOMATCH;
     if (enable_hw_ptw(env) && (!match || (match && tlbret == TLBRET_PTW_SET_D)))
     {
         // save tlbr csr state

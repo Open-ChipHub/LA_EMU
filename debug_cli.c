@@ -61,6 +61,7 @@ const debug_cmd debugcmds[] = {
 };
 
 int64_t singlestep = -1;
+bool fastforward = true;
 
 #define BREAKPOINT_NUM 4
 struct FetchBreakpoint {
