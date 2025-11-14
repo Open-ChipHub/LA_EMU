@@ -25,6 +25,7 @@ extern int check_level;
 extern bool determined;
 extern bool ptw_hw_setVD;
 extern bool hw_ptw;
+extern store_queue_t store_queue;
 
 extern int exec_env(CPULoongArchState *env);
 extern void cpu_reset(CPUState* cs);
@@ -575,6 +576,18 @@ void loong64_difftest_get_fcsr0(uint32_t* dut_buf)
 void loong64_difftest_set_fcsr0(uint32_t* dut_buf)
 {
     current_env->fcsr0 = *dut_buf;
+}
+
+bool loong64_difftest_get_store(store_data_t* store_data) {
+    if (store_queue.head == store_queue.tail) {
+        return false;
+    }
+    store_data->paddr = store_queue.data[store_queue.head].paddr;
+    store_data->data = store_queue.data[store_queue.head].data;
+    store_data->mask = store_queue.data[store_queue.head].mask;
+
+    store_queue.head = (store_queue.head + 1) & 0x3ff;
+    return true;
 }
 
 #define CSR_CPY_HELPER(CSR)             \

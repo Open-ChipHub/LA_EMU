@@ -540,6 +540,18 @@ typedef struct LoongArchCPU {
     CPULoongArchState env;
 }LoongArchCPU;
 
+typedef struct store_data_t {
+    uint64_t paddr;
+    uint64_t data;
+    uint8_t  mask;
+} store_data_t;
+
+typedef struct store_queue_t {
+    store_data_t data[1024];
+    int head;
+    int tail;
+} store_queue_t;
+
 typedef LoongArchCPU ArchCPU;
 
 #define CPU(obj) ((CPUState *)(obj))

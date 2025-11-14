@@ -13,6 +13,7 @@
 #include <stdalign.h>
 
 extern bool fastforward;
+extern store_queue_t store_queue;
 
 static inline long long la_get_tval(CPULoongArchState *env){
     if (determined) {
@@ -161,6 +162,14 @@ static uint32_t get_fcmp_flags(int cond)
         flags |= FCMP_GT | FCMP_LT;
     }
     return flags;
+}
+
+static void log_store(CPULoongArchState *env, uint64_t addr, uint64_t data, uint8_t mask) {
+    store_queue_t *q = &store_queue;
+    q->data[q->tail].paddr = addr;
+    q->data[q->tail].data = data;
+    q->data[q->tail].mask = mask;
+    q->tail = (q->tail + 1) & 0x3ff;
 }
 
 static bool trans_add_w(CPULoongArchState *env, arg_add_w *restrict a) {
@@ -878,6 +887,8 @@ static int64_t ld_d(CPULoongArchState *env, uint64_t va) {
 
 static void st_b(CPULoongArchState *env, uint64_t va, uint8_t data) {
     hwaddr ha = store_pa(env, va);
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)data) << (offset << 3), 1 << offset);
 #if defined(CONFIG_USER_ONLY)
     ram_stb(ha, data);
 #else
@@ -888,6 +899,8 @@ static void st_b(CPULoongArchState *env, uint64_t va, uint8_t data) {
 static void st_h(CPULoongArchState *env, uint64_t va, uint16_t data) {
     const int data_size = 2;
     hwaddr ha = store_pa(env, va);
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)data) << (offset << 3), (0x3 << offset));
     if (is_io(ha)) {
 #if !defined(CONFIG_USER_ONLY)
         do_io_st(ha, data, data_size);
@@ -907,6 +920,8 @@ static void st_h(CPULoongArchState *env, uint64_t va, uint16_t data) {
 static void st_w(CPULoongArchState *env, uint64_t va, uint32_t data) {
     const int data_size = 4;
     hwaddr ha = store_pa(env, va);
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)data) << (offset << 3), (0xf << offset));
     if (is_io(ha)) {
 #if !defined(CONFIG_USER_ONLY)
         do_io_st(ha, data, data_size);
@@ -926,6 +941,8 @@ static void st_w(CPULoongArchState *env, uint64_t va, uint32_t data) {
 static void st_d(CPULoongArchState *env, uint64_t va, uint64_t data) {
     const int data_size = 8;
     hwaddr ha = store_pa(env, va);
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)data) << (offset << 3), (0xff << offset));
     if (is_io(ha)) {
 #if !defined(CONFIG_USER_ONLY)
         do_io_st(ha, data, data_size);
@@ -1212,6 +1229,8 @@ static bool trans_ammin_du(CPULoongArchState *env, arg_ammin_du *restrict a) {re
 static bool trans_amswap_db_w(CPULoongArchState *env, arg_amswap_db_w *restrict a) {
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)env->gpr[a->rk]) << (offset << 3), (0xf << offset));
     ram_stw(ha, env->gpr[a->rk]);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1220,6 +1239,8 @@ static bool trans_amswap_db_w(CPULoongArchState *env, arg_amswap_db_w *restrict 
 static bool trans_amswap_db_d(CPULoongArchState *env, arg_amswap_db_d *restrict a) {
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int64_t old_v = ram_ldd(ha);
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)env->gpr[a->rk]) << (offset << 3), (0xff << offset));
     ram_std(ha, env->gpr[a->rk]);
     env->gpr[a->rd] = old_v;
     env->pc += 4;
@@ -1229,6 +1250,8 @@ static bool trans_amadd_db_w(CPULoongArchState *env, arg_amadd_db_w *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = env->gpr[a->rk] + old_v;
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)new_v) << (offset << 3), (0xf << offset));
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1238,6 +1261,8 @@ static bool trans_amadd_db_d(CPULoongArchState *env, arg_amadd_db_d *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = env->gpr[a->rk] + old_v;
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)new_v) << (offset << 3), (0xff << offset));
     ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1247,6 +1272,8 @@ static bool trans_amand_db_w(CPULoongArchState *env, arg_amand_db_w *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = env->gpr[a->rk] & old_v;
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)new_v) << (offset << 3), (0xf << offset));
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1258,6 +1285,8 @@ static bool trans_amand_db_d(CPULoongArchState *env, arg_amand_db_d *restrict a)
     int64_t new_v = env->gpr[a->rk] & old_v;
     ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)new_v) << (offset << 3), (0xff << offset));
     env->pc += 4;
     return true;
 }
@@ -1265,6 +1294,8 @@ static bool trans_amor_db_w(CPULoongArchState *env, arg_amor_db_w *restrict a) {
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = env->gpr[a->rk] | old_v;
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)new_v) << (offset << 3), (0xf << offset));
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1274,6 +1305,8 @@ static bool trans_amor_db_d(CPULoongArchState *env, arg_amor_db_d *restrict a) {
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = env->gpr[a->rk] | old_v;
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)new_v) << (offset << 3), (0xff << offset));
     ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1283,6 +1316,8 @@ static bool trans_amxor_db_w(CPULoongArchState *env, arg_amxor_db_w *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = env->gpr[a->rk] ^ old_v;
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)new_v) << (offset << 3), (0xf << offset));
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1292,6 +1327,8 @@ static bool trans_amxor_db_d(CPULoongArchState *env, arg_amxor_db_d *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = env->gpr[a->rk] ^ old_v;
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)new_v) << (offset << 3), (0xff << offset));
     ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1301,6 +1338,8 @@ static bool trans_ammax_db_w(CPULoongArchState *env, arg_ammax_db_w *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = MAX((int32_t)env->gpr[a->rk], old_v);
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)new_v) << (offset << 3), (0xf << offset));
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1310,7 +1349,9 @@ static bool trans_ammax_db_d(CPULoongArchState *env, arg_ammax_db_d *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = MAX((int64_t)env->gpr[a->rk], old_v);
-    ram_stw(ha, new_v);
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)new_v) << (offset << 3), (0xff << offset));
+    ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
     return true;
@@ -1319,6 +1360,8 @@ static bool trans_ammin_db_w(CPULoongArchState *env, arg_ammin_db_w *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = MIN((int32_t)env->gpr[a->rk], old_v);
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)new_v) << (offset << 3), (0xf << offset));
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1328,7 +1371,9 @@ static bool trans_ammin_db_d(CPULoongArchState *env, arg_ammin_db_d *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = MIN((int64_t)env->gpr[a->rk], old_v);
-    ram_stw(ha, new_v);
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)new_v) << (offset << 3), (0xff << offset));
+    ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
     return true;
@@ -1337,6 +1382,8 @@ static bool trans_ammax_db_wu(CPULoongArchState *env, arg_ammax_db_wu *restrict 
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = MAX((uint32_t)env->gpr[a->rk], (uint32_t)old_v);
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)new_v) << (offset << 3), (0xf << offset));
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1346,7 +1393,9 @@ static bool trans_ammax_db_du(CPULoongArchState *env, arg_ammax_db_du *restrict 
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = MAX((uint64_t)env->gpr[a->rk], (uint64_t)old_v);
-    ram_stw(ha, new_v);
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)new_v) << (offset << 3), (0xff << offset));
+    ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
     return true;
@@ -1355,6 +1404,8 @@ static bool trans_ammin_db_wu(CPULoongArchState *env, arg_ammin_db_wu *restrict 
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = MIN((uint32_t)env->gpr[a->rk], (uint32_t)old_v);
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)new_v) << (offset << 3), (0xf << offset));
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1364,7 +1415,9 @@ static bool trans_ammin_db_du(CPULoongArchState *env, arg_ammin_db_du *restrict 
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = MIN((uint64_t)env->gpr[a->rk], (uint64_t)old_v);
-    ram_stw(ha, new_v);
+    uint64_t offset = ha & 0x7;
+    log_store(env, ha & 0xfffffffffffffff8, ((uint64_t)new_v) << (offset << 3), (0xff << offset));
+    ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
     return true;
@@ -1803,7 +1856,7 @@ static bool trans_fsel(CPULoongArchState *env, arg_fsel *restrict a) {
 }
 static bool trans_movgr2fr_w(CPULoongArchState *env, arg_movgr2fr_w *restrict a) {
     CHECK_FPE(8);
-    env->fpr[a->fd].vreg.W[0] = env->gpr[a->rj];
+    env->fpr[a->fd].vreg.D[0] = env->gpr[a->rj] | 0xffffffff00000000;
     env->pc += 4;
     return true;
 }
