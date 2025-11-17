@@ -25,8 +25,8 @@
 static uint8_t zero4k[__4KB] __attribute__ ((aligned (__4KB)));
 extern char* ram;
 
-static void loongarch_cpu_dump_state(CPULoongArchState *env, FILE *f);
-static void loongarch_cpu_restore_state(CPULoongArchState *env, FILE *f);
+void loongarch_cpu_dump_state(CPULoongArchState *env, FILE *f);
+void loongarch_cpu_restore_state(CPULoongArchState *env, FILE *f);
 extern uint64_t helper_read_csr(CPULoongArchState *env, int csr_index);
 extern uint64_t helper_csrrd_pgd(CPULoongArchState*);
 
@@ -222,7 +222,7 @@ static uint64_t* get_csr_ptr(CPULoongArchState *env, uint64_t idx) {
 
 }
 
-static void loongarch_cpu_dump_state(CPULoongArchState *env, FILE *f)
+void loongarch_cpu_dump_state(CPULoongArchState *env, FILE *f)
 {
     int i, j;
 
@@ -306,7 +306,7 @@ static void loongarch_cpu_dump_state(CPULoongArchState *env, FILE *f)
     fprintf(f, "csr 0x%x 0x%016lx\n", LOONGARCH_CSR_DSAVE, env->CSR_DSAVE);
 }
 
-static void loongarch_cpu_restore_state(CPULoongArchState *env, FILE* f)
+void loongarch_cpu_restore_state(CPULoongArchState *env, FILE* f)
 {
     char buffer[1024];
     while (fgets(buffer, sizeof(buffer), f)) {

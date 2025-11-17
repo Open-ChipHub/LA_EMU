@@ -30,6 +30,8 @@ extern store_queue_t store_queue;
 extern int exec_env(CPULoongArchState *env);
 extern void cpu_reset(CPUState* cs);
 extern uint64_t helper_read_csr(CPULoongArchState *env, int csr_index);
+extern void loongarch_cpu_dump_state(CPULoongArchState *env, FILE *f);
+extern void loongarch_cpu_restore_state(CPULoongArchState *env, FILE* f);
 
 extern const char* const csrnames[];
 
@@ -690,4 +692,44 @@ void loong64_syscall_return_value_copy(uint64_t* dut_buf) {
 void loong64_difftest_tlbcpy()
 {
     // TODO
+}
+
+void loong64_difftest_save_checkpoint(const char* path) {
+    char filename[1024];
+    if (mkdir(path, 0755) < 0 && errno != EEXIST) {
+        fprintf(stderr, "ERROR: cannot create dir:%s\n", path);
+        laemu_exit(1);
+    }
+
+    sprintf(filename, "%s/regs.txt", path);
+    FILE* f = fopen(filename, "w");
+    if (!f) {
+        perror(filename);
+        abort();
+    }
+    fprintf(f, "icount 0x%016lx\n", current_env->icount);
+    loongarch_cpu_dump_state(current_env, f);
+    fclose(f);
+}
+
+void loong64_difftest_restore_checkpoint(const char* path) {
+    char filename[1024];
+    char buffer[1024];
+
+    sprintf(filename, "%s/regs.txt", path);
+    FILE* reg_file = fopen(filename, "r");
+    if (!reg_file) {
+        perror(filename);
+        abort();
+    }
+    lsassert(fgets(buffer, sizeof(buffer), reg_file));
+    lsassert(sscanf(buffer, "icount 0x%lx", &current_env->icount) == 1);
+    printf("restore from icount=%ld\n", current_env->icount);
+    loongarch_cpu_restore_state(current_env, reg_file);
+
+    if (current_env->CSR_CNTC < 0) {
+        current_env->CSR_CNTC = 0;
+    }
+    current_env->timer_counter = current_env->CSR_TVAL;
+    current_env->CSR_TICLR = 0;
 }
