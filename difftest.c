@@ -32,6 +32,9 @@ extern void cpu_reset(CPUState* cs);
 extern uint64_t helper_read_csr(CPULoongArchState *env, int csr_index);
 extern void loongarch_cpu_dump_state(CPULoongArchState *env, FILE *f);
 extern void loongarch_cpu_restore_state(CPULoongArchState *env, FILE* f);
+extern int get_physical_address(CPULoongArchState *env, hwaddr *physical,
+                         int *prot, target_ulong address,
+                         MMUAccessType access_type, int mmu_idx);
 
 extern const char* const csrnames[];
 
@@ -732,4 +735,38 @@ void loong64_difftest_restore_checkpoint(const char* path) {
     }
     current_env->timer_counter = current_env->CSR_TVAL;
     current_env->CSR_TICLR = 0;
+}
+
+void loong64_difftest_check_paddr(uint64_t vaddr, uint32_t source, uint64_t* paddr, uint32_t* exception) {
+    int prot;
+    int mmu_idx = FIELD_EX64(current_env->CSR_CRMD, CSR_CRMD, PLV) == 0 ? MMU_KERNEL_IDX : MMU_USER_IDX;
+    memcpy(inst_env, current_env, sizeof(CPULoongArchState));
+    int ret = get_physical_address(inst_env, paddr, &prot, vaddr, (MMUAccessType)source, mmu_idx);
+    switch (ret) {
+    default: *exception = 0; break;
+    case TLBRET_BADADDR:
+        *exception = source == MMU_INST_FETCH
+                              ? EXCCODE_ADEF : EXCCODE_ADEM;
+        break;
+    case TLBRET_NOMATCH:
+        /* No TLB match for a mapped address */
+        if (source == MMU_DATA_LOAD) {
+            *exception = EXCCODE_PIL;
+        } else if (source == MMU_DATA_STORE) {
+            *exception = EXCCODE_PIS;
+        } else if (source == MMU_INST_FETCH) {
+            *exception = EXCCODE_PIF;
+        }
+        break;
+    case TLBRET_INVALID:
+        /* TLB match with no valid bit */
+        if (source == MMU_DATA_LOAD) {
+            *exception = EXCCODE_PIL;
+        } else if (source == MMU_DATA_STORE) {
+            *exception = EXCCODE_PIS;
+        } else if (source == MMU_INST_FETCH) {
+            *exception = EXCCODE_PIF;
+        }
+        break;
+    }
 }

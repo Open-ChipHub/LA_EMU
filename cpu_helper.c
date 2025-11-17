@@ -297,7 +297,7 @@ static hwaddr dmw_va2pa(CPULoongArchState *env, target_ulong va,
                         target_ulong dmw)
 {
     if (is_la64(env)) {
-        return va & TARGET_VIRT_MASK;
+        return va & DIFF_PHYSICAL_MASK;
     } else {
         uint32_t pseg = FIELD_EX32(dmw, CSR_DMW_32, PSEG);
         return (va & MAKE_64BIT_MASK(0, R_CSR_DMW_32_VSEG_SHIFT)) | \
@@ -318,7 +318,7 @@ int get_physical_address(CPULoongArchState *env, hwaddr *physical,
 
     /* Check PG and DA */
     if (da & !pg) {
-        *physical = address & TARGET_PHYS_MASK;
+        *physical = address & DIFF_PHYSICAL_MASK;
         *prot = PAGE_READ | PAGE_WRITE | PAGE_EXEC;
         return TLBRET_MATCH;
     }
