@@ -354,7 +354,6 @@ void helper_tlbfill(CPULoongArchState *env)
     if (pagesize == stlb_ps) {
         /* Only write into STLB bits [47:13] */
         address = entryhi & ~MAKE_64BIT_MASK(0, R_CSR_TLBEHI_64_VPPN_SHIFT);
-
         /* Choose one set ramdomly */
         set = get_random_tlb(0, 7);
 

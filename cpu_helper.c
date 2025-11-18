@@ -176,7 +176,6 @@ static void hw_ptw_setVD(uint64_t* csr_tlbrelo,
         *csr_tlbrelo = FIELD_DP64(*csr_tlbrelo, TLBENTRY, D, 1);
         write_d = true;
     }
-
     uint64_t pte = ram_ldd(pte_addr & TARGET_PHYS_MASK);
     if (write_v) {
         pte = FIELD_DP64(pte, TLBENTRY, V, 1);

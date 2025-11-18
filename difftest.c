@@ -39,9 +39,6 @@ extern int get_physical_address(CPULoongArchState *env, hwaddr *physical,
 extern const char* const csrnames[];
 
 
-CPULoongArchState *inst_env;
-
-
 static inline uint8_t* guest_to_host(uint64_t guest_paddr)
 {
     return (uint8_t*)(ram + guest_paddr);
@@ -62,7 +59,6 @@ void loong64_difftest_init(void *host_ram)
     memset(cpu, 0, sizeof(LoongArchCPU));
     CPUState *cs = CPU(cpu);
     CPULoongArchState* env = &cpu->env;
-    inst_env = aligned_alloc(64, sizeof(CPULoongArchState));
     cs->env = env;
     cpu_reset(cs);
     loongarch_core_initfn(env);
@@ -103,11 +99,8 @@ uint32_t loong64_difftest_get_inst_by_pc(uint64_t pc) {
     uint32_t insn;
     hwaddr ha;
     int prot;
-    // fetch will change current_env
-    memcpy(inst_env, current_env, sizeof(CPULoongArchState));
-    // CPULoongArchState *env =  current_env;
 
-    if (probe_get_physical_address(inst_env, &ha, &prot, pc, MMU_INST_FETCH)== -1) {
+    if (probe_get_physical_address(current_env, &ha, &prot, pc, MMU_INST_FETCH)== -1) {
         // printf("EMU: Fetch Instruction Address Error!\n");
         return 0;
     }
@@ -740,8 +733,11 @@ void loong64_difftest_restore_checkpoint(const char* path) {
 void loong64_difftest_check_paddr(uint64_t vaddr, uint32_t source, uint64_t* paddr, uint32_t* exception) {
     int prot;
     int mmu_idx = FIELD_EX64(current_env->CSR_CRMD, CSR_CRMD, PLV) == 0 ? MMU_KERNEL_IDX : MMU_USER_IDX;
-    memcpy(inst_env, current_env, sizeof(CPULoongArchState));
-    int ret = get_physical_address(inst_env, paddr, &prot, vaddr, (MMUAccessType)source, mmu_idx);
+    int ret = get_physical_address(current_env, paddr, &prot, vaddr, (MMUAccessType)source, mmu_idx);
+    if (ret != TLBRET_MATCH && ret != TLBRET_BADADDR) {
+        helper_invtlb_page_asid_or_g(current_env, current_env->CSR_ASID, vaddr);
+        ret = get_physical_address(current_env, paddr, &prot, vaddr, (MMUAccessType)source, MMU_KERNEL_IDX);
+    }
     switch (ret) {
     default: *exception = 0; break;
     case TLBRET_BADADDR:
@@ -749,17 +745,8 @@ void loong64_difftest_check_paddr(uint64_t vaddr, uint32_t source, uint64_t* pad
                               ? EXCCODE_ADEF : EXCCODE_ADEM;
         break;
     case TLBRET_NOMATCH:
-        /* No TLB match for a mapped address */
-        if (source == MMU_DATA_LOAD) {
-            *exception = EXCCODE_PIL;
-        } else if (source == MMU_DATA_STORE) {
-            *exception = EXCCODE_PIS;
-        } else if (source == MMU_INST_FETCH) {
-            *exception = EXCCODE_PIF;
-        }
-        break;
     case TLBRET_INVALID:
-        /* TLB match with no valid bit */
+    case TLBRET_DIRTY:
         if (source == MMU_DATA_LOAD) {
             *exception = EXCCODE_PIL;
         } else if (source == MMU_DATA_STORE) {
