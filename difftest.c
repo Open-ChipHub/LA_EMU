@@ -391,9 +391,13 @@ void loong64_difftest_get_csr(void* dut_buf) {
     csr_buf[5] = current_env->CSR_BADV;
     csr_buf[6] = current_env->CSR_EENTRY;
     // tlbidx, 
+    csr_buf[7] = current_env->CSR_TLBIDX;
     // tlbehi, 
+    csr_buf[8] = current_env->CSR_TLBEHI;
     // tlbelo0, 
+    csr_buf[9] = current_env->CSR_TLBELO0;
     // tlbelo1;
+    csr_buf[10] = current_env->CSR_TLBELO1;
     csr_buf[11] = current_env->CSR_ASID;
     csr_buf[12] = current_env->CSR_PGDL;
     csr_buf[13] = current_env->CSR_PGDH;
@@ -405,7 +409,9 @@ void loong64_difftest_get_csr(void* dut_buf) {
     csr_buf[19] = current_env->CSR_TCFG;
     csr_buf[20] = current_env->CSR_TVAL;
     // llbctl, 
+    csr_buf[21] = current_env->CSR_LLBCTL;
     // tlbrentry, 
+    csr_buf[22] = current_env->CSR_TLBRENTRY;
     csr_buf[23] = current_env->CSR_DMW[0];
     csr_buf[24] = current_env->CSR_DMW[1];
     csr_buf[25] = current_env->CSR_ESTAT;
@@ -423,9 +429,13 @@ void loong64_difftest_set_csr(void* dut_buf) {
     current_env->CSR_BADV = csr_buf[5];
     current_env->CSR_EENTRY = csr_buf[6];
     // tlbidx, 
+    current_env->CSR_TLBIDX = csr_buf[7];
     // tlbehi, 
+    current_env->CSR_TLBEHI = csr_buf[8];
     // tlbelo0, 
+    current_env->CSR_TLBELO0 = csr_buf[9];
     // tlbelo1;
+    current_env->CSR_TLBELO1 = csr_buf[10];
     current_env->CSR_ASID = csr_buf[11];
     current_env->CSR_PGDL = csr_buf[12];
     current_env->CSR_PGDH = csr_buf[13];
@@ -437,7 +447,9 @@ void loong64_difftest_set_csr(void* dut_buf) {
     current_env->CSR_TCFG = csr_buf[19];
     current_env->CSR_TVAL = csr_buf[20];
     // llbctl, 
+    current_env->CSR_LLBCTL = csr_buf[21];
     // tlbrentry,
+    current_env->CSR_TLBRENTRY = csr_buf[22];
     current_env->CSR_DMW[0] = csr_buf[23];
     current_env->CSR_DMW[1] = csr_buf[24];
     current_env->CSR_ESTAT = csr_buf[25];

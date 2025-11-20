@@ -82,7 +82,6 @@ static void raise_mmu_exception(CPULoongArchState *env, target_ulong address,
         }
         env->CSR_TLBRERA = FIELD_DP64(env->CSR_TLBRERA, CSR_TLBRERA, ISTLBR, 1);
         break;
-#ifndef CONFIG_DIFF
     case TLBRET_DIRTY:
         /* TLB match but 'D' bit is cleared */
         cs->exception_index = EXCCODE_PME;
@@ -99,12 +98,6 @@ static void raise_mmu_exception(CPULoongArchState *env, target_ulong address,
         /* Privileged Exception */
         cs->exception_index = EXCCODE_PPI;
         break;
-#else
-    case TLBRET_DIRTY:
-    case TLBRET_XI:
-    case TLBRET_RI:
-    case TLBRET_PE:
-#endif
     case TLBRET_INVALID:
         /* TLB match with no valid bit */
         if (access_type == MMU_DATA_LOAD) {
