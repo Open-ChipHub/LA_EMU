@@ -240,6 +240,8 @@ again:
 
         helper_ldpte(env, pt_base, 0, 0, &pte0_phys_addr);
         helper_ldpte(env, pt_base, 1, 0, &pte1_phys_addr);
+        // printf("pte0_phys_addr=0x%lx,lo0=0x%lx\n", pte0_phys_addr, env->CSR_TLBRELO0);
+        // printf("pte1_phys_addr=0x%lx,lo1=0x%lx\n", pte1_phys_addr, env->CSR_TLBRELO1);
 
         if (ptw_hw_setVD) {
             if (is_huge) {

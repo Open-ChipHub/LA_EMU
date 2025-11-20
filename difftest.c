@@ -184,7 +184,7 @@ uint64_t loong64_difftest_get_prev_pc(void) {
 }
 
 void loong64_difftest_estat_sync(uint64_t index, uint64_t mask) {
-
+    current_env->CSR_ESTAT = current_env->CSR_ESTAT & ~mask;
 }
 
 void loong64_difftest_set_reset_pc(uint64_t reset_pc) {
@@ -588,6 +588,16 @@ bool loong64_difftest_get_store(store_data_t* store_data) {
     return true;
 }
 
+void loong64_difftest_print_store() {
+    int i = 0;
+    int head =  store_queue.head;
+    while (i < 32) {
+        i++;
+        head = head == 0 ? 0x3ff : head - 1;
+        printf("ref_store[%d] paddr = 0x%lx, data = 0x%lx, mask = 0x%x\n", i, store_queue.data[head].paddr, store_queue.data[head].data, store_queue.data[head].mask);
+    }
+}
+
 #define CSR_CPY_HELPER(CSR)             \
     case LOONGARCH_CSR_ ## CSR : csr_base_addr = &(current_env->CSR_ ## CSR); break;
 
@@ -746,7 +756,6 @@ void loong64_difftest_check_paddr(uint64_t vaddr, uint32_t source, uint64_t* pad
         break;
     case TLBRET_NOMATCH:
     case TLBRET_INVALID:
-    case TLBRET_DIRTY:
         if (source == MMU_DATA_LOAD) {
             *exception = EXCCODE_PIL;
         } else if (source == MMU_DATA_STORE) {
@@ -754,6 +763,18 @@ void loong64_difftest_check_paddr(uint64_t vaddr, uint32_t source, uint64_t* pad
         } else if (source == MMU_INST_FETCH) {
             *exception = EXCCODE_PIF;
         }
+        break;
+    case TLBRET_DIRTY:
+        /* TLB match but 'D' bit is cleared */
+        *exception = EXCCODE_PME;
+        break;
+    case TLBRET_XI:
+        /* Execute-Inhibit Exception */
+        *exception = EXCCODE_PNX;
+        break;
+    case TLBRET_RI:
+        /* Read-Inhibit Exception */
+        *exception = EXCCODE_PNR;
         break;
     }
 }
