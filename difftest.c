@@ -20,11 +20,21 @@
 extern char* ram;
 
 extern int64_t singlestep;
+extern bool fastforward;
 extern int check_level;
+extern bool determined;
+extern bool ptw_hw_setVD;
+extern bool hw_ptw;
+extern store_queue_t store_queue;
 
 extern int exec_env(CPULoongArchState *env);
 extern void cpu_reset(CPUState* cs);
 extern uint64_t helper_read_csr(CPULoongArchState *env, int csr_index);
+extern void loongarch_cpu_dump_state(CPULoongArchState *env, FILE *f);
+extern void loongarch_cpu_restore_state(CPULoongArchState *env, FILE* f);
+extern int get_physical_address(CPULoongArchState *env, hwaddr *physical,
+                         int *prot, target_ulong address,
+                         MMUAccessType access_type, int mmu_idx);
 
 extern const char* const csrnames[];
 
@@ -63,14 +73,17 @@ void loong64_difftest_init(void *host_ram)
     difftest_init_ram(host_ram);
 
     check_level |= CPU_CHECK_TLB_MHIT;
+    determined = true;
 
     helper_invtlb_all(env);
-
+    ptw_hw_setVD = false;
+    hw_ptw = true;
 }
 
-void loong64_difftest_exec(uint64_t n)
+void loong64_difftest_exec(uint64_t n, bool fast)
 {
     singlestep = n;
+    fastforward = fast;
     exec_env(current_env);
 }
 
@@ -86,9 +99,8 @@ uint32_t loong64_difftest_get_inst_by_pc(uint64_t pc) {
     uint32_t insn;
     hwaddr ha;
     int prot;
-    CPULoongArchState *env =  current_env;
 
-    if (probe_get_physical_address(env, &ha, &prot, pc, MMU_INST_FETCH)== -1) {
+    if (probe_get_physical_address(current_env, &ha, &prot, pc, MMU_INST_FETCH)== -1) {
         // printf("EMU: Fetch Instruction Address Error!\n");
         return 0;
     }
@@ -148,13 +160,19 @@ struct la64_timer {
     uint64_t time_val;
 };
 
-void loong64_difftest_timercpy(void* dut_buf) {
+void loong64_difftest_timercpy(void* dut_buf, bool direction) {
     CPULoongArchState *env =  current_env;
     struct la64_timer *timer = dut_buf;
 
-    env->timer = timer->stable_timer;
-    env->CSR_TVAL = timer->time_val;
-    env->CSR_TID = timer->counter_id;
+    if (direction == DUT_TO_REF) {
+        env->timer = timer->stable_timer;
+        env->CSR_TVAL = timer->time_val;
+        env->CSR_TID = timer->counter_id;
+    } else {
+        timer->stable_timer = env->icount;
+        timer->time_val = env->CSR_TVAL;
+        timer->counter_id = env->CSR_TID;
+    }
 }
 
 uint64_t loong64_difftest_get_cur_pc(void) {
@@ -166,7 +184,7 @@ uint64_t loong64_difftest_get_prev_pc(void) {
 }
 
 void loong64_difftest_estat_sync(uint64_t index, uint64_t mask) {
-
+    current_env->CSR_ESTAT = current_env->CSR_ESTAT & ~mask;
 }
 
 void loong64_difftest_set_reset_pc(uint64_t reset_pc) {
@@ -177,8 +195,11 @@ void loongarch_cpu_do_interrupt(CPUState *cs);
 void loong64_difftest_raise_trap(int is_interrupt, uint64_t is, uint64_t ecode) {
     CPULoongArchState *env =  current_env;
     CPUState* cs = env_cpu(env);
-    if (is_interrupt)
+    if (is_interrupt) {
         env->CSR_ESTAT = FIELD_DP64(env->CSR_ESTAT, CSR_ESTAT, IS, (is & 0x1FFF));
+        env->CSR_ESTAT = FIELD_DP64(env->CSR_ESTAT, CSR_ESTAT, ECODE, ecode & 0x3f);
+        env->CSR_ESTAT = FIELD_DP64(env->CSR_ESTAT, CSR_ESTAT, ESUBCODE, (ecode >> 6) & 0x1ff);
+    }
     if (unlikely(loongarch_cpu_has_irq(env))) {
         cs->exception_index = EXCCODE_INT;
         loongarch_cpu_do_interrupt(cs);
@@ -370,9 +391,13 @@ void loong64_difftest_get_csr(void* dut_buf) {
     csr_buf[5] = current_env->CSR_BADV;
     csr_buf[6] = current_env->CSR_EENTRY;
     // tlbidx, 
+    csr_buf[7] = current_env->CSR_TLBIDX;
     // tlbehi, 
+    csr_buf[8] = current_env->CSR_TLBEHI;
     // tlbelo0, 
+    csr_buf[9] = current_env->CSR_TLBELO0;
     // tlbelo1;
+    csr_buf[10] = current_env->CSR_TLBELO1;
     csr_buf[11] = current_env->CSR_ASID;
     csr_buf[12] = current_env->CSR_PGDL;
     csr_buf[13] = current_env->CSR_PGDH;
@@ -384,7 +409,9 @@ void loong64_difftest_get_csr(void* dut_buf) {
     csr_buf[19] = current_env->CSR_TCFG;
     csr_buf[20] = current_env->CSR_TVAL;
     // llbctl, 
+    csr_buf[21] = current_env->CSR_LLBCTL;
     // tlbrentry, 
+    csr_buf[22] = current_env->CSR_TLBRENTRY;
     csr_buf[23] = current_env->CSR_DMW[0];
     csr_buf[24] = current_env->CSR_DMW[1];
     csr_buf[25] = current_env->CSR_ESTAT;
@@ -402,9 +429,13 @@ void loong64_difftest_set_csr(void* dut_buf) {
     current_env->CSR_BADV = csr_buf[5];
     current_env->CSR_EENTRY = csr_buf[6];
     // tlbidx, 
+    current_env->CSR_TLBIDX = csr_buf[7];
     // tlbehi, 
+    current_env->CSR_TLBEHI = csr_buf[8];
     // tlbelo0, 
+    current_env->CSR_TLBELO0 = csr_buf[9];
     // tlbelo1;
+    current_env->CSR_TLBELO1 = csr_buf[10];
     current_env->CSR_ASID = csr_buf[11];
     current_env->CSR_PGDL = csr_buf[12];
     current_env->CSR_PGDH = csr_buf[13];
@@ -416,7 +447,9 @@ void loong64_difftest_set_csr(void* dut_buf) {
     current_env->CSR_TCFG = csr_buf[19];
     current_env->CSR_TVAL = csr_buf[20];
     // llbctl, 
+    current_env->CSR_LLBCTL = csr_buf[21];
     // tlbrentry,
+    current_env->CSR_TLBRENTRY = csr_buf[22];
     current_env->CSR_DMW[0] = csr_buf[23];
     current_env->CSR_DMW[1] = csr_buf[24];
     current_env->CSR_ESTAT = csr_buf[25];
@@ -555,10 +588,32 @@ void loong64_difftest_set_fcsr0(uint32_t* dut_buf)
     current_env->fcsr0 = *dut_buf;
 }
 
+bool loong64_difftest_get_store(store_data_t* store_data) {
+    if (store_queue.head == store_queue.tail) {
+        return false;
+    }
+    store_data->paddr = store_queue.data[store_queue.head].paddr;
+    store_data->data = store_queue.data[store_queue.head].data;
+    store_data->mask = store_queue.data[store_queue.head].mask;
+
+    store_queue.head = (store_queue.head + 1) & 0x3ff;
+    return true;
+}
+
+void loong64_difftest_print_store() {
+    int i = 0;
+    int head =  store_queue.head;
+    while (i < 32) {
+        i++;
+        head = head == 0 ? 0x3ff : head - 1;
+        printf("ref_store[%d] paddr = 0x%lx, data = 0x%lx, mask = 0x%x\n", i, store_queue.data[head].paddr, store_queue.data[head].data, store_queue.data[head].mask);
+    }
+}
+
 #define CSR_CPY_HELPER(CSR)             \
     case LOONGARCH_CSR_ ## CSR : csr_base_addr = &(current_env->CSR_ ## CSR); break;
 
-static inline void loong64_difftest_csrcpy_idx(int csr_idx, uint64_t* dut_buf, uint64_t mask, bool direction)
+void loong64_difftest_csrcpy_idx(int csr_idx, uint64_t* dut_buf, uint64_t mask, bool direction)
 {
     uint64_t csr_value;
 
@@ -655,4 +710,91 @@ void loong64_syscall_return_value_copy(uint64_t* dut_buf) {
 void loong64_difftest_tlbcpy()
 {
     // TODO
+}
+
+void loong64_difftest_save_checkpoint(const char* path, uint64_t* buf, bool tobuf) {
+    if (tobuf) {    
+        loongarch_cpu_dump_state_buf(current_env, buf);
+        return;
+    }
+    char filename[1024];
+    if (mkdir(path, 0755) < 0 && errno != EEXIST) {
+        fprintf(stderr, "ERROR: cannot create dir:%s\n", path);
+        laemu_exit(1);
+    }
+
+    sprintf(filename, "%s/regs.txt", path);
+    FILE* f = fopen(filename, "w");
+    if (!f) {
+        perror(filename);
+        abort();
+    }
+    fprintf(f, "icount 0x%016lx\n", current_env->icount);
+    loongarch_cpu_dump_state(current_env, f);
+    fclose(f);
+}
+
+void loong64_difftest_restore_checkpoint(const char* path, uint64_t* buf, bool frombuf) {
+    if (frombuf) {
+        loongarch_cpu_restore_state_buf(current_env, buf);
+        return;
+    }
+    char filename[1024];
+    char buffer[1024];
+
+    sprintf(filename, "%s/regs.txt", path);
+    FILE* reg_file = fopen(filename, "r");
+    if (!reg_file) {
+        perror(filename);
+        abort();
+    }
+    lsassert(fgets(buffer, sizeof(buffer), reg_file));
+    lsassert(sscanf(buffer, "icount 0x%lx", &current_env->icount) == 1);
+    printf("restore from icount=%ld\n", current_env->icount);
+    loongarch_cpu_restore_state(current_env, reg_file);
+
+    if (current_env->CSR_CNTC < 0) {
+        current_env->CSR_CNTC = 0;
+    }
+    current_env->timer_counter = current_env->CSR_TVAL;
+    current_env->CSR_TICLR = 0;
+}
+
+void loong64_difftest_check_paddr(uint64_t vaddr, uint32_t source, uint64_t* paddr, uint32_t* exception) {
+    int prot;
+    int mmu_idx = FIELD_EX64(current_env->CSR_CRMD, CSR_CRMD, PLV) == 0 ? MMU_KERNEL_IDX : MMU_USER_IDX;
+    int ret = get_physical_address(current_env, paddr, &prot, vaddr, (MMUAccessType)source, mmu_idx);
+    if (ret != TLBRET_MATCH && ret != TLBRET_BADADDR) {
+        helper_invtlb_page_asid_or_g(current_env, current_env->CSR_ASID, vaddr);
+        ret = get_physical_address(current_env, paddr, &prot, vaddr, (MMUAccessType)source, MMU_KERNEL_IDX);
+    }
+    switch (ret) {
+    default: *exception = 0; break;
+    case TLBRET_BADADDR:
+        *exception = source == MMU_INST_FETCH
+                              ? EXCCODE_ADEF : EXCCODE_ADEM;
+        break;
+    case TLBRET_NOMATCH:
+    case TLBRET_INVALID:
+        if (source == MMU_DATA_LOAD) {
+            *exception = EXCCODE_PIL;
+        } else if (source == MMU_DATA_STORE) {
+            *exception = EXCCODE_PIS;
+        } else if (source == MMU_INST_FETCH) {
+            *exception = EXCCODE_PIF;
+        }
+        break;
+    case TLBRET_DIRTY:
+        /* TLB match but 'D' bit is cleared */
+        *exception = EXCCODE_PME;
+        break;
+    case TLBRET_XI:
+        /* Execute-Inhibit Exception */
+        *exception = EXCCODE_PNX;
+        break;
+    case TLBRET_RI:
+        /* Read-Inhibit Exception */
+        *exception = EXCCODE_PNR;
+        break;
+    }
 }

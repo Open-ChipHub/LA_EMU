@@ -12,7 +12,9 @@
 
 #include <stdalign.h>
 
-#ifndef CONFIG_DIFF
+extern bool fastforward;
+extern store_queue_t store_queue;
+
 static inline long long la_get_tval(CPULoongArchState *env){
     if (determined) {
         return current_env->icount / TIME_SCALE;
@@ -20,7 +22,6 @@ static inline long long la_get_tval(CPULoongArchState *env){
         return nano_second() / TIMER_PERIOD;
     }
 }
-#endif
 
 #ifndef CONFIG_USER_ONLY
 
@@ -161,6 +162,14 @@ static uint32_t get_fcmp_flags(int cond)
         flags |= FCMP_GT | FCMP_LT;
     }
     return flags;
+}
+
+static void log_store(uint64_t addr, uint64_t data, uint8_t mask) {
+    store_queue_t *q = &store_queue;
+    q->data[q->tail].paddr = addr;
+    q->data[q->tail].data = data;
+    q->data[q->tail].mask = mask;
+    q->tail = (q->tail + 1) & 0x3ff;
 }
 
 static bool trans_add_w(CPULoongArchState *env, arg_add_w *restrict a) {
@@ -682,9 +691,8 @@ static bool trans_bstrpick_d(CPULoongArchState *env, arg_bstrpick_d *restrict a)
 }
 
 bool is_one_page(uint64_t addr, int bytes) {
-    target_ulong pgsz = 0x4000;
-    target_ulong pgmsk = pgsz - 1;
-    return (addr & ~pgmsk) == ((addr + bytes - 1) & ~pgmsk);
+    target_ulong pgmsk = 0xfffffffffffff000;
+    return (addr & pgmsk) == ((addr + bytes - 1) & pgmsk);
 }
 
 bool is_two_page(uint64_t addr, int bytes) {
@@ -746,7 +754,7 @@ static hwaddr store_pa(CPULoongArchState *env, uint64_t addr) {
     }
     return ha;
 }
-#if defined(CONFIG_USER_ONLY) || defined(CONFIG_DIFF)
+#if defined(CONFIG_USER_ONLY)
 #define is_io(...) false
 #else
 // exclude 32MB bios
@@ -876,7 +884,67 @@ static int64_t ld_d(CPULoongArchState *env, uint64_t va) {
 //     return data;
 // }
 
+static void log_st_b(uint64_t ha, uint8_t data) {
+    uint64_t offset = ha & 0x7;
+    log_store(ha & 0xfffffffffffffff8, ((uint64_t)data) << (offset << 3), 1 << offset);
+}
+
+static void log_st_h(CPULoongArchState *env, uint64_t va, uint64_t ha, uint16_t data) {
+    uint64_t offset = ha & 0x7;
+    uint64_t ha_mask = ha & 0xfffffffffffffff8;
+    uint16_t offset_mask = 0x3 << offset;
+    log_store(ha_mask, ((uint64_t)data) << (offset << 3), offset_mask & 0xff);
+    if (offset == 7) {
+        if ((va & 0xfff) >= 0xfff) {
+            ha_mask = store_pa(env, (va + 1));
+        } else {
+            ha_mask = ha_mask + 0x8;
+        }
+        log_store(ha_mask, ((uint64_t)data) >> ((8-offset) << 3), offset_mask >> 8);
+    }
+}
+
+static void log_st_w(CPULoongArchState *env, uint64_t va, uint64_t ha, uint32_t data) {
+    uint64_t offset = ha & 0x7;
+    uint64_t ha_mask = ha & 0xfffffffffffffff8;
+    uint16_t offset_mask = 0xf << offset;
+    log_store(ha_mask, ((uint64_t)data) << (offset << 3), offset_mask & 0xff);
+    if (offset > 4) {
+        if ((va & 0xffc) >= 0xffc) {
+            ha_mask = store_pa(env, (va + 4)) & 0xfffffffffffffff8;
+        } else {
+            ha_mask = ha_mask + 0x8;
+        }
+        log_store(ha_mask, ((uint64_t)data) >> ((8-offset) << 3), offset_mask >> 8);
+    }
+}   
+
+static void log_st_d(CPULoongArchState *env, uint64_t va, uint64_t ha, uint64_t data) {
+    uint64_t offset = ha & 0x7;
+    uint64_t ha_mask = ha & 0xfffffffffffffff8;
+    uint16_t offset_mask = 0xff << offset;
+    log_store(ha_mask, ((uint64_t)data) << (offset << 3), offset_mask & 0xff);
+    if (offset > 0) {
+        if ((va & 0xff8) >= 0xff8) {
+            ha_mask = store_pa(env, (va + 8)) & 0xfffffffffffffff8;
+        } else {
+            ha_mask = ha_mask + 0x8;
+        }
+        log_store(ha_mask, ((uint64_t)data) >> ((8-offset) << 3), offset_mask >> 8);
+    }
+}   
+
 static void st_b(CPULoongArchState *env, uint64_t va, uint8_t data) {
+    hwaddr ha = store_pa(env, va);
+    log_st_b(ha, data);
+#if defined(CONFIG_USER_ONLY)
+    ram_stb(ha, data);
+#else
+    is_io(ha) ? do_io_st(ha, data, 1) : ram_stb(ha, data);
+#endif
+}
+
+static void st_b_nolog(CPULoongArchState *env, uint64_t va, uint8_t data) {
     hwaddr ha = store_pa(env, va);
 #if defined(CONFIG_USER_ONLY)
     ram_stb(ha, data);
@@ -888,6 +956,7 @@ static void st_b(CPULoongArchState *env, uint64_t va, uint8_t data) {
 static void st_h(CPULoongArchState *env, uint64_t va, uint16_t data) {
     const int data_size = 2;
     hwaddr ha = store_pa(env, va);
+    log_st_h(env, va, ha, data);
     if (is_io(ha)) {
 #if !defined(CONFIG_USER_ONLY)
         do_io_st(ha, data, data_size);
@@ -898,7 +967,7 @@ static void st_h(CPULoongArchState *env, uint64_t va, uint16_t data) {
         } else {
             PERF_INC(COUNTER_INST_CROSS_PAGE_LOAD);
             for (int i = (data_size - 1); i >= 0; i--){
-                st_b(env, va + i, (data >> (i * 8)) & 0xff);
+                st_b_nolog(env, va + i, (data >> (i * 8)) & 0xff);
             }
         }
     }
@@ -907,6 +976,7 @@ static void st_h(CPULoongArchState *env, uint64_t va, uint16_t data) {
 static void st_w(CPULoongArchState *env, uint64_t va, uint32_t data) {
     const int data_size = 4;
     hwaddr ha = store_pa(env, va);
+    log_st_w(env, va, ha, data);
     if (is_io(ha)) {
 #if !defined(CONFIG_USER_ONLY)
         do_io_st(ha, data, data_size);
@@ -917,7 +987,7 @@ static void st_w(CPULoongArchState *env, uint64_t va, uint32_t data) {
         } else {
             PERF_INC(COUNTER_INST_CROSS_PAGE_LOAD);
             for (int i = (data_size - 1); i >= 0; i--){
-                st_b(env, va + i, (data >> (i * 8)) & 0xff);
+                st_b_nolog(env, va + i, (data >> (i * 8)) & 0xff);
             }
         }
     }
@@ -926,6 +996,7 @@ static void st_w(CPULoongArchState *env, uint64_t va, uint32_t data) {
 static void st_d(CPULoongArchState *env, uint64_t va, uint64_t data) {
     const int data_size = 8;
     hwaddr ha = store_pa(env, va);
+    log_st_d(env, va, ha, data);
     if (is_io(ha)) {
 #if !defined(CONFIG_USER_ONLY)
         do_io_st(ha, data, data_size);
@@ -936,7 +1007,7 @@ static void st_d(CPULoongArchState *env, uint64_t va, uint64_t data) {
         } else {
             PERF_INC(COUNTER_INST_CROSS_PAGE_LOAD);
             for (int i = (data_size - 1); i >= 0; i--){
-                st_b(env, va + i, (data >> (i * 8)) & 0xff);
+                st_b_nolog(env, va + i, (data >> (i * 8)) & 0xff);
             }
         }
     }
@@ -1162,6 +1233,7 @@ static bool trans_sc_w(CPULoongArchState *env, arg_sc_w *restrict a) {
     hwaddr ha = store_pa(env, env->gpr[a->rj] + a->imm);
     if (FIELD_EX64(env->CSR_LLBCTL, CSR_LLBCTL, ROLLB) &&
         env->lladdr == ha && env->llval == ram_ldw(ha)) {
+        log_st_w(env, env->gpr[a->rj] + a->imm, ha, env->gpr[a->rd]);
         ram_stw(ha, env->gpr[a->rd]);
         env->gpr[a->rd] = 1;
     } else {
@@ -1183,6 +1255,7 @@ static bool trans_sc_d(CPULoongArchState *env, arg_sc_d *restrict a) {
     hwaddr ha = store_pa(env, env->gpr[a->rj] + a->imm);
     if (FIELD_EX64(env->CSR_LLBCTL, CSR_LLBCTL, ROLLB) &&
         env->lladdr == ha && env->llval == ram_ldd(ha)) {
+        log_st_d(env, env->gpr[a->rj] + a->imm, ha, env->gpr[a->rd]);
         ram_std(ha, env->gpr[a->rd]);
         env->gpr[a->rd] = 1;
     } else {
@@ -1212,6 +1285,7 @@ static bool trans_ammin_du(CPULoongArchState *env, arg_ammin_du *restrict a) {re
 static bool trans_amswap_db_w(CPULoongArchState *env, arg_amswap_db_w *restrict a) {
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
+    log_st_w(env, env->gpr[a->rj], ha, env->gpr[a->rk]);
     ram_stw(ha, env->gpr[a->rk]);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1220,6 +1294,7 @@ static bool trans_amswap_db_w(CPULoongArchState *env, arg_amswap_db_w *restrict 
 static bool trans_amswap_db_d(CPULoongArchState *env, arg_amswap_db_d *restrict a) {
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int64_t old_v = ram_ldd(ha);
+    log_st_d(env, env->gpr[a->rj], ha, env->gpr[a->rk]);
     ram_std(ha, env->gpr[a->rk]);
     env->gpr[a->rd] = old_v;
     env->pc += 4;
@@ -1229,6 +1304,7 @@ static bool trans_amadd_db_w(CPULoongArchState *env, arg_amadd_db_w *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = env->gpr[a->rk] + old_v;
+    log_st_w(env, env->gpr[a->rj], ha, new_v);
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1238,6 +1314,7 @@ static bool trans_amadd_db_d(CPULoongArchState *env, arg_amadd_db_d *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = env->gpr[a->rk] + old_v;
+    log_st_d(env, env->gpr[a->rj], ha, new_v);
     ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1247,6 +1324,7 @@ static bool trans_amand_db_w(CPULoongArchState *env, arg_amand_db_w *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = env->gpr[a->rk] & old_v;
+    log_st_w(env, env->gpr[a->rj], ha, new_v);
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1256,6 +1334,7 @@ static bool trans_amand_db_d(CPULoongArchState *env, arg_amand_db_d *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = env->gpr[a->rk] & old_v;
+    log_st_d(env, env->gpr[a->rj], ha, new_v);
     ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1265,6 +1344,7 @@ static bool trans_amor_db_w(CPULoongArchState *env, arg_amor_db_w *restrict a) {
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = env->gpr[a->rk] | old_v;
+    log_st_w(env, env->gpr[a->rj], ha, new_v);
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1274,6 +1354,7 @@ static bool trans_amor_db_d(CPULoongArchState *env, arg_amor_db_d *restrict a) {
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = env->gpr[a->rk] | old_v;
+    log_st_d(env, env->gpr[a->rj], ha, new_v);
     ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1283,6 +1364,7 @@ static bool trans_amxor_db_w(CPULoongArchState *env, arg_amxor_db_w *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = env->gpr[a->rk] ^ old_v;
+    log_st_w(env, env->gpr[a->rj], ha, new_v);
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1292,6 +1374,7 @@ static bool trans_amxor_db_d(CPULoongArchState *env, arg_amxor_db_d *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = env->gpr[a->rk] ^ old_v;
+    log_st_d(env, env->gpr[a->rj], ha, new_v);
     ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1301,6 +1384,7 @@ static bool trans_ammax_db_w(CPULoongArchState *env, arg_ammax_db_w *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = MAX((int32_t)env->gpr[a->rk], old_v);
+    log_st_w(env, env->gpr[a->rj], ha, new_v);
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1310,7 +1394,8 @@ static bool trans_ammax_db_d(CPULoongArchState *env, arg_ammax_db_d *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = MAX((int64_t)env->gpr[a->rk], old_v);
-    ram_stw(ha, new_v);
+    log_st_d(env, env->gpr[a->rj], ha, new_v);
+    ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
     return true;
@@ -1319,6 +1404,7 @@ static bool trans_ammin_db_w(CPULoongArchState *env, arg_ammin_db_w *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = MIN((int32_t)env->gpr[a->rk], old_v);
+    log_st_w(env, env->gpr[a->rj], ha, new_v);
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1328,7 +1414,8 @@ static bool trans_ammin_db_d(CPULoongArchState *env, arg_ammin_db_d *restrict a)
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = MIN((int64_t)env->gpr[a->rk], old_v);
-    ram_stw(ha, new_v);
+    log_st_d(env, env->gpr[a->rj], ha, new_v);
+    ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
     return true;
@@ -1337,6 +1424,7 @@ static bool trans_ammax_db_wu(CPULoongArchState *env, arg_ammax_db_wu *restrict 
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = MAX((uint32_t)env->gpr[a->rk], (uint32_t)old_v);
+    log_st_w(env, env->gpr[a->rj], ha, new_v);
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1346,7 +1434,8 @@ static bool trans_ammax_db_du(CPULoongArchState *env, arg_ammax_db_du *restrict 
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = MAX((uint64_t)env->gpr[a->rk], (uint64_t)old_v);
-    ram_stw(ha, new_v);
+    log_st_d(env, env->gpr[a->rj], ha, new_v);
+    ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
     return true;
@@ -1355,6 +1444,7 @@ static bool trans_ammin_db_wu(CPULoongArchState *env, arg_ammin_db_wu *restrict 
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int32_t old_v = ram_ldw(ha);
     int32_t new_v = MIN((uint32_t)env->gpr[a->rk], (uint32_t)old_v);
+    log_st_w(env, env->gpr[a->rj], ha, new_v);
     ram_stw(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
@@ -1364,7 +1454,8 @@ static bool trans_ammin_db_du(CPULoongArchState *env, arg_ammin_db_du *restrict 
     hwaddr ha = store_pa(env, env->gpr[a->rj]);
     int64_t old_v = ram_ldd(ha);
     int64_t new_v = MIN((uint64_t)env->gpr[a->rk], (uint64_t)old_v);
-    ram_stw(ha, new_v);
+    log_st_d(env, env->gpr[a->rj], ha, new_v);
+    ram_std(ha, new_v);
     env->gpr[a->rd] = (int64_t)old_v;
     env->pc += 4;
     return true;
@@ -1579,37 +1670,37 @@ static bool trans_asrtgt_d(CPULoongArchState *env, arg_asrtgt_d *restrict a) {
     return true;
 }
 static bool trans_rdtimel_w(CPULoongArchState *env, arg_rdtimel_w *restrict a) {
-#ifndef CONFIG_DIFF
-    long long tval = la_get_tval(env);
-    gen_set_gpr(env, a->rd, tval, EXT_SIGN);
-    env->gpr[a->rj] = 0;
-#else
-    gen_set_gpr(env, a->rd, env->timer, EXT_ZERO);
-    env->gpr[a->rj] = 0;
-#endif
+    if (fastforward) {
+        long long tval = la_get_tval(env);
+        gen_set_gpr(env, a->rd, tval, EXT_SIGN);
+        env->gpr[a->rj] = 0;
+    } else {
+        gen_set_gpr(env, a->rd, env->timer, EXT_ZERO);
+        env->gpr[a->rj] = 0;
+    }
     env->pc += 4;
     return true;
 }
 static bool trans_rdtimeh_w(CPULoongArchState *env, arg_rdtimeh_w *restrict a) {
-#ifndef CONFIG_DIFF
-    long long tval = la_get_tval(env);
-    gen_set_gpr(env, a->rd, tval >> 32, EXT_SIGN);
-    env->gpr[a->rj] = 0;
-#else
-    gen_set_gpr(env, a->rd, env->timer >> 32, EXT_ZERO);
-    env->gpr[a->rj] = 0;
-#endif
+    if (fastforward) {
+        long long tval = la_get_tval(env);
+        gen_set_gpr(env, a->rd, tval >> 32, EXT_SIGN);
+        env->gpr[a->rj] = 0;
+    } else {
+        gen_set_gpr(env, a->rd, env->timer >> 32, EXT_ZERO);
+        env->gpr[a->rj] = 0;
+    }
     env->pc += 4;
     return true;
 }
 static bool trans_rdtime_d(CPULoongArchState *env, arg_rdtime_d *restrict a) {
-#ifndef CONFIG_DIFF
-    env->gpr[a->rd] = la_get_tval(env);
-    env->gpr[a->rj] = 0;
-#else
-    gen_set_gpr(env, a->rd, env->timer, EXT_ZERO);
-    env->gpr[a->rj] = 0;
-#endif
+    if (fastforward) {
+        env->gpr[a->rd] = la_get_tval(env);
+        env->gpr[a->rj] = 0;
+    } else {
+        gen_set_gpr(env, a->rd, env->timer, EXT_NONE);
+        env->gpr[a->rj] = 0;
+    }
     env->pc += 4;
     return true;
 }
@@ -1803,7 +1894,7 @@ static bool trans_fsel(CPULoongArchState *env, arg_fsel *restrict a) {
 }
 static bool trans_movgr2fr_w(CPULoongArchState *env, arg_movgr2fr_w *restrict a) {
     CHECK_FPE(8);
-    env->fpr[a->fd].vreg.W[0] = env->gpr[a->rj];
+    env->fpr[a->fd].vreg.D[0] = env->gpr[a->rj] | 0xffffffff00000000;
     env->pc += 4;
     return true;
 }
@@ -2105,15 +2196,15 @@ uint64_t helper_read_csr(CPULoongArchState *env, int csr_index) {
         case LOONGARCH_CSR_BADV           :old_v = env->CSR_BADV; break;
         case LOONGARCH_CSR_BADI           :old_v = env->CSR_BADI; break;
         case LOONGARCH_CSR_EENTRY         :old_v = env->CSR_EENTRY; break;
-        case LOONGARCH_CSR_TLBIDX         :old_v = sextract64(env->CSR_TLBIDX, 0, 32); break;
-        case LOONGARCH_CSR_TLBEHI         :old_v = sextract64(env->CSR_TLBEHI, 0, FIELD_EX64(env->cpucfg[1], CPUCFG1, VALEN) + 1); break;
+        case LOONGARCH_CSR_TLBIDX         :old_v = extract64(env->CSR_TLBIDX, 0, 32); break;
+        case LOONGARCH_CSR_TLBEHI         :old_v = extract64(env->CSR_TLBEHI, 0, FIELD_EX64(env->cpucfg[1], CPUCFG1, VALEN) + 1); break;
         case LOONGARCH_CSR_TLBELO0        :old_v = env->CSR_TLBELO0; break;
         case LOONGARCH_CSR_TLBELO1        :old_v = env->CSR_TLBELO1; break;
         case LOONGARCH_CSR_ASID           :old_v = env->CSR_ASID; break;
         case LOONGARCH_CSR_PGDL           :old_v = env->CSR_PGDL; break;
         case LOONGARCH_CSR_PGDH           :old_v = env->CSR_PGDH; break;
         case LOONGARCH_CSR_PGD            :old_v = helper_csrrd_pgd(env); break;
-        case LOONGARCH_CSR_PWCL           :old_v = sextract64(env->CSR_PWCL, 0, 32); break;
+        case LOONGARCH_CSR_PWCL           :old_v = extract64(env->CSR_PWCL, 0, 32); break;
         case LOONGARCH_CSR_PWCH           :old_v = env->CSR_PWCH; break;
         case LOONGARCH_CSR_STLBPS         :old_v = env->CSR_STLBPS; break;
         case LOONGARCH_CSR_RVACFG         :old_v = env->CSR_RVACFG; break;
@@ -2129,7 +2220,7 @@ uint64_t helper_read_csr(CPULoongArchState *env, int csr_index) {
         case LOONGARCH_CSR_SAVE(5)        :old_v = env->CSR_SAVE[5]; break;
         case LOONGARCH_CSR_SAVE(6)        :old_v = env->CSR_SAVE[6]; break;
         case LOONGARCH_CSR_SAVE(7)        :old_v = env->CSR_SAVE[7]; break;
-        case LOONGARCH_CSR_TID            :old_v = sextract64(env->CSR_TID, 0, 32); break;
+        case LOONGARCH_CSR_TID            :old_v = extract64(env->CSR_TID, 0, 32); break;
         case LOONGARCH_CSR_TCFG           :old_v = env->CSR_TCFG; break;
         case LOONGARCH_CSR_TVAL           :old_v = env->timer_counter; break;
         case LOONGARCH_CSR_CNTC           :old_v = env->CSR_CNTC; break;
@@ -2143,7 +2234,7 @@ uint64_t helper_read_csr(CPULoongArchState *env, int csr_index) {
         case LOONGARCH_CSR_TLBRSAVE       :old_v = env->CSR_TLBRSAVE; break;
         case LOONGARCH_CSR_TLBRELO0       :old_v = env->CSR_TLBRELO0; break;
         case LOONGARCH_CSR_TLBRELO1       :old_v = env->CSR_TLBRELO1; break;
-        case LOONGARCH_CSR_TLBREHI        :old_v = sextract64(env->CSR_TLBREHI, 0, FIELD_EX64(env->cpucfg[1], CPUCFG1, VALEN) + 1); break;
+        case LOONGARCH_CSR_TLBREHI        :old_v = extract64(env->CSR_TLBREHI, 0, FIELD_EX64(env->cpucfg[1], CPUCFG1, VALEN) + 1); break;
         case LOONGARCH_CSR_TLBRPRMD       :old_v = env->CSR_TLBRPRMD; break;
         case LOONGARCH_CSR_MERRCTL        :old_v = env->CSR_MERRCTL; break;
         case LOONGARCH_CSR_MERRINFO1      :old_v = env->CSR_MERRINFO1; break;
@@ -2199,15 +2290,15 @@ uint64_t helper_write_csr(CPULoongArchState *env, int csr_index, uint64_t new_v,
         case LOONGARCH_CSR_BADV           :old_v = env->CSR_BADV; env->CSR_BADV = mask_write(env->CSR_BADV, new_v, mask); break;
         case LOONGARCH_CSR_BADI           :old_v = env->CSR_BADI; break;
         case LOONGARCH_CSR_EENTRY         :old_v = env->CSR_EENTRY; env->CSR_EENTRY = mask_write(env->CSR_EENTRY, new_v, mask & LOONGARCH_CSR_EENTRY_WMASK); break;
-        case LOONGARCH_CSR_TLBIDX         :old_v = sextract64(env->CSR_TLBIDX, 0, 32); env->CSR_TLBIDX = mask_write(env->CSR_TLBIDX, new_v, mask & LOONGARCH_CSR_TLBIDX_WMASK); break;
-        case LOONGARCH_CSR_TLBEHI         :old_v = sextract64(env->CSR_TLBEHI, 0, FIELD_EX64(env->cpucfg[1], CPUCFG1, VALEN) + 1); env->CSR_TLBEHI = mask_write(env->CSR_TLBEHI, new_v, mask & LOONGARCH_CSR_TLBEHI_64_WMASK); break;
+        case LOONGARCH_CSR_TLBIDX         :old_v = extract64(env->CSR_TLBIDX, 0, 32); env->CSR_TLBIDX = mask_write(env->CSR_TLBIDX, new_v, mask & LOONGARCH_CSR_TLBIDX_WMASK); break;
+        case LOONGARCH_CSR_TLBEHI         :old_v = extract64(env->CSR_TLBEHI, 0, FIELD_EX64(env->cpucfg[1], CPUCFG1, VALEN) + 1); env->CSR_TLBEHI = mask_write(env->CSR_TLBEHI, new_v, mask & LOONGARCH_CSR_TLBEHI_64_WMASK); break;
         case LOONGARCH_CSR_TLBELO0        :old_v = env->CSR_TLBELO0; env->CSR_TLBELO0 = mask_write(env->CSR_TLBELO0, new_v, mask & LOONGARCH_CSR_TLBELO_64_WMASK); break;
         case LOONGARCH_CSR_TLBELO1        :old_v = env->CSR_TLBELO1; env->CSR_TLBELO1 = mask_write(env->CSR_TLBELO1, new_v, mask & LOONGARCH_CSR_TLBELO_64_WMASK); break;
         case LOONGARCH_CSR_ASID           :old_v = env->CSR_ASID; env->CSR_ASID = mask_write(env->CSR_ASID, new_v, mask & LOONGARCH_CSR_ASID_WMASK); cpu_clear_tc(env); break;
         case LOONGARCH_CSR_PGDL           :old_v = env->CSR_PGDL; env->CSR_PGDL = mask_write(env->CSR_PGDL, new_v, mask & LOONGARCH_CSR_PGDL_WMASK); break;
         case LOONGARCH_CSR_PGDH           :old_v = env->CSR_PGDH; env->CSR_PGDH = mask_write(env->CSR_PGDH, new_v, mask & LOONGARCH_CSR_PGDH_WMASK); break;
         case LOONGARCH_CSR_PGD            :old_v = helper_csrrd_pgd(env); break;
-        case LOONGARCH_CSR_PWCL           :old_v = sextract64(env->CSR_PWCL, 0, 32); env->CSR_PWCL = mask_write(env->CSR_PWCL, new_v, mask & LOONGARCH_CSR_PWCL_WMASK); break;
+        case LOONGARCH_CSR_PWCL           :old_v = extract64(env->CSR_PWCL, 0, 32); env->CSR_PWCL = mask_write(env->CSR_PWCL, new_v, mask & LOONGARCH_CSR_PWCL_WMASK); break;
         case LOONGARCH_CSR_PWCH           :old_v = env->CSR_PWCH; env->CSR_PWCH = mask_write(env->CSR_PWCH, new_v, mask & LOONGARCH_CSR_PWCH_WMASK); break;
         case LOONGARCH_CSR_STLBPS         :old_v = env->CSR_STLBPS; env->CSR_STLBPS = mask_write(env->CSR_STLBPS, new_v, mask & LOONGARCH_CSR_STLBPS_WMASK); cpu_clear_tc(env); break;
         case LOONGARCH_CSR_RVACFG         :old_v = env->CSR_RVACFG; env->CSR_RVACFG = mask_write(env->CSR_RVACFG, new_v, mask & LOONGARCH_CSR_RVACFG_WMASK); break;
@@ -2223,23 +2314,23 @@ uint64_t helper_write_csr(CPULoongArchState *env, int csr_index, uint64_t new_v,
         case LOONGARCH_CSR_SAVE(5)        :old_v = env->CSR_SAVE[5]; env->CSR_SAVE[5] = mask_write(env->CSR_SAVE[5], new_v, mask); break;
         case LOONGARCH_CSR_SAVE(6)        :old_v = env->CSR_SAVE[6]; env->CSR_SAVE[6] = mask_write(env->CSR_SAVE[6], new_v, mask); break;
         case LOONGARCH_CSR_SAVE(7)        :old_v = env->CSR_SAVE[7]; env->CSR_SAVE[7] = mask_write(env->CSR_SAVE[7], new_v, mask); break;
-        case LOONGARCH_CSR_TID            :old_v = sextract64(env->CSR_TID, 0, 32); env->CSR_TID = mask_write(env->CSR_TID, new_v, mask & LOONGARCH_CSR_TID_WMASK); break;
+        case LOONGARCH_CSR_TID            :old_v = extract64(env->CSR_TID, 0, 32); env->CSR_TID = mask_write(env->CSR_TID, new_v, mask & LOONGARCH_CSR_TID_WMASK); break;
         case LOONGARCH_CSR_TCFG           :old_v = env->CSR_TCFG; env->CSR_TCFG = mask_write(env->CSR_TCFG, new_v, mask);
-#ifndef CONFIG_DIFF
-            if (env->CSR_TCFG & 1) {
-                if (determined) {
-                    env->timer_counter = (env->CSR_TCFG & CONSTANT_TIMER_TICK_MASK) / TIME_SCALE;
+            if (fastforward) {
+                if (env->CSR_TCFG & 1) {
+                    if (determined) {
+                        env->timer_counter = (env->CSR_TCFG & CONSTANT_TIMER_TICK_MASK) / TIME_SCALE;
+                    } else {
+                        cpu_settimer(env, env->CSR_TCFG & CONSTANT_TIMER_TICK_MASK);
+                    }
                 } else {
-                    cpu_settimer(env, env->CSR_TCFG & CONSTANT_TIMER_TICK_MASK);
-                }
-            } else {
-                if (determined) {
-                    env->timer_counter = -1;
-                } else {
-                    cpu_disable_timer(env);
+                    if (determined) {
+                        env->timer_counter = -1;
+                    } else {
+                        cpu_disable_timer(env);
+                    }
                 }
             }
-#endif
             break;
         case LOONGARCH_CSR_TVAL           :old_v = env->CSR_TVAL; break;
         case LOONGARCH_CSR_CNTC           :old_v = env->CSR_CNTC; env->CSR_CNTC = mask_write(env->CSR_CNTC, new_v, mask); break;
@@ -2265,7 +2356,7 @@ uint64_t helper_write_csr(CPULoongArchState *env, int csr_index, uint64_t new_v,
         case LOONGARCH_CSR_TLBRSAVE       :old_v = env->CSR_TLBRSAVE; env->CSR_TLBRSAVE = mask_write(env->CSR_TLBRSAVE, new_v, mask); break;
         case LOONGARCH_CSR_TLBRELO0       :old_v = env->CSR_TLBRELO0; env->CSR_TLBRELO0 = mask_write(env->CSR_TLBRELO0, new_v, mask & LOONGARCH_CSR_TLBRELO_64_WMASK); break;
         case LOONGARCH_CSR_TLBRELO1       :old_v = env->CSR_TLBRELO1; env->CSR_TLBRELO1 = mask_write(env->CSR_TLBRELO1, new_v, mask & LOONGARCH_CSR_TLBRELO_64_WMASK); break;
-        case LOONGARCH_CSR_TLBREHI        :old_v = sextract64(env->CSR_TLBREHI, 0, FIELD_EX64(env->cpucfg[1], CPUCFG1, VALEN) + 1); env->CSR_TLBREHI = mask_write(env->CSR_TLBREHI, new_v, mask & LOONGARCH_CSR_TLBREHI_64_WMASK); break;
+        case LOONGARCH_CSR_TLBREHI        :old_v = extract64(env->CSR_TLBREHI, 0, FIELD_EX64(env->cpucfg[1], CPUCFG1, VALEN) + 1); env->CSR_TLBREHI = mask_write(env->CSR_TLBREHI, new_v, mask & LOONGARCH_CSR_TLBREHI_64_WMASK); break;
         case LOONGARCH_CSR_TLBRPRMD       :old_v = env->CSR_TLBRPRMD; env->CSR_TLBRPRMD = mask_write(env->CSR_TLBRPRMD, new_v, mask & LOONGARCH_CSR_TLBRPRMD_WMASK); break;
         case LOONGARCH_CSR_MERRCTL        :old_v = env->CSR_MERRCTL; env->CSR_MERRCTL = mask_write(env->CSR_MERRCTL, new_v, mask); break;
         case LOONGARCH_CSR_MERRINFO1      :old_v = env->CSR_MERRINFO1; env->CSR_MERRINFO1 = mask_write(env->CSR_MERRINFO1, new_v, mask); break;
@@ -2313,35 +2404,35 @@ static bool trans_csrxchg(CPULoongArchState *env, arg_csrxchg *restrict a) {
 }
 static bool trans_iocsrrd_b(CPULoongArchState *env, arg_iocsrrd_b *restrict a) {
     CHECK_PLV(0);
+    env->gpr[a->rd] = 0;
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
     env->pc += 4;
     return true;
 }
 static bool trans_iocsrrd_h(CPULoongArchState *env, arg_iocsrrd_h *restrict a) {
     CHECK_PLV(0);
+    env->gpr[a->rd] = 0;
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
-    a->rd = 0;
     env->pc += 4;
     return true;
 }
 static bool trans_iocsrrd_w(CPULoongArchState *env, arg_iocsrrd_w *restrict a) {
     CHECK_PLV(0);
+    env->gpr[a->rd] = 0;
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
-    a->rd = 0;
     env->pc += 4;
     return true;
 }
 static bool trans_iocsrrd_d(CPULoongArchState *env, arg_iocsrrd_d *restrict a) {
     CHECK_PLV(0);
+    env->gpr[a->rd] = 0;
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
-    a->rd = 0;
     env->pc += 4;
     return true;
 }
 static bool trans_iocsrwr_b(CPULoongArchState *env, arg_iocsrwr_b *restrict a) {
     CHECK_PLV(0);
     fprintf(stderr, "NOT IMPLEMENTED %s pc:%lx addr:%lx\n", __func__, env->pc, env->gpr[a->rj]);
-    a->rd = 0;
     env->pc += 4;
     return true;
 }

@@ -73,9 +73,9 @@ static int loongarch_map_tlb_entry(CPULoongArchState *env, hwaddr *physical,
     if ((access_type == MMU_DATA_STORE) && !tlb_d) {
         return TLBRET_DIRTY;
     }
-
     *physical = (tlb_ppn << R_TLBENTRY_64_PPN_SHIFT) |
                 (address & MAKE_64BIT_MASK(0, tlb_ps));
+    
     *prot = PAGE_READ;
     if (tlb_d) {
         *prot |= PAGE_WRITE;
@@ -176,7 +176,6 @@ static void hw_ptw_setVD(uint64_t* csr_tlbrelo,
         *csr_tlbrelo = FIELD_DP64(*csr_tlbrelo, TLBENTRY, D, 1);
         write_d = true;
     }
-
     uint64_t pte = ram_ldd(pte_addr & TARGET_PHYS_MASK);
     if (write_v) {
         pte = FIELD_DP64(pte, TLBENTRY, V, 1);
@@ -187,14 +186,14 @@ static void hw_ptw_setVD(uint64_t* csr_tlbrelo,
 
     ram_std(pte_addr & TARGET_PHYS_MASK, pte);
 }
-
 static int loongarch_map_address(CPULoongArchState *env, hwaddr *physical,
                                  int *prot, target_ulong address,
                                  MMUAccessType access_type, int mmu_idx)
 {
     int index, match, tlbret;
-
+    int counter = 2;
 again:
+    counter--;
     match = loongarch_tlb_search(env, address, &index);
     if (match) {
         tlbret = loongarch_map_tlb_entry(env, physical, prot,
@@ -203,7 +202,7 @@ again:
             return tlbret;
         }
     }
-
+    if (counter == 0) return TLBRET_NOMATCH;
     if (enable_hw_ptw(env) && (!match || (match && tlbret == TLBRET_PTW_SET_D)))
     {
         // save tlbr csr state
@@ -241,6 +240,8 @@ again:
 
         helper_ldpte(env, pt_base, 0, 0, &pte0_phys_addr);
         helper_ldpte(env, pt_base, 1, 0, &pte1_phys_addr);
+        // printf("pte0_phys_addr=0x%lx,lo0=0x%lx\n", pte0_phys_addr, env->CSR_TLBRELO0);
+        // printf("pte1_phys_addr=0x%lx,lo1=0x%lx\n", pte1_phys_addr, env->CSR_TLBRELO1);
 
         if (ptw_hw_setVD) {
             if (is_huge) {
@@ -297,7 +298,7 @@ static hwaddr dmw_va2pa(CPULoongArchState *env, target_ulong va,
                         target_ulong dmw)
 {
     if (is_la64(env)) {
-        return va & TARGET_VIRT_MASK;
+        return va & DIFF_PHYSICAL_MASK;
     } else {
         uint32_t pseg = FIELD_EX32(dmw, CSR_DMW_32, PSEG);
         return (va & MAKE_64BIT_MASK(0, R_CSR_DMW_32_VSEG_SHIFT)) | \
@@ -318,7 +319,7 @@ int get_physical_address(CPULoongArchState *env, hwaddr *physical,
 
     /* Check PG and DA */
     if (da & !pg) {
-        *physical = address & TARGET_PHYS_MASK;
+        *physical = address & DIFF_PHYSICAL_MASK;
         *prot = PAGE_READ | PAGE_WRITE | PAGE_EXEC;
         return TLBRET_MATCH;
     }

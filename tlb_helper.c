@@ -16,8 +16,21 @@
 // #include "exec/cpu_ldst.h"
 // #include "exec/log.h"
 // #include "cpu-csr.h"
+extern int64_t singlestep;
 
-#define tlb_flush(...) ;
+void tlb_flush(CPUState *cpu)
+{
+    cpu_clear_tc(cpu_env(cpu));
+}
+
+bool check_ps(CPULoongArchState *env, uint8_t tlb_ps)
+{
+    if (tlb_ps >= 64) {
+        return false;
+    }
+    // return BIT_ULL(tlb_ps) & (env->CSR_PRCFG2);
+    return tlb_ps;
+}
 
 void get_dir_base_width(CPULoongArchState *env, uint64_t *dir_base,
                                uint64_t *dir_width, target_ulong level)
@@ -69,16 +82,6 @@ static void raise_mmu_exception(CPULoongArchState *env, target_ulong address,
         }
         env->CSR_TLBRERA = FIELD_DP64(env->CSR_TLBRERA, CSR_TLBRERA, ISTLBR, 1);
         break;
-    case TLBRET_INVALID:
-        /* TLB match with no valid bit */
-        if (access_type == MMU_DATA_LOAD) {
-            cs->exception_index = EXCCODE_PIL;
-        } else if (access_type == MMU_DATA_STORE) {
-            cs->exception_index = EXCCODE_PIS;
-        } else if (access_type == MMU_INST_FETCH) {
-            cs->exception_index = EXCCODE_PIF;
-        }
-        break;
     case TLBRET_DIRTY:
         /* TLB match but 'D' bit is cleared */
         cs->exception_index = EXCCODE_PME;
@@ -95,6 +98,17 @@ static void raise_mmu_exception(CPULoongArchState *env, target_ulong address,
         /* Privileged Exception */
         cs->exception_index = EXCCODE_PPI;
         break;
+    case TLBRET_INVALID:
+        /* TLB match with no valid bit */
+        if (access_type == MMU_DATA_LOAD) {
+            cs->exception_index = EXCCODE_PIL;
+        } else if (access_type == MMU_DATA_STORE) {
+            cs->exception_index = EXCCODE_PIS;
+        } else if (access_type == MMU_INST_FETCH) {
+            cs->exception_index = EXCCODE_PIF;
+        }
+        break;
+
     }
 
     if (tlb_error == TLBRET_NOMATCH) {
@@ -200,8 +214,10 @@ static void fill_tlb_entry(CPULoongArchState *env, int index)
         lo1 = env->CSR_TLBELO1;
     }
 
-    if (csr_ps == 0) {
-        qemu_log_mask(CPU_LOG_MMU, "page size is 0\n");
+    /*check csr_ps */
+    if (!check_ps(env, csr_ps)) {
+        qemu_log_mask(LOG_GUEST_ERROR, "csr_ps %d is illegal\n", csr_ps);
+        return;
     }
 
     /* Only MTLB has the ps fields */
@@ -317,12 +333,20 @@ void helper_tlbfill(CPULoongArchState *env)
         pagesize = FIELD_EX64(env->CSR_TLBIDX, CSR_TLBIDX, PS);
     }
 
+    if (!check_ps(env, pagesize)) {
+        qemu_log_mask(LOG_GUEST_ERROR, "pagesize %d is illegal\n", pagesize);
+        return;
+    }
+
     stlb_ps = FIELD_EX64(env->CSR_STLBPS, CSR_STLBPS, PS);
+    if (!check_ps(env, stlb_ps)) {
+        qemu_log_mask(LOG_GUEST_ERROR, "stlb_ps %d is illegal\n", stlb_ps);
+        return;
+    }
 
     if (pagesize == stlb_ps) {
         /* Only write into STLB bits [47:13] */
         address = entryhi & ~MAKE_64BIT_MASK(0, R_CSR_TLBEHI_64_VPPN_SHIFT);
-
         /* Choose one set ramdomly */
         set = get_random_tlb(0, 7);
 
@@ -446,7 +470,11 @@ void helper_invtlb_page_asid(CPULoongArchState *env, target_ulong info,
         uint16_t tlb_asid = FIELD_EX64(tlb->tlb_misc, TLB_MISC, ASID);
         uint64_t vpn, tlb_vppn;
         uint8_t tlb_ps, compare_shift;
+        uint8_t tlb_e = FIELD_EX64(tlb->tlb_misc, TLB_MISC, E);
 
+        if (!tlb_e) {
+            continue;
+        }
         if (i >= LOONGARCH_STLB) {
             tlb_ps = FIELD_EX64(tlb->tlb_misc, TLB_MISC, PS);
         } else {
@@ -475,7 +503,11 @@ void helper_invtlb_page_asid_or_g(CPULoongArchState *env,
         uint16_t tlb_asid = FIELD_EX64(tlb->tlb_misc, TLB_MISC, ASID);
         uint64_t vpn, tlb_vppn;
         uint8_t tlb_ps, compare_shift;
+        uint8_t tlb_e = FIELD_EX64(tlb->tlb_misc, TLB_MISC, E);
 
+        if (!tlb_e) {
+            continue;
+        }
         if (i >= LOONGARCH_STLB) {
             tlb_ps = FIELD_EX64(tlb->tlb_misc, TLB_MISC, PS);
         } else {
@@ -547,6 +579,7 @@ target_ulong helper_lddir(CPULoongArchState *env, target_ulong base,
         if (unlikely(level == 4)) {
             qemu_log_mask(LOG_GUEST_ERROR,
                           "Attempted use of level 4 huge page\n");
+            return base;
         }
 
         if (FIELD_EX64(base, TLBENTRY, LEVEL)) {
@@ -696,20 +729,23 @@ int probe_get_physical_address(CPULoongArchState *env, hwaddr *physical,
 }
 void helper_ertn(CPULoongArchState *env)
 {
-    uint64_t csr_pplv, csr_pie;
+    uint64_t csr_pplv, csr_pie, csr_pwe;
     if (FIELD_EX64(env->CSR_TLBRERA, CSR_TLBRERA, ISTLBR)) {
         csr_pplv = FIELD_EX64(env->CSR_TLBRPRMD, CSR_TLBRPRMD, PPLV);
         csr_pie = FIELD_EX64(env->CSR_TLBRPRMD, CSR_TLBRPRMD, PIE);
+        csr_pwe = FIELD_EX64(env->CSR_TLBRPRMD, CSR_TLBRPRMD, PWE);
 
         env->CSR_TLBRERA = FIELD_DP64(env->CSR_TLBRERA, CSR_TLBRERA, ISTLBR, 0);
         env->CSR_CRMD = FIELD_DP64(env->CSR_CRMD, CSR_CRMD, DA, 0);
         env->CSR_CRMD = FIELD_DP64(env->CSR_CRMD, CSR_CRMD, PG, 1);
         set_pc(env, env->CSR_TLBRERA);
+        printf("tlb ertn: %lx\n", env->CSR_TLBRERA);
         qemu_log_mask(CPU_LOG_INT, "%s: TLBRERA " TARGET_FMT_lx "\n",
                       __func__, env->CSR_TLBRERA);
     } else {
         csr_pplv = FIELD_EX64(env->CSR_PRMD, CSR_PRMD, PPLV);
         csr_pie = FIELD_EX64(env->CSR_PRMD, CSR_PRMD, PIE);
+        csr_pwe = FIELD_EX64(env->CSR_PRMD, CSR_PRMD, PWE);
 
         set_pc(env, env->CSR_ERA);
         qemu_log_mask(CPU_LOG_INT, "%s: ERA " TARGET_FMT_lx "\n",
@@ -717,6 +753,8 @@ void helper_ertn(CPULoongArchState *env)
     }
     env->CSR_CRMD = FIELD_DP64(env->CSR_CRMD, CSR_CRMD, PLV, csr_pplv);
     env->CSR_CRMD = FIELD_DP64(env->CSR_CRMD, CSR_CRMD, IE, csr_pie);
+    env->CSR_CRMD = FIELD_DP64(env->CSR_CRMD, CSR_CRMD, WE, csr_pwe);
+    env->CSR_PRMD = env->CSR_PRMD & 0xfffffffffffffff0;
 
     if (FIELD_EX64(env->CSR_LLBCTL, CSR_LLBCTL, KLO) != 1) {
         env->CSR_LLBCTL = FIELD_DP64(env->CSR_LLBCTL, CSR_LLBCTL, ROLLB, 0);

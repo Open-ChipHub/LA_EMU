@@ -400,7 +400,7 @@ uint64_t helper_fmuladd_d(CPULoongArchState *env, uint64_t fj,
 }
 
 static uint64_t fcmp_common(CPULoongArchState *env, FloatRelation cmp,
-                            uint32_t flags)
+                            uint32_t flags, bool update_csr)
 {
     bool ret;
 
@@ -420,7 +420,8 @@ static uint64_t fcmp_common(CPULoongArchState *env, FloatRelation cmp,
     default:
         g_assert_not_reached();
     }
-    update_fcsr0(env, GETPC());
+    if (update_csr)
+        update_fcsr0(env, GETPC());
 
     return ret;
 }
@@ -431,7 +432,7 @@ uint64_t helper_fcmp_c_s(CPULoongArchState *env, uint64_t fj,
 {
     FloatRelation cmp = float32_compare_quiet((uint32_t)fj,
                                               (uint32_t)fk, &env->fp_status);
-    return fcmp_common(env, cmp, flags);
+    return fcmp_common(env, cmp, flags, false);
 }
 
 /* fcmp_sXXX_s */
@@ -440,7 +441,7 @@ uint64_t helper_fcmp_s_s(CPULoongArchState *env, uint64_t fj,
 {
     FloatRelation cmp = float32_compare((uint32_t)fj,
                                         (uint32_t)fk, &env->fp_status);
-    return fcmp_common(env, cmp, flags);
+    return fcmp_common(env, cmp, flags, true);
 }
 
 /* fcmp_cXXX_d */
@@ -448,7 +449,7 @@ uint64_t helper_fcmp_c_d(CPULoongArchState *env, uint64_t fj,
                          uint64_t fk, uint32_t flags)
 {
     FloatRelation cmp = float64_compare_quiet(fj, fk, &env->fp_status);
-    return fcmp_common(env, cmp, flags);
+    return fcmp_common(env, cmp, flags, false);
 }
 
 /* fcmp_sXXX_d */
@@ -456,7 +457,7 @@ uint64_t helper_fcmp_s_d(CPULoongArchState *env, uint64_t fj,
                          uint64_t fk, uint32_t flags)
 {
     FloatRelation cmp = float64_compare(fj, fk, &env->fp_status);
-    return fcmp_common(env, cmp, flags);
+    return fcmp_common(env, cmp, flags, true);
 }
 
 /* floating point conversion */

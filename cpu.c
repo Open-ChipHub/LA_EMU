@@ -256,6 +256,115 @@ void loongarch_la464_initfn(CPULoongArchState* env) {
     env->CSR_PRCFG3 = FIELD_DP64(env->CSR_PRCFG3, CSR_PRCFG3, STLB_SETS, 8);
 }
 
+void loongarch_openc906_initfn(CPULoongArchState* env) {
+    int i;
+
+    for (i = 0; i < 21; i++) {
+        env->cpucfg[i] = 0x0;
+    }
+    env->cpucfg[0] = 0x149000;  /* PRID */
+
+    uint32_t data = 0;
+    data = FIELD_DP32(data, CPUCFG1, ARCH, 2);
+    data = FIELD_DP32(data, CPUCFG1, PGMMU, 1);
+    data = FIELD_DP32(data, CPUCFG1, IOCSR, 1);
+    data = FIELD_DP32(data, CPUCFG1, PALEN, 0x2f);
+    data = FIELD_DP32(data, CPUCFG1, VALEN, 0x2f);
+    data = FIELD_DP32(data, CPUCFG1, UAL, 1);
+    data = FIELD_DP32(data, CPUCFG1, RI, 1);
+    data = FIELD_DP32(data, CPUCFG1, EP, 1);
+    data = FIELD_DP32(data, CPUCFG1, RPLV, 1);
+    data = FIELD_DP32(data, CPUCFG1, HP, 1);
+    data = FIELD_DP32(data, CPUCFG1, IOCSR_BRD, 1);
+    env->cpucfg[1] = 0x312f266;
+
+    data = 0;
+    data = FIELD_DP32(data, CPUCFG2, FP, 1);
+    data = FIELD_DP32(data, CPUCFG2, FP_SP, 1);
+    data = FIELD_DP32(data, CPUCFG2, FP_DP, 1);
+    data = FIELD_DP32(data, CPUCFG2, FP_VER, 1);
+    data = FIELD_DP32(data, CPUCFG2, LSX, 1),
+    data = FIELD_DP32(data, CPUCFG2, LASX, 1),
+    data = FIELD_DP32(data, CPUCFG2, LLFTP, 1);
+    data = FIELD_DP32(data, CPUCFG2, LLFTP_VER, 1);
+    data = FIELD_DP32(data, CPUCFG2, LSPW, 1);
+    data = FIELD_DP32(data, CPUCFG2, LAM, 1);
+    env->cpucfg[2] = 0x140400f;
+
+    env->cpucfg[4] = 0x5f5e100; /* Crystal frequency */
+
+    data = 0;
+    data = FIELD_DP32(data, CPUCFG5, CC_MUL, 1);
+    data = FIELD_DP32(data, CPUCFG5, CC_DIV, 1);
+    env->cpucfg[5] = 0x10001;
+
+    env->cpucfg[6] = 0x7f32;
+    env->cpucfg[10] = 0x5;
+    env->cpucfg[11] = 0x6080002;
+    env->cpucfg[12] = 0x6070004;
+
+    data = 0;
+    data = FIELD_DP32(data, CPUCFG16, L1_IUPRE, 1);
+    data = FIELD_DP32(data, CPUCFG16, L1_DPRE, 1);
+    data = FIELD_DP32(data, CPUCFG16, L2_IUPRE, 1);
+    data = FIELD_DP32(data, CPUCFG16, L2_IUUNIFY, 1);
+    data = FIELD_DP32(data, CPUCFG16, L2_IUPRIV, 1);
+    data = FIELD_DP32(data, CPUCFG16, L3_IUPRE, 1);
+    data = FIELD_DP32(data, CPUCFG16, L3_IUUNIFY, 1);
+    data = FIELD_DP32(data, CPUCFG16, L3_IUINCL, 1);
+    env->cpucfg[16] = 0x5;
+    // env->cpucfg[16] = data;
+
+    data = 0;
+    data = FIELD_DP32(data, CPUCFG17, L1IU_WAYS, 3);
+    data = FIELD_DP32(data, CPUCFG17, L1IU_SETS, 8);
+    data = FIELD_DP32(data, CPUCFG17, L1IU_SIZE, 6);
+    env->cpucfg[17] = 0x6080002;
+    // env->cpucfg[17] = data;
+
+    data = 0;
+    data = FIELD_DP32(data, CPUCFG18, L1D_WAYS, 3);
+    data = FIELD_DP32(data, CPUCFG18, L1D_SETS, 8);
+    data = FIELD_DP32(data, CPUCFG18, L1D_SIZE, 6);
+    env->cpucfg[18] = 0x6070004;
+    // env->cpucfg[18] = data;
+
+    data = 0;
+    data = FIELD_DP32(data, CPUCFG19, L2IU_WAYS, 15);
+    data = FIELD_DP32(data, CPUCFG19, L2IU_SETS, 8);
+    data = FIELD_DP32(data, CPUCFG19, L2IU_SIZE, 6);
+    // env->cpucfg[19] = data;
+
+    data = 0;
+    data = FIELD_DP32(data, CPUCFG20, L3IU_WAYS, 15);
+    data = FIELD_DP32(data, CPUCFG20, L3IU_SETS, 14);
+    data = FIELD_DP32(data, CPUCFG20, L3IU_SIZE, 6);
+    // env->cpucfg[20] = data;
+
+    // env->CSR_ASID = FIELD_DP64(0, CSR_ASID, ASIDBITS, 0xa);
+
+    // env->CSR_PRCFG1 = FIELD_DP64(env->CSR_PRCFG1, CSR_PRCFG1, SAVE_NUM, 8);
+    // env->CSR_PRCFG1 = FIELD_DP64(env->CSR_PRCFG1, CSR_PRCFG1, TIMER_BITS, 0x2f);
+    // env->CSR_PRCFG1 = FIELD_DP64(env->CSR_PRCFG1, CSR_PRCFG1, VSMAX, 7);
+
+    // env->CSR_PRCFG2 = 0x3ffff000;
+
+    // env->CSR_PRCFG3 = FIELD_DP64(env->CSR_PRCFG3, CSR_PRCFG3, TLB_TYPE, 2);
+    // env->CSR_PRCFG3 = FIELD_DP64(env->CSR_PRCFG3, CSR_PRCFG3, MTLB_ENTRY, 63);
+    // env->CSR_PRCFG3 = FIELD_DP64(env->CSR_PRCFG3, CSR_PRCFG3, STLB_WAYS, 7);
+    // env->CSR_PRCFG3 = FIELD_DP64(env->CSR_PRCFG3, CSR_PRCFG3, STLB_SETS, 8);
+
+    env->CSR_CRMD = 0x8;
+    env->CSR_TLBIDX = 0x8c000000;
+    env->CSR_ASID = 0xa0000;
+    env->CSR_PWCL = 0x13e4d52c;
+    env->CSR_PWCH = 0x30027;
+    env->CSR_PRCFG1 = 0x7004;
+    env->CSR_PRCFG2 = 0x800;
+    env->CSR_PRCFG3 = 0x61;
+    env->CSR_TLBREHI = 0xc;
+}
+
 void loongarch_centaur320_initfn(CPULoongArchState* env) {
 
     int i;
@@ -357,7 +466,6 @@ void loongarch_centaur320_initfn(CPULoongArchState* env) {
 void loongarch_openc910_initfn(CPULoongArchState* env) {
 
     int i;
-
     for (i = 0; i < 21; i++) {
         env->cpucfg[i] = 0x0;
     }

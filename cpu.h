@@ -114,6 +114,7 @@ extern target_ulong TARGET_PAGE_MASK;
 
 #define TARGET_PHYS_MASK MAKE_64BIT_MASK(0, TARGET_PHYS_ADDR_SPACE_BITS)
 #define TARGET_VIRT_MASK MAKE_64BIT_MASK(0, TARGET_VIRT_ADDR_SPACE_BITS)
+#define DIFF_PHYSICAL_MASK MAKE_64BIT_MASK(0, 40)
 
 /* Global bit used for lddir/ldpte */
 #define LOONGARCH_PAGE_HUGE_SHIFT   6
@@ -540,6 +541,18 @@ typedef struct LoongArchCPU {
     CPULoongArchState env;
 }LoongArchCPU;
 
+typedef struct store_data_t {
+    uint64_t paddr;
+    uint64_t data;
+    uint8_t  mask;
+} store_data_t;
+
+typedef struct store_queue_t {
+    store_data_t data[1024];
+    int head;
+    int tail;
+} store_queue_t;
+
 typedef LoongArchCPU ArchCPU;
 
 #define CPU(obj) ((CPUState *)(obj))
@@ -819,6 +832,7 @@ bool loongarch_cpu_has_irq(CPULoongArchState *env);
 
 void loongarch_la464_initfn(CPULoongArchState* env);
 void loongarch_centaur320_initfn(CPULoongArchState* env);
+void loongarch_openc906_initfn(CPULoongArchState* env);
 void loongarch_openc910_initfn(CPULoongArchState* env);
 
 static inline bool enable_hw_ptw(CPULoongArchState* env) {

@@ -37,7 +37,7 @@ char plugin_arg[PATH_MAX];
 #endif
 bool new_abi;
 bool determined;
-bool hw_ptw = 1;
+bool hw_ptw;
 bool ptw_hw_setVD = true;
 bool serial_plus;
 #if !defined(CONFIG_USER_ONLY)
@@ -50,6 +50,7 @@ __thread CPULoongArchState *current_env;
 int gdbserver = 0;
 extern int check_signal;
 extern int64_t singlestep;
+extern bool fastforward;
 
 extern void handle_debug_cli(CPULoongArchState *env);
 extern void show_register(CPULoongArchState *env);
@@ -610,11 +611,14 @@ void loongarch_cpu_do_interrupt(CPUState *cs)
                                    FIELD_EX64(env->CSR_CRMD, CSR_CRMD, PLV));
         env->CSR_PRMD = FIELD_DP64(env->CSR_PRMD, CSR_PRMD, PIE,
                                    FIELD_EX64(env->CSR_CRMD, CSR_CRMD, IE));
+        env->CSR_PRMD = FIELD_DP64(env->CSR_PRMD, CSR_PRMD, PWE,
+                                   FIELD_EX64(env->CSR_CRMD, CSR_CRMD, WE));
         env->CSR_ERA = env->pc;
     }
 
     env->CSR_CRMD = FIELD_DP64(env->CSR_CRMD, CSR_CRMD, PLV, 0);
     env->CSR_CRMD = FIELD_DP64(env->CSR_CRMD, CSR_CRMD, IE, 0);
+    env->CSR_CRMD = FIELD_DP64(env->CSR_CRMD, CSR_CRMD, WE, 0);
 
     if (vec_size) {
         vec_size = (1 << vec_size) * 4;
@@ -730,23 +734,19 @@ int exec_env(CPULoongArchState *env) {
 #if defined (CONFIG_CLI)
                 handle_debug_cli(env);
 #endif
-
 #if defined (CONFIG_DIFF)
                 if (singlestep == 0) {
                     return 0;
                 }
 #endif
-
 #if !defined (CONFIG_USER_ONLY)
-#if !defined (CONFIG_DIFF)
-                loongarch_cpu_check_irq(env);
-#endif
+                if (fastforward)
+                    loongarch_cpu_check_irq(env);
                 if (unlikely(loongarch_cpu_has_irq(env))) {
                     cs->exception_index = EXCCODE_INT;
                     loongarch_cpu_do_interrupt(cs);
                 }
 #endif
-
 #if defined (CONFIG_GDB)
                 if (gdbserver_has_message) {
                     return 1;
@@ -758,7 +758,6 @@ int exec_env(CPULoongArchState *env) {
                     }
                 }
 #endif
-
                 if (unlikely(qemu_loglevel_mask(CPU_LOG_EXEC))) {
                     qemu_log("pc:%lx\n", env->pc);
                 }
@@ -768,21 +767,6 @@ int exec_env(CPULoongArchState *env) {
                         show_register_fpr(env);
                     }
                 }
-
-                /// only for debug
-                if (env->pc == 0x1200004b8) {
-                    debug = 1;
-                }
-
-                if (env->pc == 0x900000000046cca8) {
-                    debug = 1;
-                    hit_num++;
-                }
-
-                if ((env->pc == 0x900000000046cca8) && (hit_num == 8)) {
-                    debug = 1;
-                }
-
                 insn = fetch(env, &ic);
 #ifdef CONFIG_DIFF
                 env->insn = insn;
@@ -813,10 +797,13 @@ int exec_env(CPULoongArchState *env) {
 
             }
         } else {
+#if defined (CONFIG_DIFF)
+            -- singlestep;
+            env->prev_pc = env->pc;
+#endif
             loongarch_cpu_do_interrupt(cs);
             env->ecount ++;
             /// when raise a non-interrupt exception, has executed one instruction
-            -- singlestep;
         }
     }
 }
@@ -826,7 +813,7 @@ G_NORETURN void cpu_loop_exit(CPUState *cpu)
     /* Undo the setting in cpu_tb_exec.  */
     cpu->neg.can_do_io = true;
     /* Undo any setting in generated code.  */
-    // qemu_plugin_disable_mem_helpers(cpu);
+    // qemu_plugin_disable_mem_helpers(cpu)
     siglongjmp(cpu->jmp_env, 1);
 }
 
@@ -842,7 +829,6 @@ void G_NORETURN do_raise_exception(CPULoongArchState *env,
                   exception,
                   loongarch_exception_name(exception));
     cs->exception_index = exception;
-
     cpu_loop_exit(cs);
     // cpu_loop_exit_restore(cs, pc);
 }
