@@ -712,7 +712,11 @@ void loong64_difftest_tlbcpy()
     // TODO
 }
 
-void loong64_difftest_save_checkpoint(const char* path) {
+void loong64_difftest_save_checkpoint(const char* path, uint64_t* buf, bool tobuf) {
+    if (tobuf) {    
+        loongarch_cpu_dump_state_buf(current_env, buf);
+        return;
+    }
     char filename[1024];
     if (mkdir(path, 0755) < 0 && errno != EEXIST) {
         fprintf(stderr, "ERROR: cannot create dir:%s\n", path);
@@ -730,7 +734,11 @@ void loong64_difftest_save_checkpoint(const char* path) {
     fclose(f);
 }
 
-void loong64_difftest_restore_checkpoint(const char* path) {
+void loong64_difftest_restore_checkpoint(const char* path, uint64_t* buf, bool frombuf) {
+    if (frombuf) {
+        loongarch_cpu_restore_state_buf(current_env, buf);
+        return;
+    }
     char filename[1024];
     char buffer[1024];
 

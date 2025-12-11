@@ -219,7 +219,97 @@ static uint64_t* get_csr_ptr(CPULoongArchState *env, uint64_t idx) {
     case LOONGARCH_CSR_DSAVE: return &(env->CSR_DSAVE);
     default: return NULL;
     }
+}
 
+void loongarch_cpu_dump_state_buf(CPULoongArchState *env, uint64_t* buf) {
+    int offset = 0;
+    buf[offset++] = env->pc;
+    
+    // General Purpose Registers
+    for (int i = 0; i < 32; i++) {
+        buf[offset++] = env->gpr[i];
+    }
+    
+    // Control Flags
+    for (int i = 0; i < 8; i++) {
+        buf[offset++] = env->cf[i];
+    }
+    
+    // Floating Point Control Status Register
+    buf[offset++] = env->fcsr0;
+    
+    // Floating Point Registers
+    for (int i = 0; i < 32; i++) {
+        for (int j = 0; j < (LASX_LEN / 64); j++) {
+            buf[offset++] = env->fpr[i].vreg.D[j];
+        }
+    }
+    
+    // CSR Registers - following the same order as loongarch_cpu_dump_state
+    buf[offset++] = env->CSR_CRMD;
+    buf[offset++] = env->CSR_PRMD;
+    buf[offset++] = env->CSR_EUEN;
+    buf[offset++] = env->CSR_MISC;
+    buf[offset++] = env->CSR_ECFG;
+    buf[offset++] = env->CSR_ESTAT;
+    buf[offset++] = env->CSR_ERA;
+    buf[offset++] = env->CSR_BADV;
+    buf[offset++] = env->CSR_BADI;
+    buf[offset++] = env->CSR_EENTRY;
+    buf[offset++] = env->CSR_TLBIDX;
+    buf[offset++] = env->CSR_TLBEHI;
+    buf[offset++] = env->CSR_TLBELO0;
+    buf[offset++] = env->CSR_TLBELO1;
+    buf[offset++] = env->CSR_ASID;
+    buf[offset++] = env->CSR_PGDL;
+    buf[offset++] = env->CSR_PGDH;
+    buf[offset++] = helper_csrrd_pgd(env);
+    buf[offset++] = env->CSR_PWCL;
+    buf[offset++] = env->CSR_PWCH;
+    buf[offset++] = env->CSR_STLBPS;
+    buf[offset++] = env->CSR_RVACFG;
+    buf[offset++] = env->CSR_CPUID;
+    buf[offset++] = env->CSR_PRCFG1;
+    buf[offset++] = env->CSR_PRCFG2;
+    buf[offset++] = env->CSR_PRCFG3;
+    
+    // SAVE registers
+    for (int i = 0; i < 9; i++) {
+        buf[offset++] = env->CSR_SAVE[i];
+    }
+    
+    buf[offset++] = env->CSR_TID;
+    buf[offset++] = env->CSR_TCFG;
+    buf[offset++] = env->timer_counter;  // CSR_TVAL
+    buf[offset++] = env->CSR_CNTC;
+    buf[offset++] = 0ul;  // CSR_TICLR
+    buf[offset++] = env->CSR_LLBCTL;
+    buf[offset++] = env->CSR_IMPCTL1;
+    buf[offset++] = env->CSR_IMPCTL2;
+    buf[offset++] = env->CSR_TLBRENTRY;
+    buf[offset++] = env->CSR_TLBRBADV;
+    buf[offset++] = env->CSR_TLBRERA;
+    buf[offset++] = env->CSR_TLBRSAVE;
+    buf[offset++] = env->CSR_TLBRELO0;
+    buf[offset++] = env->CSR_TLBRELO1;
+    buf[offset++] = env->CSR_TLBREHI;
+    buf[offset++] = env->CSR_TLBRPRMD;
+    buf[offset++] = env->CSR_MERRCTL;
+    buf[offset++] = env->CSR_MERRINFO1;
+    buf[offset++] = env->CSR_MERRINFO2;
+    buf[offset++] = env->CSR_MERRENTRY;
+    buf[offset++] = env->CSR_MERRERA;
+    buf[offset++] = env->CSR_MERRSAVE;
+    buf[offset++] = env->CSR_CTAG;
+    
+    // DMW registers
+    for (int i = 0; i < 4; i++) {
+        buf[offset++] = env->CSR_DMW[i];
+    }
+    
+    buf[offset++] = env->CSR_DBG;
+    buf[offset++] = env->CSR_DERA;
+    buf[offset++] = env->CSR_DSAVE;
 }
 
 void loongarch_cpu_dump_state(CPULoongArchState *env, FILE *f)
@@ -305,6 +395,101 @@ void loongarch_cpu_dump_state(CPULoongArchState *env, FILE *f)
     fprintf(f, "csr 0x%x 0x%016lx\n", LOONGARCH_CSR_DERA, env->CSR_DERA);
     fprintf(f, "csr 0x%x 0x%016lx\n", LOONGARCH_CSR_DSAVE, env->CSR_DSAVE);
 }
+
+void loongarch_cpu_restore_state_buf(CPULoongArchState *env, uint64_t* buf) {
+    int offset = 0;
+    
+    // Program Counter
+    env->pc = buf[offset++];
+    
+    // General Purpose Registers
+    for (int i = 0; i < 32; i++) {
+        env->gpr[i] = buf[offset++];
+    }
+    
+    // Control Flags
+    for (int i = 0; i < 8; i++) {
+        env->cf[i] = (uint8_t)buf[offset++];
+    }
+    
+    // Floating Point Control Status Register
+    env->fcsr0 = (uint32_t)buf[offset++];
+    
+    // Floating Point Registers
+    for (int i = 0; i < 32; i++) {
+        for (int j = 0; j < (LASX_LEN / 64); j++) {
+            env->fpr[i].vreg.D[j] = buf[offset++];
+        }
+    }
+    
+    // CSR Registers - following the same order as loongarch_cpu_dump_state_buf
+    env->CSR_CRMD = buf[offset++];
+    env->CSR_PRMD = buf[offset++];
+    env->CSR_EUEN = buf[offset++];
+    env->CSR_MISC = buf[offset++];
+    env->CSR_ECFG = buf[offset++];
+    env->CSR_ESTAT = buf[offset++];
+    env->CSR_ERA = buf[offset++];
+    env->CSR_BADV = buf[offset++];
+    env->CSR_BADI = buf[offset++];
+    env->CSR_EENTRY = buf[offset++];
+    env->CSR_TLBIDX = buf[offset++];
+    env->CSR_TLBEHI = buf[offset++];
+    env->CSR_TLBELO0 = buf[offset++];
+    env->CSR_TLBELO1 = buf[offset++];
+    env->CSR_ASID = buf[offset++];
+    env->CSR_PGDL = buf[offset++];
+    env->CSR_PGDH = buf[offset++];
+    env->CSR_PGD = helper_csrrd_pgd(env);
+    offset++;
+    env->CSR_PWCL = buf[offset++];
+    env->CSR_PWCH = buf[offset++];
+    env->CSR_STLBPS = buf[offset++];
+    env->CSR_RVACFG = buf[offset++];
+    env->CSR_CPUID = buf[offset++];
+    env->CSR_PRCFG1 = buf[offset++];
+    env->CSR_PRCFG2 = buf[offset++];
+    env->CSR_PRCFG3 = buf[offset++];
+    
+    // SAVE registers
+    for (int i = 0; i < 9; i++) {
+        env->CSR_SAVE[i] = buf[offset++];
+    }
+    
+    env->CSR_TID = buf[offset++];
+    env->CSR_TCFG = buf[offset++];
+    env->timer_counter = buf[offset++];  // CSR_TVAL
+    env->CSR_CNTC = buf[offset++];
+    // CSR_TICLR is always 0, so we skip it
+    offset++;
+    env->CSR_LLBCTL = buf[offset++];
+    env->CSR_IMPCTL1 = buf[offset++];
+    env->CSR_IMPCTL2 = buf[offset++];
+    env->CSR_TLBRENTRY = buf[offset++];
+    env->CSR_TLBRBADV = buf[offset++];
+    env->CSR_TLBRERA = buf[offset++];
+    env->CSR_TLBRSAVE = buf[offset++];
+    env->CSR_TLBRELO0 = buf[offset++];
+    env->CSR_TLBRELO1 = buf[offset++];
+    env->CSR_TLBREHI = buf[offset++];
+    env->CSR_TLBRPRMD = buf[offset++];
+    env->CSR_MERRCTL = buf[offset++];
+    env->CSR_MERRINFO1 = buf[offset++];
+    env->CSR_MERRINFO2 = buf[offset++];
+    env->CSR_MERRENTRY = buf[offset++];
+    env->CSR_MERRERA = buf[offset++];
+    env->CSR_MERRSAVE = buf[offset++];
+    env->CSR_CTAG = buf[offset++];
+    
+    // DMW registers
+    for (int i = 0; i < 4; i++) {
+        env->CSR_DMW[i] = buf[offset++];
+    }
+    
+    env->CSR_DBG = buf[offset++];
+    env->CSR_DERA = buf[offset++];
+    env->CSR_DSAVE = buf[offset++];
+}   
 
 void loongarch_cpu_restore_state(CPULoongArchState *env, FILE* f)
 {
